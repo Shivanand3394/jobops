@@ -15,8 +15,12 @@ function setCfg({ apiBase, uiKey }) {
 const $ = (id) => document.getElementById(id);
 
 const state = {
+  view: "jobs",
   jobs: [],
   activeKey: null,
+  targets: [],
+  activeTargetId: null,
+  rejectKeywordsEnabled: true,
 };
 
 function toast(msg) {
@@ -70,6 +74,24 @@ function escapeHtml(s) {
 
 function getDisplayTitle(j) {
   return j.display_title || j.role_title || "(Needs JD)";
+}
+
+function showView(view) {
+  state.view = view;
+  const jobsView = $("jobsView");
+  const targetsView = $("targetsView");
+  jobsView.classList.toggle("hidden", view !== "jobs");
+  targetsView.classList.toggle("hidden", view !== "targets");
+
+  $("btnTabJobs").classList.toggle("active-tab", view === "jobs");
+  $("btnTabTargets").classList.toggle("active-tab", view === "targets");
+
+  const jobsActionsHidden = view !== "jobs";
+  $("btnAdd").classList.toggle("hidden", jobsActionsHidden);
+  $("btnRescore").classList.toggle("hidden", jobsActionsHidden);
+  $("btnRescore2").classList.toggle("hidden", jobsActionsHidden);
+
+  if (view === "targets") loadTargets();
 }
 
 function filterJobs(jobs, status, q) {
@@ -247,6 +269,192 @@ function renderDetail(j) {
   `;
 }
 
+function getTargetDisplay(t) {
+  return `${t.id || "-"} - ${t.name || "(Unnamed)"}`;
+}
+
+function filterTargets(targets, q) {
+  if (!q) return targets;
+  return targets.filter((t) => {
+    const s = `${t.id || ""} ${t.name || ""} ${t.primary_role || ""} ${t.seniority_pref || ""} ${t.location_pref || ""}`.toLowerCase();
+    return s.includes(q);
+  });
+}
+
+function targetCard(t) {
+  const isActive = state.activeTargetId === t.id;
+  return `
+    <div class="job-card ${isActive ? "active" : ""}" data-target-id="${escapeHtml(t.id || "")}" tabindex="0">
+      <div class="title">${escapeHtml(getTargetDisplay(t))}</div>
+      <div class="sub">${escapeHtml(t.primary_role || "-")} | ${escapeHtml(t.seniority_pref || "-")} | ${escapeHtml(t.location_pref || "-")}</div>
+    </div>
+  `;
+}
+
+function renderTargets() {
+  const q = $("targetSearch").value.trim().toLowerCase();
+  const filtered = filterTargets(state.targets, q);
+  $("targetsHint").textContent = `${filtered.length} target(s)`;
+  const container = $("targetsList");
+  container.innerHTML = filtered.map(targetCard).join("") || `<div class="muted">No targets found.</div>`;
+
+  container.querySelectorAll(".job-card").forEach((el) => {
+    el.addEventListener("click", () => setActiveTarget(el.dataset.targetId));
+    el.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") setActiveTarget(el.dataset.targetId);
+    });
+  });
+}
+
+function keywordsToText(v) {
+  if (Array.isArray(v)) return v.join(", ");
+  if (typeof v === "string") {
+    try {
+      const arr = JSON.parse(v);
+      if (Array.isArray(arr)) return arr.join(", ");
+    } catch {}
+    return v;
+  }
+  return "";
+}
+
+function textToKeywords(text) {
+  return String(text || "")
+    .split(/[\n,]+/g)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function renderTargetEditor(t) {
+  $("targetEditor").classList.remove("empty");
+  $("tTitle").textContent = t.id || "Target";
+  $("tSub").textContent = t.name || "";
+
+  const rejectBlock = state.rejectKeywordsEnabled
+    ? `
+      <div class="field">
+        <label>reject_keywords_json</label>
+        <textarea id="tReject" rows="3" placeholder="keyword1, keyword2">${escapeHtml(keywordsToText(t.reject_keywords_json ?? t.reject_keywords))}</textarea>
+      </div>
+    `
+    : `<div class="muted tiny">Reject keywords not enabled in DB schema.</div>`;
+
+  $("targetEditor").innerHTML = `
+    <div class="target-form">
+      <div class="field">
+        <label>ID</label>
+        <input id="tId" value="${escapeHtml(t.id || "")}" disabled />
+      </div>
+      <div class="field">
+        <label>Name</label>
+        <input id="tName" value="${escapeHtml(t.name || "")}" />
+      </div>
+      <div class="field">
+        <label>primary_role</label>
+        <input id="tPrimaryRole" value="${escapeHtml(t.primary_role || "")}" />
+      </div>
+      <div class="field">
+        <label>seniority_pref</label>
+        <input id="tSeniority" value="${escapeHtml(t.seniority_pref || "")}" />
+      </div>
+      <div class="field">
+        <label>location_pref</label>
+        <input id="tLocation" value="${escapeHtml(t.location_pref || "")}" />
+      </div>
+      <div class="field">
+        <label>must_keywords_json</label>
+        <textarea id="tMust" rows="3" placeholder="keyword1, keyword2">${escapeHtml(keywordsToText(t.must_keywords_json ?? t.must_keywords))}</textarea>
+      </div>
+      <div class="field">
+        <label>nice_keywords_json</label>
+        <textarea id="tNice" rows="3" placeholder="keyword1, keyword2">${escapeHtml(keywordsToText(t.nice_keywords_json ?? t.nice_keywords))}</textarea>
+      </div>
+      ${rejectBlock}
+      <div class="row" style="justify-content:flex-start;">
+        <button class="btn" onclick="saveActiveTarget()">Save Target</button>
+      </div>
+    </div>
+  `;
+}
+
+async function loadTargets() {
+  try {
+    spin(true);
+    const res = await api("/targets");
+    state.targets = Array.isArray(res.data) ? res.data : [];
+    if (typeof res?.meta?.reject_keywords_enabled === "boolean") {
+      state.rejectKeywordsEnabled = res.meta.reject_keywords_enabled;
+    } else {
+      const sample = state.targets[0];
+      state.rejectKeywordsEnabled = !sample || Object.prototype.hasOwnProperty.call(sample, "reject_keywords_json");
+    }
+    renderTargets();
+    if (state.activeTargetId && !state.targets.some((t) => t.id === state.activeTargetId)) {
+      state.activeTargetId = null;
+      $("targetEditor").classList.add("empty");
+      $("targetEditor").innerHTML = `<div class="empty-state"><div class="h3">Pick a target from the left.</div></div>`;
+    }
+  } catch (e) {
+    toast("Targets load failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
+async function setActiveTarget(targetId) {
+  if (!targetId) return;
+  state.activeTargetId = targetId;
+  renderTargets();
+  try {
+    spin(true);
+    const res = await api("/targets/" + encodeURIComponent(targetId));
+    const target = res.data || {};
+    if (typeof res?.meta?.reject_keywords_enabled === "boolean") {
+      state.rejectKeywordsEnabled = res.meta.reject_keywords_enabled;
+    } else {
+      state.rejectKeywordsEnabled = Object.prototype.hasOwnProperty.call(target, "reject_keywords_json");
+    }
+    renderTargetEditor(target);
+  } catch (e) {
+    toast("Target open failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
+async function saveActiveTarget() {
+  const targetId = state.activeTargetId;
+  if (!targetId) {
+    toast("Select a target first");
+    return;
+  }
+
+  const body = {
+    name: $("tName")?.value || "",
+    primary_role: $("tPrimaryRole")?.value || "",
+    seniority_pref: $("tSeniority")?.value || "",
+    location_pref: $("tLocation")?.value || "",
+    must_keywords_json: textToKeywords($("tMust")?.value || ""),
+    nice_keywords_json: textToKeywords($("tNice")?.value || ""),
+  };
+
+  if (state.rejectKeywordsEnabled) {
+    body.reject_keywords_json = textToKeywords($("tReject")?.value || "");
+  }
+
+  try {
+    spin(true);
+    await api("/targets/" + encodeURIComponent(targetId), { method: "POST", body });
+    toast("Target saved");
+    await loadTargets();
+    await setActiveTarget(targetId);
+  } catch (e) {
+    toast("Target save failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
 async function updateStatus(jobKey, status) {
   try {
     spin(true);
@@ -379,10 +587,14 @@ async function saveSettings() {
   closeModal("modalSettings");
   hydrateSettingsUI();
   toast("Saved settings");
-  await loadJobs();
+  if (state.view === "jobs") await loadJobs();
+  if (state.view === "targets") await loadTargets();
 }
 
 (function init() {
+  $("btnTabJobs").onclick = () => showView("jobs");
+  $("btnTabTargets").onclick = () => showView("targets");
+
   $("btnAdd").onclick = () => openModal("modalAdd");
   $("btnCloseAdd").onclick = () => closeModal("modalAdd");
   $("btnAddCancel").onclick = () => closeModal("modalAdd");
@@ -397,15 +609,20 @@ async function saveSettings() {
   $("btnRescore").onclick = rescorePending;
   $("btnRescore2").onclick = rescorePending;
 
+  $("btnTargetsRefresh").onclick = loadTargets;
+  $("targetSearch").oninput = renderTargets;
+
   $("statusFilter").onchange = loadJobs;
   $("search").oninput = () => { renderJobs(); renderListMeta(); };
 
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
   hydrateSettingsUI();
+  showView("jobs");
   loadJobs();
 })();
 
 window.updateStatus = updateStatus;
 window.rescoreOne = rescoreOne;
 window.saveAndRescoreManualJd = saveAndRescoreManualJd;
+window.saveActiveTarget = saveActiveTarget;

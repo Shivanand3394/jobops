@@ -3,25 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>JobOps — Premium UI</title>
+  <title>JobOps - Premium UI</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="left">
       <div class="logo">JobOps</div>
-      <div class="pill" id="envPill">API: <span id="apiHost">—</span></div>
+      <div class="pill" id="envPill">API: <span id="apiHost">-</span></div>
     </div>
 
     <div class="right">
-      <button class="btn btn-ghost" id="btnSettings" title="Settings">⚙</button>
+      <button class="btn btn-ghost" id="btnTabJobs">Jobs</button>
+      <button class="btn btn-ghost" id="btnTabTargets">Targets</button>
+      <button class="btn btn-ghost" id="btnSettings" title="Settings">Settings</button>
       <button class="btn" id="btnAdd">+ Add job URL</button>
       <button class="btn btn-secondary" id="btnRescore">Rescore NEW+SCORED</button>
       <button class="btn btn-secondary" id="btnRescore2">Rescore (safe)</button>
     </div>
   </header>
 
-  <main class="app">
+  <main class="app" id="jobsView">
     <section class="panel panel-left">
       <div class="toolbar">
         <div class="field">
@@ -40,14 +42,14 @@
 
         <div class="field grow">
           <label>Search</label>
-          <input id="search" type="search" placeholder="Role, company, location…" />
+          <input id="search" type="search" placeholder="Role, company, location..." />
         </div>
 
-        <button class="btn btn-ghost" id="btnRefresh" title="Refresh">↻</button>
+        <button class="btn btn-ghost" id="btnRefresh" title="Refresh">Refresh</button>
       </div>
 
       <div class="list-meta">
-        <div id="listHint" class="muted">Loading…</div>
+        <div id="listHint" class="muted">Loading...</div>
       </div>
 
       <div id="jobList" class="job-list"></div>
@@ -67,9 +69,39 @@
 
       <div id="detailBody" class="detail-body empty">
         <div class="empty-state">
-          <div class="empty-hero">👈</div>
+          <div class="empty-hero">Select</div>
           <div class="h3">Pick a job from the left.</div>
           <div class="muted">Then update status, rescore, or paste JD if needed.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="app hidden" id="targetsView">
+    <section class="panel panel-left">
+      <div class="toolbar">
+        <div class="field grow">
+          <label>Targets</label>
+          <input id="targetSearch" type="search" placeholder="ID, name, role..." />
+        </div>
+        <button class="btn btn-ghost" id="btnTargetsRefresh" title="Refresh">Refresh</button>
+      </div>
+      <div class="list-meta">
+        <div id="targetsHint" class="muted">Loading...</div>
+      </div>
+      <div id="targetsList" class="job-list"></div>
+    </section>
+
+    <section class="panel panel-right">
+      <div class="detail-header">
+        <div class="detail-title">
+          <div id="tTitle" class="h2">Select a target</div>
+          <div id="tSub" class="muted"></div>
+        </div>
+      </div>
+      <div id="targetEditor" class="detail-body empty">
+        <div class="empty-state">
+          <div class="h3">Pick a target from the left.</div>
         </div>
       </div>
     </section>
@@ -80,11 +112,11 @@
     <div class="modal-card">
       <div class="modal-head">
         <div class="h3">Add job URL</div>
-        <button class="btn btn-ghost" id="btnCloseAdd">✕</button>
+        <button class="btn btn-ghost" id="btnCloseAdd">Close</button>
       </div>
       <div class="modal-body">
         <label class="muted">Paste any LinkedIn / IIMJobs / Naukri job link</label>
-        <textarea id="addUrlText" rows="3" placeholder="https://…"></textarea>
+        <textarea id="addUrlText" rows="3" placeholder="https://..."></textarea>
         <div class="row">
           <button class="btn" id="btnAddSubmit">Ingest</button>
           <button class="btn btn-ghost" id="btnAddCancel">Cancel</button>
@@ -100,11 +132,11 @@
     <div class="modal-card">
       <div class="modal-head">
         <div class="h3">Settings</div>
-        <button class="btn btn-ghost" id="btnCloseSettings">✕</button>
+        <button class="btn btn-ghost" id="btnCloseSettings">Close</button>
       </div>
       <div class="modal-body">
         <label class="muted">API base URL</label>
-        <input id="setApiBase" placeholder="https://get-job.….workers.dev" />
+        <input id="setApiBase" placeholder="https://get-job....workers.dev" />
         <label class="muted">UI key (x-ui-key)</label>
         <input id="setUiKey" placeholder="Paste your UI_KEY" />
         <div class="row">
