@@ -49,6 +49,29 @@
 - Response fields used:
   - toast: `data.picked`, `data.updated`
 
+### `GET /targets`
+- Headers: `Content-Type`, `x-ui-key`
+- Body: none
+- Where called: `ui/app.js` `loadTargets()`
+- Response fields used:
+  - list: `id`, `name`, `primary_role`, `seniority_pref`, `location_pref`
+  - meta: `meta.reject_keywords_enabled`
+
+### `GET /targets/:id`
+- Headers: `Content-Type`, `x-ui-key`
+- Body: none
+- Where called: `ui/app.js` `setActiveTarget()`
+- Response fields used:
+  - form: `id`, `name`, `primary_role`, `seniority_pref`, `location_pref`, `must_keywords_json`, `nice_keywords_json`, `reject_keywords_json`
+  - meta: `meta.reject_keywords_enabled`
+
+### `POST /targets/:id`
+- Headers: `Content-Type`, `x-ui-key`
+- Body: `{ name, primary_role, seniority_pref, location_pref, must_keywords_json[], nice_keywords_json[], reject_keywords_json[]? }`
+- Where called: `ui/app.js` `saveActiveTarget()`
+- Response fields used:
+  - none directly; UI reloads list/detail
+
 ## Worker-implemented endpoints
 
 ### Public
@@ -83,6 +106,4 @@
 - `display_title` fallback is available server-side and consumed by UI (`(Needs JD)` fallback).
 - List items are clickable via click and keyboard handlers on `.job-card`.
 - Gaps still present:
-  - Ingest UX does not clear `#addUrlText` after success.
-  - Ingest UX does not show explicit dedupe-specific messaging.
-  - Targets CRUD exists in Worker, but UI has no Targets page or controls.
+  - Dedupe message relies on repeated returned `job_key` evidence; Worker does not yet return explicit `was_existing` per row.

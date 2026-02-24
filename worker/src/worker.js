@@ -218,11 +218,12 @@ export default {
 
         const aiForManual = ai || getAi_(env);
         if (!aiForManual) {
+          const transition = applyStatusTransition_(existing, "manual_saved_no_ai");
           await env.DB.prepare(`
             UPDATE jobs
-            SET system_status = 'NEEDS_MANUAL_JD', updated_at = ?
+            SET system_status = ?, next_status = ?, updated_at = ?
             WHERE job_key = ?;
-          `.trim()).bind(now, jobKey).run();
+          `.trim()).bind(transition.system_status, transition.next_status, now, jobKey).run();
 
           return json_({
             ok: true,
@@ -261,7 +262,11 @@ export default {
         if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
 
         const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-        const nextStatus = computeSystemStatus_(finalScore, mergedRejectTriggered, cfg);
+        const transition = applyStatusTransition_(existing, "scored", {
+          final_score: finalScore,
+          reject_triggered: mergedRejectTriggered,
+          cfg,
+        });
 
         await env.DB.prepare(`
           UPDATE jobs
@@ -311,20 +316,20 @@ export default {
           JSON.stringify(rejectReasons),
           mergedRejectTriggered ? extractRejectEvidence_(jdText) : "",
           String(scoring.reason_top_matches || "").slice(0, 1000),
-          nextStatus,
-          nextStatus,
-          nextStatus,
+          transition.next_status,
+          transition.system_status,
+          transition.status,
           now,
           now,
           jobKey
         ).run();
 
-        await logEvent_(env, "MANUAL_JD_RESCORED", jobKey, { status: nextStatus, final_score: finalScore, ts: now });
+        await logEvent_(env, "MANUAL_JD_RESCORED", jobKey, { status: transition.status, final_score: finalScore, ts: now });
         return json_({
           ok: true,
           data: {
             job_key: jobKey,
-            status: nextStatus,
+            status: transition.status,
             final_score: finalScore,
             primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
           }
@@ -385,7 +390,11 @@ export default {
         if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
 
         const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-        const nextStatus = computeSystemStatus_(finalScore, mergedRejectTriggered, cfg);
+        const transition = applyStatusTransition_(job, "scored", {
+          final_score: finalScore,
+          reject_triggered: mergedRejectTriggered,
+          cfg,
+        });
 
         const now = Date.now();
         await env.DB.prepare(`
@@ -439,17 +448,17 @@ export default {
           JSON.stringify(rejectReasons),
           mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
           String(scoring.reason_top_matches || "").slice(0, 1000),
-          nextStatus,
-          nextStatus,
-          nextStatus,
+          transition.next_status,
+          transition.system_status,
+          transition.status,
           now,
           now,
           jobKey
         ).run();
 
-        await logEvent_(env, "RESCORED_ONE", jobKey, { final_score: finalScore, status: nextStatus, ts: now });
+        await logEvent_(env, "RESCORED_ONE", jobKey, { final_score: finalScore, status: transition.status, ts: now });
 
-        return json_({ ok: true, data: { job_key: jobKey, final_score: finalScore, status: nextStatus, primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID } }, env, 200);
+        return json_({ ok: true, data: { job_key: jobKey, final_score: finalScore, status: transition.status, primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID } }, env, 200);
       }
 
       // ============================
@@ -521,9 +530,11 @@ export default {
       // UI: Targets list
       // ============================
       if (path === "/targets" && request.method === "GET") {
+        const targetSchema = await getTargetsSchema_(env);
+        const rejectSelect = targetSchema.hasRejectKeywords ? "reject_keywords_json" : "'[]' AS reject_keywords_json";
         const res = await env.DB.prepare(`
           SELECT id, name, primary_role, seniority_pref, location_pref,
-                 must_keywords_json, nice_keywords_json, reject_keywords_json,
+                 must_keywords_json, nice_keywords_json, ${rejectSelect},
                  updated_at, created_at
           FROM targets
           ORDER BY updated_at DESC;
@@ -536,7 +547,7 @@ export default {
           reject_keywords: safeJsonParseArray_(r.reject_keywords_json),
         }));
 
-        return json_({ ok: true, data: rows }, env, 200);
+        return json_({ ok: true, data: rows, meta: { reject_keywords_enabled: targetSchema.hasRejectKeywords } }, env, 200);
       }
 
       // ============================
@@ -545,10 +556,12 @@ export default {
       if (path.startsWith("/targets/") && request.method === "GET") {
         const targetId = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!targetId) return json_({ ok: false, error: "Missing target id" }, env, 400);
+        const targetSchema = await getTargetsSchema_(env);
+        const rejectSelect = targetSchema.hasRejectKeywords ? "reject_keywords_json" : "'[]' AS reject_keywords_json";
 
         const row = await env.DB.prepare(`
           SELECT id, name, primary_role, seniority_pref, location_pref,
-                 must_keywords_json, nice_keywords_json, reject_keywords_json,
+                 must_keywords_json, nice_keywords_json, ${rejectSelect},
                  updated_at, created_at
           FROM targets WHERE id = ? LIMIT 1;
         `.trim()).bind(targetId).first();
@@ -559,7 +572,7 @@ export default {
         row.nice_keywords = safeJsonParseArray_(row.nice_keywords_json);
         row.reject_keywords = safeJsonParseArray_(row.reject_keywords_json);
 
-        return json_({ ok: true, data: row }, env, 200);
+        return json_({ ok: true, data: row, meta: { reject_keywords_enabled: targetSchema.hasRejectKeywords } }, env, 200);
       }
 
       // ============================
@@ -580,30 +593,52 @@ export default {
         const must = normalizeKeywords_(body.must_keywords ?? body.must_keywords_json ?? []);
         const nice = normalizeKeywords_(body.nice_keywords ?? body.nice_keywords_json ?? []);
         const reject = normalizeKeywords_(body.reject_keywords ?? body.reject_keywords_json ?? []);
+        const targetSchema = await getTargetsSchema_(env);
 
         const now = Date.now();
-        const r = await env.DB.prepare(`
-          UPDATE targets SET
-            name = COALESCE(NULLIF(?, ''), name),
-            primary_role = COALESCE(NULLIF(?, ''), primary_role),
-            seniority_pref = COALESCE(NULLIF(?, ''), seniority_pref),
-            location_pref = COALESCE(NULLIF(?, ''), location_pref),
-            must_keywords_json = ?,
-            nice_keywords_json = ?,
-            reject_keywords_json = ?,
-            updated_at = ?
-          WHERE id = ?;
-        `.trim()).bind(
-          name,
-          primaryRole,
-          seniorityPref,
-          locationPref,
-          JSON.stringify(must),
-          JSON.stringify(nice),
-          JSON.stringify(reject),
-          now,
-          targetId
-        ).run();
+        const r = targetSchema.hasRejectKeywords
+          ? await env.DB.prepare(`
+              UPDATE targets SET
+                name = COALESCE(NULLIF(?, ''), name),
+                primary_role = COALESCE(NULLIF(?, ''), primary_role),
+                seniority_pref = COALESCE(NULLIF(?, ''), seniority_pref),
+                location_pref = COALESCE(NULLIF(?, ''), location_pref),
+                must_keywords_json = ?,
+                nice_keywords_json = ?,
+                reject_keywords_json = ?,
+                updated_at = ?
+              WHERE id = ?;
+            `.trim()).bind(
+            name,
+            primaryRole,
+            seniorityPref,
+            locationPref,
+            JSON.stringify(must),
+            JSON.stringify(nice),
+            JSON.stringify(reject),
+            now,
+            targetId
+          ).run()
+          : await env.DB.prepare(`
+              UPDATE targets SET
+                name = COALESCE(NULLIF(?, ''), name),
+                primary_role = COALESCE(NULLIF(?, ''), primary_role),
+                seniority_pref = COALESCE(NULLIF(?, ''), seniority_pref),
+                location_pref = COALESCE(NULLIF(?, ''), location_pref),
+                must_keywords_json = ?,
+                nice_keywords_json = ?,
+                updated_at = ?
+              WHERE id = ?;
+            `.trim()).bind(
+            name,
+            primaryRole,
+            seniorityPref,
+            locationPref,
+            JSON.stringify(must),
+            JSON.stringify(nice),
+            now,
+            targetId
+          ).run();
 
         if (!r.success || r.changes === 0) return json_({ ok: false, error: "Not found" }, env, 404);
 
@@ -741,7 +776,11 @@ export default {
             if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
 
             const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-            const nextStatus = computeSystemStatus_(finalScore, mergedRejectTriggered, cfg);
+            const transition = applyStatusTransition_(j, "scored", {
+              final_score: finalScore,
+              reject_triggered: mergedRejectTriggered,
+              cfg,
+            });
 
             const now = Date.now();
             const r = await env.DB.prepare(`
@@ -769,16 +808,16 @@ export default {
               JSON.stringify(rejectReasons),
               mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
               String(scoring.reason_top_matches || "").slice(0, 1000),
-              nextStatus,
-              nextStatus,
-              nextStatus,
+              transition.next_status,
+              transition.system_status,
+              transition.status,
               now,
               now,
               j.job_key
             ).run();
 
             if (r.success && r.changes) updated += 1;
-            results.push({ job_key: j.job_key, ok: true, final_score: finalScore, status: nextStatus, primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID });
+            results.push({ job_key: j.job_key, ok: true, final_score: finalScore, status: transition.status, primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID });
           } catch (e) {
             results.push({ job_key: j.job_key, ok: false, error: String(e?.message || e) });
           }
@@ -840,8 +879,11 @@ export default {
 
           const effectiveFetchStatus = aiAvailable ? String(resolved.fetch_status || "failed") : "ai_unavailable";
           const fetchDebug = { ...(resolved.debug || {}), ai_available: aiAvailable };
-          const rowStatus = needsManual ? "LINK_ONLY" : "NEW";
-          const systemStatus = needsManual ? "NEEDS_MANUAL_JD" : "NEW";
+          const transition = !aiAvailable
+            ? applyStatusTransition_(null, "ingest_ai_unavailable")
+            : (needsManual
+              ? applyStatusTransition_(null, "ingest_needs_manual")
+              : applyStatusTransition_(null, "ingest_ready"));
 
           // Upsert jobs row
           const r = await env.DB.prepare(`
@@ -874,17 +916,12 @@ export default {
               fetch_status = COALESCE(excluded.fetch_status, jobs.fetch_status),
               fetch_debug_json = COALESCE(excluded.fetch_debug_json, jobs.fetch_debug_json),
               status = CASE
+                WHEN jobs.status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN jobs.status
                 WHEN excluded.status = 'LINK_ONLY' AND jobs.status IN ('NEW', 'SCORED', 'LINK_ONLY') THEN 'LINK_ONLY'
                 ELSE jobs.status
               END,
-              next_status = CASE
-                WHEN excluded.system_status = 'NEEDS_MANUAL_JD' THEN 'NEEDS_MANUAL_JD'
-                ELSE jobs.next_status
-              END,
-              system_status = CASE
-                WHEN excluded.system_status = 'NEEDS_MANUAL_JD' THEN 'NEEDS_MANUAL_JD'
-                ELSE jobs.system_status
-              END,
+              next_status = excluded.next_status,
+              system_status = excluded.system_status,
               updated_at = excluded.updated_at;
           `.trim()).bind(
             norm.job_key,
@@ -907,9 +944,9 @@ export default {
             resolved.jd_source,
             effectiveFetchStatus,
             JSON.stringify(fetchDebug),
-            rowStatus,
-            systemStatus,
-            systemStatus,
+            transition.status,
+            transition.next_status,
+            transition.system_status,
             now,
             now
           ).run();
@@ -920,10 +957,10 @@ export default {
             raw_url: rawUrl,
             job_key: norm.job_key,
             job_url: norm.job_url,
-            status: rowStatus,
+            status: transition.status,
             jd_source: resolved.jd_source,
             fetch_status: effectiveFetchStatus,
-            system_status: systemStatus
+            system_status: transition.system_status
           });
         }
 
@@ -972,10 +1009,24 @@ async function logEvent_(env, eventType, jobKey, payload) {
   }
 }
 
+async function getTargetsSchema_(env) {
+  try {
+    const rows = await env.DB.prepare(`PRAGMA table_info(targets);`).all();
+    const names = new Set((rows.results || []).map((r) => String(r.name || "").trim()));
+    return {
+      hasRejectKeywords: names.has("reject_keywords_json"),
+    };
+  } catch {
+    return { hasRejectKeywords: false };
+  }
+}
+
 async function loadTargets_(env) {
+  const targetSchema = await getTargetsSchema_(env);
+  const rejectSelect = targetSchema.hasRejectKeywords ? "reject_keywords_json" : "'[]' AS reject_keywords_json";
   const res = await env.DB.prepare(`
     SELECT id, name, primary_role, seniority_pref, location_pref,
-           must_keywords_json, nice_keywords_json, reject_keywords_json
+           must_keywords_json, nice_keywords_json, ${rejectSelect}
     FROM targets
     ORDER BY updated_at DESC;
   `.trim()).all();
@@ -1453,6 +1504,39 @@ function computeSystemStatus_(finalScore, rejectTriggered, cfg) {
   if (finalScore >= cfg.SCORE_THRESHOLD_SHORTLIST) return "SHORTLISTED";
   if (finalScore < cfg.SCORE_THRESHOLD_ARCHIVE) return "ARCHIVED";
   return "SCORED";
+}
+
+function applyStatusTransition_(job, reason, opts = {}) {
+  if (reason === "ingest_ready") {
+    return { status: "NEW", system_status: null, next_status: null };
+  }
+  if (reason === "ingest_needs_manual") {
+    return { status: "LINK_ONLY", system_status: "NEEDS_MANUAL_JD", next_status: null };
+  }
+  if (reason === "ingest_ai_unavailable") {
+    return { status: "LINK_ONLY", system_status: "AI_UNAVAILABLE", next_status: null };
+  }
+  if (reason === "manual_saved_no_ai") {
+    return {
+      status: String(job?.status || "LINK_ONLY").trim() || "LINK_ONLY",
+      system_status: "AI_UNAVAILABLE",
+      next_status: null,
+    };
+  }
+  if (reason === "scored") {
+    const cfg = opts.cfg || { SCORE_THRESHOLD_SHORTLIST: 75, SCORE_THRESHOLD_ARCHIVE: 55 };
+    const status = computeSystemStatus_(
+      clampInt_(opts.final_score, 0, 100),
+      Boolean(opts.reject_triggered),
+      cfg
+    );
+    return { status, system_status: null, next_status: null };
+  }
+  return {
+    status: String(job?.status || "NEW").trim() || "NEW",
+    system_status: job?.system_status ?? null,
+    next_status: job?.next_status ?? null,
+  };
 }
 
 /* =========================================================

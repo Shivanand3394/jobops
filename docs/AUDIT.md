@@ -6,7 +6,7 @@
 - C) JD resolution + cleaning/window extraction: **Implemented** - fetch/email fallback and low-quality detection are present.
 - D) AI extraction + target scoring: **Implemented** - extract/score endpoints, batch score, single rescore, manual JD score path.
 - E) Pipeline statuses + timestamps: **Partial** - fields are populated, but status semantics still overlap across flows.
-- F) Android-friendly UI workflow: **Partial** - list/filter/detail/status/rescore/manual JD are implemented; Targets UI is still missing.
+- F) Android-friendly UI workflow: **Implemented** - list/filter/detail/status/rescore/manual JD plus Targets list/edit are available.
 - G) Git-based deploy (Worker + D1 + Pages): **Implemented** - structure/config support this; operational checklist documented.
 - H) Resume integration readiness: **Partial** - resume payload endpoint exists; no external integration yet.
 
@@ -74,17 +74,12 @@
   - no end-to-end Reactive Resume integration.
 
 ## 3) Gaps / Risks
-1. Targets UI is missing.
-- Impact: target tuning still requires API calls.
-- Where found: UI files do not call `/targets`.
-- Recommended fix: add Targets screen with list/edit flows.
-
-2. Ingest UX lacks clear/dedupe behavior.
+1. Ingest dedupe signaling is heuristic.
 - Impact: noisy operator workflow and unclear upsert outcome.
 - Where found: [ui/app.js](/c:/Users/dell/Documents/GitHub/jobops/ui/app.js) `doIngest()`.
-- Recommended fix: clear textarea after success and show insert-vs-update counts.
+- Recommended fix: return explicit `was_existing` per row from Worker for deterministic dedupe messaging.
 
-3. Status semantics are loosely coupled.
+2. Status semantics are loosely coupled.
 - Impact: confusing downstream analytics/automation.
 - Where found: multiple status writes in [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js).
 - Recommended fix: centralize status transition logic.
@@ -115,7 +110,7 @@
 - Core daily workflow works: ingest -> inspect -> manual JD if needed -> rescore/status updates.
 - Auth and route contracts are now consistent for UI vs API usage.
 - Ingest/manual save now tolerate missing AI binding without hard-failing intake (`fetch_status=ai_unavailable` for ingest rows when AI is absent).
-- Remaining productivity gap is lack of Targets management in UI.
+- Remaining gap is explicit per-row dedupe metadata for ingest outcomes.
 
 ## 7) Next 5 actions (recommended order)
 1. Build Targets UI (list/edit/update) using existing `/targets` routes.

@@ -89,7 +89,7 @@ Expected:
 - LinkedIn may produce `system_status=NEEDS_MANUAL_JD`, `status=LINK_ONLY`
 - If AI binding is missing, expect `fetch_status=ai_unavailable` and graceful insert/update (still HTTP 200)
 
-## 4) Batch score pending (UI key)
+## 4) Batch score pending (UI key OR API key)
 Purpose: score NEW/SCORED jobs.
 
 ### curl
@@ -110,6 +110,7 @@ Invoke-WebRequest -Uri "$BASE_URL/score-pending" -Method POST -ContentType "appl
 Expected:
 - HTTP 200
 - `data.picked`, `data.updated`, `data.jobs`
+- Auth clarification: this route accepts either valid `x-ui-key` or `x-api-key`.
 
 ### curl (API key variant)
 ```bash
@@ -220,10 +221,44 @@ Expected:
 - HTTP 401
 
 ## 9) LinkedIn blocked -> manual recovery
-1. Ingest a LinkedIn URL (test 3).
-2. Check details (test 5) and confirm `status=LINK_ONLY` and/or `system_status=NEEDS_MANUAL_JD`.
-3. Paste JD through manual endpoint (test 7).
-4. Re-check details (test 5) for extracted/scored fields.
+### curl end-to-end
+```bash
+# ingest linkedin
+INGEST_RESP=$(curl -sS "$BASE_URL/ingest" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"raw_urls":["https://www.linkedin.com/jobs/view/1234567890/"]}')
+echo "$INGEST_RESP"
+
+# use returned job_key (replace <JOB_KEY>)
+curl -sS "$BASE_URL/jobs/<JOB_KEY>" -H "x-ui-key: $UI_KEY"
+
+# manual jd paste + rescore
+curl -sS "$BASE_URL/jobs/<JOB_KEY>/manual-jd" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"jd_text_clean":"Paste full JD text with at least 200 characters..."}'
+
+# verify final_score is populated
+curl -sS "$BASE_URL/jobs/<JOB_KEY>" -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell end-to-end
+```powershell
+$ingestBody = @{ raw_urls = @("https://www.linkedin.com/jobs/view/1234567890/") } | ConvertTo-Json -Depth 6
+$ingest = Invoke-WebRequest -Uri "$BASE_URL/ingest" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $ingestBody | Select-Object -ExpandProperty Content
+$ingestObj = $ingest | ConvertFrom-Json
+$JOB_KEY = $ingestObj.data.results[0].job_key
+
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+
+$manualBody = @{ jd_text_clean = "Paste full JD text with at least 200 characters..." } | ConvertTo-Json -Depth 6
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/manual-jd" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $manualBody | Select-Object -ExpandProperty Content
+
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
 
 ## 10) Ingest when AI binding is missing (graceful)
 Purpose: confirm ingest does not fail hard if Workers AI binding is unavailable.
@@ -232,3 +267,53 @@ Expected:
 - HTTP 200
 - rows are still inserted/updated in D1
 - each affected result has `status=LINK_ONLY`, `system_status=NEEDS_MANUAL_JD`, `fetch_status=ai_unavailable`
+
+## 11) Targets list + upsert (UI key)
+Purpose: verify Targets CRUD paths used by UI.
+
+### curl list
+```bash
+curl -sS "$BASE_URL/targets" -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell list
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/targets" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+### curl upsert/update
+```bash
+curl -sS "$BASE_URL/targets/TGT-001" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{
+    "name":"Core Product Target",
+    "primary_role":"Product Manager",
+    "seniority_pref":"Senior",
+    "location_pref":"Bangalore",
+    "must_keywords_json":["product strategy","roadmap"],
+    "nice_keywords_json":["saas","growth"],
+    "reject_keywords_json":["night shift"]
+  }'
+```
+
+### PowerShell upsert/update
+```powershell
+$body = @{
+  name = "Core Product Target"
+  primary_role = "Product Manager"
+  seniority_pref = "Senior"
+  location_pref = "Bangalore"
+  must_keywords_json = @("product strategy","roadmap")
+  nice_keywords_json = @("saas","growth")
+  reject_keywords_json = @("night shift")
+} | ConvertTo-Json -Depth 6
+
+Invoke-WebRequest -Uri "$BASE_URL/targets/TGT-001" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- HTTP 200
+- `GET /targets` returns list with `id/name/primary_role/seniority_pref/location_pref`
+- if DB lacks `reject_keywords_json`, API meta indicates `reject_keywords_enabled=false` and reject field is ignored/hidden in UI
