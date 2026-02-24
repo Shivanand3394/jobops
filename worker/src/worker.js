@@ -42,9 +42,10 @@ export default {
       // ----------------------------
       // Route groups & auth
       // ----------------------------
+      const routeMode = routeModeFor_(path);
+
       const isUiRoute =
         path === "/ingest" ||
-        path === "/score-pending" ||
         path === "/jobs" ||
         path.startsWith("/jobs/") ||
         path === "/targets" ||
@@ -56,8 +57,7 @@ export default {
         path === "/extract-jd" ||
         path === "/score-jd";
 
-      const authType = isUiRoute ? "ui" : (isAdminRoute ? "api" : "none");
-      const authErr = requireAuth_(request, env, authType);
+      const authErr = requireAuth_(request, env, routeMode);
       if (authErr) return authErr;
 
       // DB required for most routes except /health and pure AI extraction/scoring
@@ -1464,19 +1464,41 @@ function getAi_(env) {
   return null;
 }
 
-function requireAuth_(request, env, type) {
-  if (type === "ui") {
-    const uiKey = request.headers.get("x-ui-key");
-    if (!env.UI_KEY || uiKey !== env.UI_KEY) {
-      return json_({ ok: false, error: "Unauthorized" }, env, 401);
-    }
-  }
-  if (type === "api") {
-    const apiKey = request.headers.get("x-api-key");
-    if (!env.API_KEY || apiKey !== env.API_KEY) {
-      return json_({ ok: false, error: "Unauthorized" }, env, 401);
-    }
-  }
+function routeModeFor_(path) {
+  if (path === "/health" || path === "/") return "public";
+
+  if (
+    path === "/jobs" ||
+    path.startsWith("/jobs/") ||
+    path === "/ingest" ||
+    path === "/targets" ||
+    path.startsWith("/targets/")
+  ) return "ui";
+
+  if (path === "/score-pending") return "either";
+
+  if (
+    path === "/normalize-job" ||
+    path === "/resolve-jd" ||
+    path === "/extract-jd" ||
+    path === "/score-jd"
+  ) return "api";
+
+  return "public";
+}
+
+function requireAuth_(request, env, routeMode) {
+  if (routeMode === "public") return null;
+
+  const uiKey = request.headers.get("x-ui-key");
+  const apiKey = request.headers.get("x-api-key");
+  const uiOk = Boolean(env.UI_KEY) && uiKey === env.UI_KEY;
+  const apiOk = Boolean(env.API_KEY) && apiKey === env.API_KEY;
+
+  if (routeMode === "ui" && !uiOk) return json_({ ok: false, error: "Unauthorized" }, env, 401);
+  if (routeMode === "api" && !apiOk) return json_({ ok: false, error: "Unauthorized" }, env, 401);
+  if (routeMode === "either" && !uiOk && !apiOk) return json_({ ok: false, error: "Unauthorized" }, env, 401);
+
   return null;
 }
 
