@@ -1,46 +1,134 @@
-# JobOps Repository Documentation
+# JobOps V2
 
-## Overview
-This repository contains **JobOps**, a tool designed to streamline and automate job operations. JobOps is built with extensibility in mind, allowing easy integration with various job management workflows.
+## Runbook (JobOps V2)
 
-## Contents
-- **API Endpoints**: A set of RESTful endpoints for managing job operations.
-- **Configuration**: Setup instructions including Cloudflare configuration.
-- **Testing**: PowerShell scripts for testing endpoints.
+### What this repo contains
 
-## Domains
-JobOps is configured to operate within the following domains:
-- `api.jobops.com`
-- `admin.jobops.com`
+- `worker/`: Cloudflare Worker API, D1 access, and Workers AI integration.
+- `ui/`: static frontend for Cloudflare Pages.
+- Key files:
+  - `worker/src/worker.js`
+  - `worker/migrations/001_init.sql`
+  - `worker/wrangler.jsonc`
+  - `ui/index.html`
+  - `ui/app.js`
+  - `ui/styles.css`
 
-## Cloudflare Setup
-To configure JobOps with Cloudflare:
-1. Log in to your Cloudflare account.
-2. Add your domains (`api.jobops.com` and `admin.jobops.com`) to Cloudflare.
-3. Set up SSL/TLS settings for secure API access.
-4. Configure DNS settings to point to your JobOps server.
+### Deployment domains
 
-## Quick PowerShell Test Commands
-Here are PowerShell commands you can use to test the endpoints:
+- Worker: `https://get-job.shivanand-shah94.workers.dev`
+- UI: `https://getjobs.shivanand-shah94.workers.dev`
 
-### Test GET Request
+### Auth model
+
+- `GET /health` is public.
+- UI endpoints require header `x-ui-key` equal to `env.UI_KEY`.
+- Admin/AI endpoints require header `x-api-key` equal to `env.API_KEY`.
+
+### Required bindings
+
+- D1 binding variable name must be `DB`.
+- Workers AI binding should be named `AI`.
+- Alternative AI setup: set env var `AI_BINDING` to the binding name.
+
+### Endpoint map
+
+- `GET /health` (public)
+- `GET /jobs?status=&limit=&offset=` (`x-ui-key`)
+- `GET /jobs/:job_key` (`x-ui-key`)
+- `POST /jobs/:job_key/status` (`x-ui-key`)
+- `POST /ingest` (`x-ui-key`)
+- `POST /score-pending` (`x-ui-key`)
+- `POST /jobs/:job_key/rescore` (`x-ui-key`)
+- `POST /extract-jd` (`x-api-key`)
+- `POST /score-jd` (`x-api-key`)
+
+### Quick tests (PowerShell)
+
+Set variables:
+
 ```powershell
-Invoke-RestMethod -Uri "https://api.jobops.com/v1/jobs" -Method Get
+$BASE_URL = "https://get-job.shivanand-shah94.workers.dev"
+$UI_KEY = "<your-ui-key>"
+$API_KEY = "<your-api-key>"
 ```
 
-### Test POST Request
+Health check (public):
+
 ```powershell
-$body = @{ name = "New Job"; description = "Job description here." } | ConvertTo-Json
-Invoke-RestMethod -Uri "https://api.jobops.com/v1/jobs" -Method Post -Body $body -ContentType "application/json"
+Invoke-WebRequest -Uri "$BASE_URL/health" -Method GET | Select-Object -ExpandProperty Content
 ```
 
-### Test DELETE Request
+List jobs (`x-ui-key`):
+
 ```powershell
-Invoke-RestMethod -Uri "https://api.jobops.com/v1/jobs/{job_id}" -Method Delete
+Invoke-WebRequest `
+  -Uri "$BASE_URL/jobs?status=&limit=20&offset=0" `
+  -Method GET `
+  -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
 ```
 
-Make sure to replace `{job_id}` with the actual job ID you want to delete.
+Ingest raw URLs (`x-ui-key`):
 
----
+```powershell
+$body = @{
+  raw_urls = @(
+    "https://www.linkedin.com/jobs/view/1234567890/",
+    "https://www.iimjobs.com/j/sample-role-123456.html"
+  )
+} | ConvertTo-Json -Depth 5
 
-Stay tuned for updates as new features and endpoints are added to JobOps!
+Invoke-WebRequest `
+  -Uri "$BASE_URL/ingest" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Headers @{ "x-ui-key" = $UI_KEY } `
+  -Body $body | Select-Object -ExpandProperty Content
+```
+
+Score pending (`x-ui-key`):
+
+```powershell
+$body = @{ limit = 30 } | ConvertTo-Json
+
+Invoke-WebRequest `
+  -Uri "$BASE_URL/score-pending" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Headers @{ "x-ui-key" = $UI_KEY } `
+  -Body $body | Select-Object -ExpandProperty Content
+```
+
+Update job status (`x-ui-key`):
+
+```powershell
+$jobKey = "<job_key>"
+$body = @{ status = "APPLIED" } | ConvertTo-Json
+
+Invoke-WebRequest `
+  -Uri "$BASE_URL/jobs/$jobKey/status" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Headers @{ "x-ui-key" = $UI_KEY } `
+  -Body $body | Select-Object -ExpandProperty Content
+```
+
+Extract JD (`x-api-key`):
+
+```powershell
+$body = @{
+  text = "Paste JD text here. Include enough content for extraction."
+} | ConvertTo-Json -Depth 5
+
+Invoke-WebRequest `
+  -Uri "$BASE_URL/extract-jd" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Headers @{ "x-api-key" = $API_KEY } `
+  -Body $body | Select-Object -ExpandProperty Content
+```
+
+### Known behavior
+
+- LinkedIn fetch often returns cookie/privacy shell pages in server-side fetch.
+- If JD extraction fails due to blocked/low-quality content, manual JD flow should be used.
