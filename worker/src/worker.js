@@ -197,7 +197,7 @@ export default {
           SELECT
             job_key, company, role_title, location, seniority,
             final_score, status, job_url, source_domain,
-            updated_at, created_at
+            system_status, updated_at, created_at
           FROM jobs
           ${whereSql}
           ORDER BY updated_at DESC
@@ -1214,7 +1214,9 @@ function computeDisplayFields_(row) {
     ? roleTitle
     : (company
       ? company
-      : (systemStatus === "NEEDS_MANUAL_JD" ? "(Needs JD)" : "(Untitled)"));
+      : (systemStatus === "AI_UNAVAILABLE"
+        ? "(Needs AI)"
+        : (systemStatus === "NEEDS_MANUAL_JD" ? "(Needs JD)" : "(Untitled)")));
 
   return {
     display_title: displayTitle,
