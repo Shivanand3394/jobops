@@ -20,6 +20,8 @@ Required:
 Optional (defaults in wrangler):
 - `GMAIL_QUERY` default: `label:JobOps newer_than:14d`
 - `GMAIL_MAX_PER_RUN` default: `25`
+- `MAX_JOBS_PER_EMAIL` default: `3`
+- `MAX_JOBS_PER_POLL` default: `10`
 
 Example secret commands:
 ```bash
@@ -65,13 +67,20 @@ Polling behavior:
 4. Skips already ingested messages (`gmail_ingest_log.msg_id`).
 5. Extracts URLs from text/plain and text/html.
 6. Classifies URLs using Worker normalization (same `normalizeJobUrl_` pipeline as `/normalize-job`) so tracking links can still canonicalize to job URLs.
-7. Reuses internal ingest pipeline (same normalize/resolve/manual behavior).
-7. Persists ingest log + advances `gmail_state.last_seen_internal_date`.
+7. Prioritizes normalized candidates (strict detail pages + concrete job_id first).
+8. Applies caps:
+   - per email via `MAX_JOBS_PER_EMAIL`
+   - per poll via `MAX_JOBS_PER_POLL`
+   - optional `/gmail/poll` overrides: `max_jobs_per_email`, `max_jobs_per_poll`
+9. Reuses internal ingest pipeline (same normalize/resolve/manual behavior).
+10. Persists ingest log + advances `gmail_state.last_seen_internal_date`.
 
 Poll response now includes run-level counters for diagnosis:
 - `run_id`, `ts`, `query_used`
+- `max_jobs_per_email`, `max_jobs_per_poll`
 - `scanned`, `processed`, `skipped_already_ingested`
 - `urls_found_total`, `urls_unique_total`, `ignored_domains_count`
+- `urls_job_domains_total`, `jobs_kept_total`, `jobs_dropped_due_to_caps_total`
 - `ingested_count`, `inserted_count`, `updated_count`, `link_only_count`, `ignored_count`
 - Back-compat keys remain (`skipped_existing`, `inserted_or_updated`, `link_only`, `ignored`)
 

@@ -11,9 +11,11 @@
   ],
   "vars": {
     "ALLOW_ORIGIN": "*",
-    "GMAIL_CLIENT_ID": "REPLACE_IN_DASHBOARD",
-    "GMAIL_QUERY": "label:JobOps newer_than:14d",
-    "GMAIL_MAX_PER_RUN": "25"
+    "GMAIL_CLIENT_ID": "773808649704-l0re7bam051sb2e7kg5e5nqjt1ijpqnf.apps.googleusercontent.com",
+    "GMAIL_QUERY": "newer_than:7d (from:naukri.com OR from:iimjobs.com OR from:linkedin.com)",
+    "GMAIL_MAX_PER_RUN": "25",
+    "MAX_JOBS_PER_EMAIL": "3",
+    "MAX_JOBS_PER_POLL": "10"
   },
   "triggers": {
     "crons": ["*/15 * * * *"]

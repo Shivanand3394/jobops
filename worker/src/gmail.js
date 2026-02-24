@@ -59,7 +59,7 @@ export async function handleGmailOAuthCallback_(env, { code, redirectUri }) {
   return { connected: true, has_refresh_token: true };
 }
 
-export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, normalizeFn }) {
+export async function pollGmailAndIngest_(env, { query, maxPerRun, maxJobsPerEmail, maxJobsPerPoll, ingestFn, normalizeFn }) {
   if (!env.DB) throw new Error("Missing D1 binding env.DB (bind your D1 as DB)");
   if (typeof ingestFn !== "function") throw new Error("ingestFn is required");
 
@@ -71,6 +71,8 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, nor
 
   const effectiveQuery = String(query || env.GMAIL_QUERY || "label:JobOps newer_than:14d").trim();
   const maxResults = clampInt_(maxPerRun || env.GMAIL_MAX_PER_RUN || 25, 1, 100);
+  const effectiveMaxJobsPerEmail = clampInt_(maxJobsPerEmail || env.MAX_JOBS_PER_EMAIL || 3, 1, 50);
+  const effectiveMaxJobsPerPoll = clampInt_(maxJobsPerPoll || env.MAX_JOBS_PER_POLL || 10, 1, 500);
 
   const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
   listUrl.searchParams.set("q", effectiveQuery);
@@ -101,11 +103,14 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, nor
   let urlsJobDomainsTotal = 0;
   let ignoredDomainsCount = 0;
   let ingestedCount = 0;
+  let jobsKeptTotal = 0;
+  let jobsDroppedDueToCapsTotal = 0;
   const urlsUnique = new Set();
   const resultsSample = [];
   let newestInternalDate = lastSeen;
 
   for (const m of messages) {
+    if (jobsKeptTotal >= effectiveMaxJobsPerPoll) break;
     const msgId = String(m?.id || "").trim();
     if (!msgId) continue;
 
@@ -136,15 +141,22 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, nor
     const urlStats = scanUrls_(parsed.combined_text);
     const classified = await classifyJobUrls_(urlStats.unique_urls, normalizeFn);
     const urls = classified.supported_urls;
+    const urlsKeptPerEmail = urls.slice(0, effectiveMaxJobsPerEmail);
+    jobsDroppedDueToCapsTotal += Math.max(0, urls.length - urlsKeptPerEmail.length);
+    const remainingGlobalSlots = Math.max(0, effectiveMaxJobsPerPoll - jobsKeptTotal);
+    const urlsKept = urlsKeptPerEmail.slice(0, remainingGlobalSlots);
+    jobsDroppedDueToCapsTotal += Math.max(0, urlsKeptPerEmail.length - urlsKept.length);
+
     urlsFoundTotal += urlStats.found_urls.length;
     urlsJobDomainsTotal += urls.length;
     ignoredDomainsCount += classified.ignored_domains_count;
     for (const u of urlStats.unique_urls) urlsUnique.add(u);
 
-    const ingestData = urls.length
-      ? await ingestFn({ raw_urls: urls, email_text: parsed.email_text, email_html: parsed.email_html })
+    const ingestData = urlsKept.length
+      ? await ingestFn({ raw_urls: urlsKept, email_text: parsed.email_text, email_html: parsed.email_html })
       : { inserted_or_updated: 0, inserted_count: 0, updated_count: 0, ignored: 1, link_only: 0, results: [] };
-    if (urls.length) ingestedCount += 1;
+    if (urlsKept.length) ingestedCount += 1;
+    jobsKeptTotal += urlsKept.length;
 
     processed += 1;
     insertedOrUpdated += numOr0_(ingestData.inserted_or_updated);
@@ -174,7 +186,7 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, nor
       internalDate || null,
       parsed.subject || null,
       parsed.from_email || null,
-      JSON.stringify(urls),
+      JSON.stringify(urlsKept),
       JSON.stringify(jobKeys),
       Date.now()
     ).run();
@@ -198,6 +210,8 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, nor
     ts,
     query_used: effectiveQuery,
     max_results: maxResults,
+    max_jobs_per_email: effectiveMaxJobsPerEmail,
+    max_jobs_per_poll: effectiveMaxJobsPerPoll,
     messages_listed: messages.length,
     scanned,
     processed,
@@ -207,6 +221,8 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, nor
     urls_found_total: urlsFoundTotal,
     urls_unique_total: urlsUnique.size,
     urls_job_domains_total: urlsJobDomainsTotal,
+    jobs_kept_total: jobsKeptTotal,
+    jobs_dropped_due_to_caps_total: jobsDroppedDueToCapsTotal,
     ignored_domains_count: ignoredDomainsCount,
     ingested_count: ingestedCount,
     ingest_inserted_count: insertedCount,
@@ -405,10 +421,16 @@ async function classifyJobUrls_(urls, normalizeFn) {
         if (seenByUrl.has(canonicalUrl)) continue;
         seenByUrl.add(canonicalUrl);
       }
-      supported.push(canonicalUrl);
+      supported.push({
+        job_key: key || null,
+        job_url: canonicalUrl,
+        job_id: String(norm.job_id || "").trim() || null,
+        source_domain: String(norm.source_domain || "").trim() || null,
+      });
     }
 
-    return { supported_urls: supported, ignored_domains_count: ignoredDomains };
+    supported.sort((a, b) => scoreCandidate_(b) - scoreCandidate_(a));
+    return { supported_urls: supported.map((x) => x.job_url), ignored_domains_count: ignoredDomains };
   }
 
   const supported = [];
@@ -433,6 +455,20 @@ async function classifyJobUrls_(urls, normalizeFn) {
     supported.push(u.toString().replace(/\/+$/, ""));
   }
   return { supported_urls: unique_(supported), ignored_domains_count: ignoredDomains };
+}
+
+function scoreCandidate_(c) {
+  const sourceDomain = String(c?.source_domain || "").toLowerCase();
+  const jobId = String(c?.job_id || "").trim();
+  const jobUrl = String(c?.job_url || "");
+  const hasJobId = jobId ? 1 : 0;
+
+  let strict = 0;
+  if (sourceDomain === "linkedin" && /linkedin\.com\/jobs\/view\/\d+\/?$/i.test(jobUrl)) strict = 1;
+  if (sourceDomain === "iimjobs" && /iimjobs\.com\/j\/.+-\d+\/?$/i.test(jobUrl)) strict = 1;
+  if (sourceDomain === "naukri" && /naukri\.com\/job-listings-.+-\d+\/?$/i.test(jobUrl)) strict = 1;
+
+  return (strict * 10) + (hasJobId * 5);
 }
 
 function filterJobUrls_(urls) {

@@ -314,6 +314,27 @@ Tracking-link normalization check:
    - `data.urls_job_domains_total > 0` after normalization
    - `data.ingested_count > 0` or `data.ingest_ignored_count` explains rejection
 
+Cap behavior check (>8 URLs in one email):
+1. Send one test email containing more than 8 supported job URLs.
+2. Run poll with override:
+   - `query`: subject-specific filter for that test email
+   - `max_jobs_per_email`: `3`
+   - `max_jobs_per_poll`: `5`
+3. PowerShell example:
+```powershell
+$body = @{
+  query = 'in:anywhere newer_than:2d subject:"JobOps Cap Test"'
+  max_per_run = 20
+  max_jobs_per_email = 3
+  max_jobs_per_poll = 5
+} | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/gmail/poll" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+4. Verify:
+   - `data.urls_job_domains_total > data.jobs_kept_total`
+   - `data.jobs_dropped_due_to_caps_total > 0`
+   - `data.jobs_kept_total <= 5`
+
 ## 16) Verify Gmail-ingested jobs appear
 1. Run manual Gmail poll.
 2. Fetch jobs:

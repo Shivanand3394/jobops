@@ -156,8 +156,12 @@ export default {
         const body = await request.json().catch(() => ({}));
         const query = typeof body.query === "string" ? body.query : "";
         const maxPerRunRaw = body.max_per_run ?? body.maxPerRun;
+        const maxJobsPerEmailRaw = body.max_jobs_per_email ?? body.maxJobsPerEmail;
+        const maxJobsPerPollRaw = body.max_jobs_per_poll ?? body.maxJobsPerPoll;
         const maxPerRun = Number.isFinite(Number(maxPerRunRaw)) ? Number(maxPerRunRaw) : undefined;
-        const data = await runGmailPoll_(env, { query, maxPerRun });
+        const maxJobsPerEmail = Number.isFinite(Number(maxJobsPerEmailRaw)) ? Number(maxJobsPerEmailRaw) : undefined;
+        const maxJobsPerPoll = Number.isFinite(Number(maxJobsPerPollRaw)) ? Number(maxJobsPerPollRaw) : undefined;
+        const data = await runGmailPoll_(env, { query, maxPerRun, maxJobsPerEmail, maxJobsPerPoll });
         await logEvent_(env, "GMAIL_POLL", null, { source: isCron ? "cron" : "api", ...data, ts: Date.now() });
         return json_({ ok: true, data }, env, 200);
       }
@@ -1686,10 +1690,18 @@ async function runGmailPoll_(env, opts = {}) {
   const maxPerRun = Number.isFinite(Number(opts.maxPerRun))
     ? clampInt_(Number(opts.maxPerRun), 1, 100)
     : clampInt_(env.GMAIL_MAX_PER_RUN || 25, 1, 100);
+  const maxJobsPerEmail = Number.isFinite(Number(opts.maxJobsPerEmail))
+    ? clampInt_(Number(opts.maxJobsPerEmail), 1, 50)
+    : clampInt_(env.MAX_JOBS_PER_EMAIL || 3, 1, 50);
+  const maxJobsPerPoll = Number.isFinite(Number(opts.maxJobsPerPoll))
+    ? clampInt_(Number(opts.maxJobsPerPoll), 1, 500)
+    : clampInt_(env.MAX_JOBS_PER_POLL || 10, 1, 500);
 
   return pollGmailAndIngest_(env, {
     query,
     maxPerRun,
+    maxJobsPerEmail,
+    maxJobsPerPoll,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     ingestFn: async ({ raw_urls, email_text, email_html }) => {
       return ingestRawUrls_(env, {
