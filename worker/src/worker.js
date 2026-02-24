@@ -230,7 +230,7 @@ export default {
           WHERE job_key = ?;
         `.trim()).bind(jdText.slice(0, 12000), now, jobKey).run();
 
-        const extracted = await extractJdWithModel_(ai, jdText);
+        const extracted = sanitizeExtracted_(await extractJdWithModel_(ai, jdText), jdText);
         const targets = await loadTargets_(env);
         if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
         const cfg = await loadSysCfg_(env);
@@ -339,17 +339,32 @@ export default {
 
         // Need jd_text_clean or role_title to score
         const jdClean = String(job.jd_text_clean || "").trim();
-        const roleTitle = String(job.role_title || "").trim();
+        let roleTitle = String(job.role_title || "").trim();
+        let location = String(job.location || "").trim();
+        let seniority = String(job.seniority || "").trim();
+        let company = String(job.company || "").trim();
+        let extracted = null;
         if (!jdClean && !roleTitle) {
           return json_({ ok: false, error: "Job missing jd_text_clean and role_title" }, env, 400);
+        }
+        if (jdClean.length >= 200) {
+          extracted = await extractJdWithModel_(ai, jdClean)
+            .then((x) => sanitizeExtracted_(x, jdClean))
+            .catch(() => null);
+          if (extracted) {
+            roleTitle = String(extracted.role_title || roleTitle || "").trim();
+            location = String(extracted.location || location || "").trim();
+            seniority = String(extracted.seniority || seniority || "").trim();
+            company = String(extracted.company || company || "").trim();
+          }
         }
         if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
 
         const cfg = await loadSysCfg_(env);
         const scoring = await scoreJobWithModel_(ai, {
           role_title: roleTitle,
-          location: String(job.location || ""),
-          seniority: String(job.seniority || ""),
+          location,
+          seniority,
           jd_clean: jdClean,
         }, targets, cfg);
 
@@ -368,6 +383,17 @@ export default {
         const now = Date.now();
         await env.DB.prepare(`
           UPDATE jobs SET
+            company = COALESCE(?, company),
+            role_title = COALESCE(?, role_title),
+            location = COALESCE(?, location),
+            work_mode = COALESCE(?, work_mode),
+            seniority = COALESCE(?, seniority),
+            experience_years_min = COALESCE(?, experience_years_min),
+            experience_years_max = COALESCE(?, experience_years_max),
+            skills_json = CASE WHEN ? != '[]' THEN ? ELSE skills_json END,
+            must_have_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE must_have_keywords_json END,
+            nice_to_have_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE nice_to_have_keywords_json END,
+            reject_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE reject_keywords_json END,
             primary_target_id = ?,
             score_must = ?,
             score_nice = ?,
@@ -383,6 +409,21 @@ export default {
             last_scored_at = ?
           WHERE job_key = ?;
         `.trim()).bind(
+          extracted?.company ?? null,
+          extracted?.role_title ?? null,
+          extracted?.location ?? null,
+          extracted?.work_mode ?? null,
+          extracted?.seniority ?? null,
+          numOrNull_(extracted?.experience_years_min),
+          numOrNull_(extracted?.experience_years_max),
+          JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+          JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+          JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
           scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
           clampInt_(scoring.score_must, 0, 100),
           clampInt_(scoring.score_nice, 0, 100),
@@ -598,7 +639,7 @@ export default {
         const text = String(body.text || "").trim();
         if (!text || text.length < 50) return json_({ ok: false, error: "JD text too short" }, env, 400);
 
-        const extracted = await extractJdWithModel_(ai, text);
+        const extracted = sanitizeExtracted_(await extractJdWithModel_(ai, text), text);
         return json_({ ok: true, data: extracted }, env, 200);
       }
 
@@ -782,7 +823,9 @@ export default {
           const needsManual = shouldRequireManualJd_(resolved, jdText);
           let extracted = null;
           if (!needsManual && jdText && jdText.length >= 200) {
-            extracted = await extractJdWithModel_(ai, jdText).catch(() => null);
+            extracted = await extractJdWithModel_(ai, jdText)
+              .then((x) => sanitizeExtracted_(x, jdText))
+              .catch(() => null);
           }
 
           const company = extracted?.company ?? null;
@@ -1030,6 +1073,38 @@ ${text}
   parsed.reject_keywords = Array.isArray(parsed.reject_keywords) ? parsed.reject_keywords : [];
   parsed.skills = Array.isArray(parsed.skills) ? parsed.skills : [];
   return parsed;
+}
+
+function sanitizeExtracted_(raw, jdText) {
+  if (!raw || typeof raw !== "object") return null;
+  const out = { ...raw };
+  const txt = String(jdText || "");
+
+  const badLabels = new Set(["startup", "company", "organization", "introduction", "role", "job"]);
+  const normalize = (v) => String(v || "").replace(/\s+/g, " ").trim();
+
+  out.company = normalize(out.company);
+  out.role_title = normalize(out.role_title);
+  out.location = normalize(out.location);
+  out.seniority = normalize(out.seniority);
+  out.work_mode = normalize(out.work_mode);
+
+  if (badLabels.has(out.company.toLowerCase())) out.company = "";
+  if (badLabels.has(out.role_title.toLowerCase())) out.role_title = "";
+
+  if (!out.role_title || out.role_title.length < 3) {
+    const m =
+      txt.match(/as a\s+([^\n,]{3,140})[,.:]/i) ||
+      txt.match(/role(?:\s+and\s+responsibilities)?\s*[:\-]\s*([^\n]{3,140})/i);
+    if (m && m[1]) out.role_title = normalize(m[1]);
+  }
+
+  if (!Array.isArray(out.skills)) out.skills = [];
+  if (!Array.isArray(out.must_have_keywords)) out.must_have_keywords = [];
+  if (!Array.isArray(out.nice_to_have_keywords)) out.nice_to_have_keywords = [];
+  if (!Array.isArray(out.reject_keywords)) out.reject_keywords = [];
+
+  return out;
 }
 
 async function scoreJobWithModel_(ai, job, targets, cfg) {
