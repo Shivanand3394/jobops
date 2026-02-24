@@ -212,3 +212,57 @@ Expected:
 - ingest still succeeds and returns per-row `action` (`inserted`/`updated`).
 - row shows `fetch_status = ai_unavailable` and `system_status = AI_UNAVAILABLE`.
 - in UI, scoring/rescore calls will surface an AI-missing warning banner (shown once per session).
+
+## 12) Gmail connect flow (UI key)
+### curl (inspect redirect target)
+```bash
+curl -i "$BASE_URL/gmail/auth" -H "x-ui-key: $UI_KEY"
+```
+Expected:
+- HTTP `302`
+- `Location` header points to Google OAuth URL with gmail.readonly scope.
+
+### PowerShell (inspect redirect target)
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/gmail/auth" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } -MaximumRedirection 0 -ErrorAction SilentlyContinue | Format-List StatusCode,Headers
+```
+
+## 13) Gmail poll (manual run)
+### curl
+```bash
+curl -sS "$BASE_URL/gmail/poll" \
+  -X POST \
+  -H "x-api-key: $API_KEY"
+```
+
+### PowerShell
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/gmail/poll" -Method POST -Headers @{ "x-api-key" = $API_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- HTTP `200`
+- response shape:
+  - `data.scanned`
+  - `data.processed`
+  - `data.skipped_existing`
+  - `data.inserted_or_updated`
+  - `data.ignored`
+  - `data.link_only`
+
+## 14) Verify Gmail-ingested jobs appear
+1. Run manual Gmail poll.
+2. Fetch jobs:
+
+### curl
+```bash
+curl -sS "$BASE_URL/jobs?limit=20&offset=0" -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/jobs?limit=20&offset=0" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- newly ingested jobs visible in jobs list.
