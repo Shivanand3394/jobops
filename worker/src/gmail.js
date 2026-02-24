@@ -59,7 +59,7 @@ export async function handleGmailOAuthCallback_(env, { code, redirectUri }) {
   return { connected: true, has_refresh_token: true };
 }
 
-export async function pollGmailAndIngest_(env, { query, maxPerRun, maxJobsPerEmail, maxJobsPerPoll, ingestFn, normalizeFn }) {
+export async function pollGmailAndIngest_(env, { query, maxPerRun, maxJobsPerEmail, maxJobsPerPoll, ingestFn, normalizeFn, classifyMessageFn }) {
   if (!env.DB) throw new Error("Missing D1 binding env.DB (bind your D1 as DB)");
   if (typeof ingestFn !== "function") throw new Error("ingestFn is required");
 
@@ -105,6 +105,9 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, maxJobsPerEma
   let ingestedCount = 0;
   let jobsKeptTotal = 0;
   let jobsDroppedDueToCapsTotal = 0;
+  let skippedPromotional = 0;
+  let skippedPromotionalHeuristic = 0;
+  let skippedPromotionalAi = 0;
   const urlsUnique = new Set();
   const resultsSample = [];
   let newestInternalDate = lastSeen;
@@ -141,6 +144,50 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, maxJobsPerEma
     const urlStats = scanUrls_(parsed.combined_text);
     const classified = await classifyJobUrls_(urlStats.unique_urls, normalizeFn);
     const urls = classified.supported_urls;
+
+    let promoDecision = { reject: false, by: "none", reason: "" };
+    if (typeof classifyMessageFn === "function") {
+      try {
+        promoDecision = await classifyMessageFn({
+          subject: parsed.subject,
+          from_email: parsed.from_email,
+          email_text: parsed.email_text,
+          email_html: parsed.email_html,
+          combined_text: parsed.combined_text,
+          urls_found_total: urlStats.found_urls.length,
+          urls_unique_total: urlStats.unique_urls.length,
+          urls_job_domains_total: urls.length,
+        }) || promoDecision;
+      } catch {
+        promoDecision = { reject: false, by: "none", reason: "" };
+      }
+    }
+
+    if (promoDecision?.reject) {
+      processed += 1;
+      skippedPromotional += 1;
+      if (String(promoDecision.by || "") === "heuristic") skippedPromotionalHeuristic += 1;
+      if (String(promoDecision.by || "") === "ai") skippedPromotionalAi += 1;
+
+      await env.DB.prepare(`
+        INSERT INTO gmail_ingest_log (
+          msg_id, thread_id, internal_date, subject, from_email, urls_json, job_keys_json, ingested_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      `.trim()).bind(
+        msgId,
+        String(full?.threadId || "").trim() || null,
+        internalDate || null,
+        parsed.subject || null,
+        parsed.from_email || null,
+        JSON.stringify([]),
+        JSON.stringify([]),
+        Date.now()
+      ).run();
+
+      if (internalDate > newestInternalDate) newestInternalDate = internalDate;
+      continue;
+    }
+
     const urlsKeptPerEmail = urls.slice(0, effectiveMaxJobsPerEmail);
     jobsDroppedDueToCapsTotal += Math.max(0, urls.length - urlsKeptPerEmail.length);
     const remainingGlobalSlots = Math.max(0, effectiveMaxJobsPerPoll - jobsKeptTotal);
@@ -229,6 +276,9 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, maxJobsPerEma
     urls_job_domains_total: urlsJobDomainsTotal,
     jobs_kept_total: jobsKeptTotal,
     jobs_dropped_due_to_caps_total: jobsDroppedDueToCapsTotal,
+    skipped_promotional: skippedPromotional,
+    skipped_promotional_heuristic: skippedPromotionalHeuristic,
+    skipped_promotional_ai: skippedPromotionalAi,
     ignored_domains_count: ignoredDomainsCount,
     ingested_count: ingestedCount,
     ingest_inserted_count: insertedCount,

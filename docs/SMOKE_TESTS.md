@@ -252,6 +252,9 @@ Expected:
   - `data.urls_found_total`
   - `data.urls_unique_total`
   - `data.ignored_domains_count`
+  - `data.skipped_promotional`
+  - `data.skipped_promotional_heuristic`
+  - `data.skipped_promotional_ai`
   - `data.ingested_count` (and back-compat `data.inserted_or_updated`)
   - `data.inserted_count`
   - `data.updated_count`

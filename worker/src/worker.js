@@ -2059,6 +2059,8 @@ async function runGmailPoll_(env, opts = {}) {
   const maxJobsPerPoll = Number.isFinite(Number(opts.maxJobsPerPoll))
     ? clampInt_(Number(opts.maxJobsPerPoll), 1, 500)
     : clampInt_(env.MAX_JOBS_PER_POLL || 10, 1, 500);
+  const promoFilterEnabled = toBoolEnv_(env.GMAIL_PROMO_FILTER, true);
+  const aiForMailFilter = getAi_(env);
 
   return pollGmailAndIngest_(env, {
     query,
@@ -2066,6 +2068,7 @@ async function runGmailPoll_(env, opts = {}) {
     maxJobsPerEmail,
     maxJobsPerPoll,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
+    classifyMessageFn: async (msg) => classifyPromotionalGmailMessage_(env, aiForMailFilter, msg, { enabled: promoFilterEnabled }),
     ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
@@ -2076,6 +2079,91 @@ async function runGmailPoll_(env, opts = {}) {
       });
     },
   });
+}
+
+function toBoolEnv_(v, defaultValue = false) {
+  if (v === undefined || v === null || String(v).trim() === "") return defaultValue;
+  const s = String(v).trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(s)) return true;
+  if (["0", "false", "no", "n", "off"].includes(s)) return false;
+  return defaultValue;
+}
+
+async function classifyPromotionalGmailMessage_(env, ai, msg, opts = {}) {
+  const enabled = opts.enabled !== false;
+  if (!enabled) return { reject: false, by: "none", reason: "disabled" };
+
+  const subject = String(msg?.subject || "").trim();
+  const fromEmail = String(msg?.from_email || "").trim();
+  const combinedText = String(msg?.combined_text || "");
+  const urlsJobDomainsTotal = clampInt_(msg?.urls_job_domains_total || 0, 0, 9999);
+  const sample = `${subject}\n${combinedText}`.slice(0, 4000).toLowerCase();
+
+  const strongJobSignal =
+    urlsJobDomainsTotal > 0 ||
+    /linkedin\.com\/jobs\/view\/\d+/i.test(sample) ||
+    /iimjobs\.com\/j\/.+-\d+/i.test(sample) ||
+    /naukri\.com\/job-listings-.+-\d+/i.test(sample);
+
+  const promoHints = [
+    "premium",
+    "upgrade",
+    "new feature",
+    "introducing",
+    "newsletter",
+    "product update",
+    "sponsored",
+    "advertisement",
+    "ad:",
+    "free trial",
+    "inmail",
+    "people you may know",
+    "connect with",
+    "recommendation digest",
+    "learn more",
+  ];
+  const hintHits = promoHints.filter((h) => sample.includes(h)).length;
+  const heuristicReject = !strongJobSignal && hintHits >= 2;
+  if (heuristicReject) {
+    return { reject: true, by: "heuristic", reason: "promotional_heuristic" };
+  }
+
+  if (!ai) return { reject: false, by: "none", reason: "no_ai_binding" };
+
+  const aiPrompt = `
+Classify this Gmail message for JobOps ingestion.
+Return STRICT JSON only:
+{"category":"JOB_ALERT"|"PROMOTION","confidence":0-1,"reason":"short string"}
+
+Rules:
+- PROMOTION if it's premium upsell, product/new-feature announcement, ad, newsletter, or non-job marketing.
+- JOB_ALERT only if it is primarily about a specific job opportunity/alert.
+- If unsure, choose JOB_ALERT.
+
+Subject: ${jsonString_(subject)}
+From: ${jsonString_(fromEmail)}
+Text sample:
+${jsonString_(sample)}
+`.trim();
+
+  try {
+    const aiResult = await ai.run("@cf/meta/llama-3.1-8b-instruct", {
+      messages: [{ role: "user", content: aiPrompt }],
+      temperature: 0,
+    });
+    const raw = pickModelText_(aiResult);
+    const parsed = safeJsonParse_(raw);
+    const category = String(parsed?.category || "").trim().toUpperCase();
+    const confidence = Number(parsed?.confidence);
+    const reason = String(parsed?.reason || "").slice(0, 120);
+    if (category === "PROMOTION" && (!Number.isFinite(confidence) || confidence >= 0.6)) {
+      return { reject: true, by: "ai", reason: reason || "promotional_ai" };
+    }
+  } catch {
+    return { reject: false, by: "none", reason: "ai_error" };
+  }
+
+  return { reject: false, by: "none", reason: "job_alert_or_uncertain" };
 }
 
 function routeModeFor_(path) {
