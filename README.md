@@ -40,6 +40,7 @@
 - `POST /ingest` (`x-ui-key`)
 - `POST /score-pending` (`x-ui-key`)
 - `POST /jobs/:job_key/rescore` (`x-ui-key`)
+- `POST /jobs/:job_key/manual-jd` (`x-ui-key`)
 - `POST /extract-jd` (`x-api-key`)
 - `POST /score-jd` (`x-api-key`)
 
@@ -166,3 +167,5 @@ Invoke-WebRequest `
 
 - LinkedIn fetch often returns cookie/privacy shell pages in server-side fetch.
 - If JD extraction fails due to blocked/low-quality content, manual JD flow should be used.
+- Jobs that cannot be parsed from fetched content can surface as `LINK_ONLY` with `system_status=NEEDS_MANUAL_JD`.
+- Job list API can include `display_title` fallback so UI does not show untitled rows.
