@@ -76,8 +76,6 @@ export default {
         path === "/extract-jd" ||
         path === "/score-jd" ||
         path === "/score-pending" ||
-        path === "/ingest" ||
-        (path.startsWith("/jobs/") && path.endsWith("/manual-jd")) ||
         (path.startsWith("/jobs/") && path.endsWith("/rescore"));
 
       const ai = needsAI ? getAi_(env) : null;
@@ -218,7 +216,28 @@ export default {
           WHERE job_key = ?;
         `.trim()).bind(jdText.slice(0, 12000), now, jobKey).run();
 
-        const extracted = sanitizeExtracted_(await extractJdWithModel_(ai, jdText), jdText);
+        const aiForManual = ai || getAi_(env);
+        if (!aiForManual) {
+          await env.DB.prepare(`
+            UPDATE jobs
+            SET system_status = 'NEEDS_MANUAL_JD', updated_at = ?
+            WHERE job_key = ?;
+          `.trim()).bind(now, jobKey).run();
+
+          return json_({
+            ok: true,
+            data: {
+              job_key: jobKey,
+              status: String(existing.status || "LINK_ONLY"),
+              final_score: existing.final_score ?? null,
+              primary_target_id: existing.primary_target_id || null,
+              saved_only: true,
+              message: "Manual JD saved, but AI binding is unavailable. Configure AI and rescore.",
+            }
+          }, env, 200);
+        }
+
+        const extracted = sanitizeExtracted_(await extractJdWithModel_(aiForManual, jdText), jdText);
         const targets = await loadTargets_(env);
         if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
         const cfg = await loadSysCfg_(env);
@@ -227,7 +246,7 @@ export default {
         const location = String(extracted?.location || existing.location || "").trim();
         const seniority = String(extracted?.seniority || existing.seniority || "").trim();
 
-        const scoring = await scoreJobWithModel_(ai, {
+        const scoring = await scoreJobWithModel_(aiForManual, {
           role_title: roleTitle,
           location,
           seniority,
@@ -785,6 +804,9 @@ export default {
         let insertedOrUpdated = 0;
         let ignored = 0;
 
+        const aiForIngest = ai || getAi_(env);
+        const aiAvailable = Boolean(aiForIngest);
+
         for (const rawUrl of rawUrls) {
           const norm = await normalizeJobUrl_(String(rawUrl || "").trim());
           if (!norm || norm.ignored) {
@@ -797,10 +819,10 @@ export default {
 
           // Extract minimal from job_url if resolution failed
           const jdText = String(resolved.jd_text_clean || "").trim();
-          const needsManual = shouldRequireManualJd_(resolved, jdText);
+          const needsManual = !aiAvailable || shouldRequireManualJd_(resolved, jdText);
           let extracted = null;
           if (!needsManual && jdText && jdText.length >= 200) {
-            extracted = await extractJdWithModel_(ai, jdText)
+            extracted = await extractJdWithModel_(aiForIngest, jdText)
               .then((x) => sanitizeExtracted_(x, jdText))
               .catch(() => null);
           }
