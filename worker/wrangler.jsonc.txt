@@ -1,0 +1,15 @@
+{
+  "name": "get-job",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-02-24",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jobops-db",
+      "database_id": "PASTE_YOUR_D1_DATABASE_ID_HERE"
+    }
+  ],
+  "vars": {
+    "ALLOW_ORIGIN": "*"
+  }
+}

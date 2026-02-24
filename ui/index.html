@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>JobOps — Premium UI</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <div class="logo">JobOps</div>
+      <div class="pill" id="envPill">API: <span id="apiHost">—</span></div>
+    </div>
+
+    <div class="right">
+      <button class="btn btn-ghost" id="btnSettings" title="Settings">⚙</button>
+      <button class="btn" id="btnAdd">+ Add job URL</button>
+      <button class="btn btn-secondary" id="btnRescore">Rescore NEW+SCORED</button>
+      <button class="btn btn-secondary" id="btnRescore2">Rescore (safe)</button>
+    </div>
+  </header>
+
+  <main class="app">
+    <section class="panel panel-left">
+      <div class="toolbar">
+        <div class="field">
+          <label>Status</label>
+          <select id="statusFilter">
+            <option value="">All</option>
+            <option value="NEW">NEW</option>
+            <option value="SCORED">SCORED</option>
+            <option value="SHORTLISTED">SHORTLISTED</option>
+            <option value="APPLIED">APPLIED</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="ARCHIVED">ARCHIVED</option>
+            <option value="LINK_ONLY">LINK_ONLY</option>
+          </select>
+        </div>
+
+        <div class="field grow">
+          <label>Search</label>
+          <input id="search" type="search" placeholder="Role, company, location…" />
+        </div>
+
+        <button class="btn btn-ghost" id="btnRefresh" title="Refresh">↻</button>
+      </div>
+
+      <div class="list-meta">
+        <div id="listHint" class="muted">Loading…</div>
+      </div>
+
+      <div id="jobList" class="job-list"></div>
+    </section>
+
+    <section class="panel panel-right">
+      <div class="detail-header">
+        <div class="detail-title">
+          <div id="dRole" class="h2">Select a job</div>
+          <div id="dCompany" class="muted"></div>
+        </div>
+        <div class="detail-actions">
+          <a id="dOpen" class="btn btn-ghost" href="#" target="_blank" rel="noopener">Open</a>
+          <button class="btn btn-ghost" id="btnCopyKey">Copy Key</button>
+        </div>
+      </div>
+
+      <div id="detailBody" class="detail-body empty">
+        <div class="empty-state">
+          <div class="empty-hero">👈</div>
+          <div class="h3">Pick a job from the left.</div>
+          <div class="muted">Then update status, rescore, or paste JD if needed.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add URL Modal -->
+  <div id="modalAdd" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="h3">Add job URL</div>
+        <button class="btn btn-ghost" id="btnCloseAdd">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="muted">Paste any LinkedIn / IIMJobs / Naukri job link</label>
+        <textarea id="addUrlText" rows="3" placeholder="https://…"></textarea>
+        <div class="row">
+          <button class="btn" id="btnAddSubmit">Ingest</button>
+          <button class="btn btn-ghost" id="btnAddCancel">Cancel</button>
+        </div>
+        <div id="addResult" class="result-box hidden"></div>
+        <div class="muted tiny">Tip: if the job ends up as <b>LINK_ONLY</b>, open it and paste JD manually.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="modalSettings" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="h3">Settings</div>
+        <button class="btn btn-ghost" id="btnCloseSettings">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="muted">API base URL</label>
+        <input id="setApiBase" placeholder="https://get-job.….workers.dev" />
+        <label class="muted">UI key (x-ui-key)</label>
+        <input id="setUiKey" placeholder="Paste your UI_KEY" />
+        <div class="row">
+          <button class="btn" id="btnSaveSettings">Save</button>
+          <button class="btn btn-ghost" id="btnCancelSettings">Cancel</button>
+        </div>
+        <div class="muted tiny">We store these in your browser localStorage.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <div id="spinner" class="spinner hidden"><div></div></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
