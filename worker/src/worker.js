@@ -838,6 +838,8 @@ export default {
           const nice = Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [];
           const reject = Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [];
 
+          const effectiveFetchStatus = aiAvailable ? String(resolved.fetch_status || "failed") : "ai_unavailable";
+          const fetchDebug = { ...(resolved.debug || {}), ai_available: aiAvailable };
           const rowStatus = needsManual ? "LINK_ONLY" : "NEW";
           const systemStatus = needsManual ? "NEEDS_MANUAL_JD" : "NEW";
 
@@ -903,8 +905,8 @@ export default {
             JSON.stringify(reject),
             jdText.slice(0, 12000),
             resolved.jd_source,
-            resolved.fetch_status,
-            JSON.stringify(resolved.debug || {}),
+            effectiveFetchStatus,
+            JSON.stringify(fetchDebug),
             rowStatus,
             systemStatus,
             systemStatus,
@@ -920,7 +922,7 @@ export default {
             job_url: norm.job_url,
             status: rowStatus,
             jd_source: resolved.jd_source,
-            fetch_status: resolved.fetch_status,
+            fetch_status: effectiveFetchStatus,
             system_status: systemStatus
           });
         }

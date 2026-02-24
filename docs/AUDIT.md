@@ -91,7 +91,7 @@
 
 ## 4) Security & Auth review
 - UI_KEY usage: all UI requests use `api()` helper and send `x-ui-key`.
-- API_KEY usage: admin routes (`/normalize-job`, `/resolve-jd`, `/extract-jd`, `/score-jd`) require `x-api-key`.
+- API_KEY usage: admin routes (`/normalize-job`, `/resolve-jd`, `/extract-jd`, `/score-jd`) require `x-api-key`; `/score-pending` accepts either valid `x-ui-key` or `x-api-key`.
 - API_KEY exposure in UI: no API key usage in `ui/` files.
 - CORS:
   - preflight (`OPTIONS`) is handled.
@@ -114,7 +114,7 @@
 **Yes, with operational caveats.**
 - Core daily workflow works: ingest -> inspect -> manual JD if needed -> rescore/status updates.
 - Auth and route contracts are now consistent for UI vs API usage.
-- Ingest/manual save now tolerate missing AI binding without hard-failing intake.
+- Ingest/manual save now tolerate missing AI binding without hard-failing intake (`fetch_status=ai_unavailable` for ingest rows when AI is absent).
 - Remaining productivity gap is lack of Targets management in UI.
 
 ## 7) Next 5 actions (recommended order)

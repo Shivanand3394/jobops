@@ -87,6 +87,7 @@ Expected:
 - HTTP 200
 - `data.results[*].job_key` present
 - LinkedIn may produce `system_status=NEEDS_MANUAL_JD`, `status=LINK_ONLY`
+- If AI binding is missing, expect `fetch_status=ai_unavailable` and graceful insert/update (still HTTP 200)
 
 ## 4) Batch score pending (UI key)
 Purpose: score NEW/SCORED jobs.
@@ -109,6 +110,21 @@ Invoke-WebRequest -Uri "$BASE_URL/score-pending" -Method POST -ContentType "appl
 Expected:
 - HTTP 200
 - `data.picked`, `data.updated`, `data.jobs`
+
+### curl (API key variant)
+```bash
+curl -sS "$BASE_URL/score-pending" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"limit":30}'
+```
+
+### PowerShell (API key variant)
+```powershell
+$body = @{ limit = 30 } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/score-pending" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
 
 ## 5) Job detail (UI key)
 Purpose: confirm detailed payload and manual-JD flags.
@@ -208,3 +224,11 @@ Expected:
 2. Check details (test 5) and confirm `status=LINK_ONLY` and/or `system_status=NEEDS_MANUAL_JD`.
 3. Paste JD through manual endpoint (test 7).
 4. Re-check details (test 5) for extracted/scored fields.
+
+## 10) Ingest when AI binding is missing (graceful)
+Purpose: confirm ingest does not fail hard if Workers AI binding is unavailable.
+
+Expected:
+- HTTP 200
+- rows are still inserted/updated in D1
+- each affected result has `status=LINK_ONLY`, `system_status=NEEDS_MANUAL_JD`, `fetch_status=ai_unavailable`

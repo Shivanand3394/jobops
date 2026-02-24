@@ -208,6 +208,21 @@ $body = @{ limit = 30 } | ConvertTo-Json
 Invoke-WebRequest -Uri "$BASE_URL/score-pending" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
 ```
 
+API key variant (also accepted):
+
+```bash
+curl -sS "$BASE_URL/score-pending" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"limit":30}'
+```
+
+```powershell
+$body = @{ limit = 30 } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/score-pending" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
 ### 5) POST /jobs/:job_key/manual-jd
 curl:
 
@@ -224,6 +239,22 @@ PowerShell:
 ```powershell
 $body = @{ jd_text_clean = "Paste full JD text with at least 200 characters..." } | ConvertTo-Json -Depth 5
 Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/manual-jd" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+### 6) POST /ingest when AI binding is missing (graceful)
+Expected: HTTP 200, rows inserted/updated, `status=LINK_ONLY`, `system_status=NEEDS_MANUAL_JD`, `fetch_status=ai_unavailable`.
+
+```bash
+curl -sS "$BASE_URL/ingest" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"raw_urls":["https://www.linkedin.com/jobs/view/1234567890/"]}'
+```
+
+```powershell
+$body = @{ raw_urls = @("https://www.linkedin.com/jobs/view/1234567890/") } | ConvertTo-Json -Depth 5
+Invoke-WebRequest -Uri "$BASE_URL/ingest" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
 ```
 
 ## Next Moves
