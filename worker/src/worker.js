@@ -963,103 +963,16 @@ export default {
       // ============================
       if (path === "/score-pending" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
-        const limit = clampInt_(body.limit || 30, 1, 200);
-        const statusFilter = String(body.status || "").trim().toUpperCase(); // optional
-        const onlyStatuses = statusFilter ? [statusFilter] : ["NEW", "SCORED"];
+        const batch = await runScorePending_(env, ai, body, { defaultStatuses: ["NEW"] });
+        if (!batch.ok) return json_({ ok: false, error: batch.error }, env, batch.status || 400);
 
-        const targets = await loadTargets_(env);
-        if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
-
-        const cfg = await loadSysCfg_(env);
-
-        // Pick jobs that are NEW or SCORED
-        const placeholders = onlyStatuses.map(() => "?").join(",");
-        const rows = await env.DB.prepare(`
-          SELECT * FROM jobs
-          WHERE status IN (${placeholders})
-          ORDER BY updated_at ASC
-          LIMIT ?;
-        `.trim()).bind(...onlyStatuses, limit).all();
-
-        const jobs = rows.results || [];
-        let updated = 0;
-
-        const results = [];
-        for (const j of jobs) {
-          try {
-            const jdClean = String(j.jd_text_clean || "").trim();
-            const roleTitle = String(j.role_title || "").trim();
-
-            if (!jdClean && !roleTitle) {
-              results.push({ job_key: j.job_key, ok: false, error: "missing_jd_and_title" });
-              continue;
-            }
-
-            const scoring = await scoreJobWithModel_(ai, {
-              role_title: roleTitle,
-              location: String(j.location || ""),
-              seniority: String(j.seniority || ""),
-              jd_clean: jdClean,
-            }, targets, cfg);
-
-            const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
-            const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
-
-            const rejectReasons = [];
-            if (hasRejectMarker_(jdClean)) rejectReasons.push("Contains 'Reject:' marker in JD");
-            if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
-            if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
-
-            const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-            const transition = applyStatusTransition_(j, "scored", {
-              final_score: finalScore,
-              reject_triggered: mergedRejectTriggered,
-              cfg,
-            });
-
-            const now = Date.now();
-            const r = await env.DB.prepare(`
-              UPDATE jobs SET
-                primary_target_id = ?,
-                score_must = ?,
-                score_nice = ?,
-                final_score = ?,
-                reject_triggered = ?,
-                reject_reasons_json = ?,
-                reject_evidence = ?,
-                reason_top_matches = ?,
-                next_status = ?,
-                system_status = ?,
-                status = ?,
-                updated_at = ?,
-                last_scored_at = ?
-              WHERE job_key = ?;
-            `.trim()).bind(
-              scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
-              clampInt_(scoring.score_must, 0, 100),
-              clampInt_(scoring.score_nice, 0, 100),
-              finalScore,
-              mergedRejectTriggered ? 1 : 0,
-              JSON.stringify(rejectReasons),
-              mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
-              String(scoring.reason_top_matches || "").slice(0, 1000),
-              transition.next_status,
-              transition.system_status,
-              transition.status,
-              now,
-              now,
-              j.job_key
-            ).run();
-
-            if (r.success && r.changes) updated += 1;
-            results.push({ job_key: j.job_key, ok: true, final_score: finalScore, status: transition.status, primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID });
-          } catch (e) {
-            results.push({ job_key: j.job_key, ok: false, error: String(e?.message || e) });
-          }
-        }
-
-        await logEvent_(env, "RESCORED_BATCH", null, { limit, status: statusFilter || "NEW,SCORED", updated, ts: Date.now() });
-        return json_({ ok: true, data: { picked: jobs.length, updated, jobs: results } }, env, 200);
+        await logEvent_(env, "RESCORED_BATCH", null, {
+          limit: batch.limit,
+          status: batch.statuses.join(","),
+          updated: batch.data.updated,
+          ts: Date.now(),
+        });
+        return json_({ ok: true, data: batch.data }, env, 200);
       }
 
       // ============================
@@ -1097,6 +1010,26 @@ export default {
           const data = await runGmailPoll_(env);
           await logEvent_(env, "GMAIL_POLL", null, { source: "cron", ...data, ts: Date.now() });
           console.log("gmail poll ok", JSON.stringify(data));
+
+          const ai = getAi_(env);
+          if (!ai) {
+            console.warn("score pending skipped: missing AI binding");
+            return;
+          }
+          const scoreBatch = await runScorePending_(env, ai, { limit: 30, status: "NEW" }, { defaultStatuses: ["NEW"] });
+          if (!scoreBatch.ok) {
+            console.warn("score pending skipped:", scoreBatch.error);
+            return;
+          }
+          await logEvent_(env, "RESCORED_BATCH", null, {
+            source: "cron",
+            limit: scoreBatch.limit,
+            status: scoreBatch.statuses.join(","),
+            updated: scoreBatch.data.updated,
+            picked: scoreBatch.data.picked,
+            ts: Date.now(),
+          });
+          console.log("score pending cron ok", JSON.stringify(scoreBatch.data));
         } catch (e) {
           console.error("gmail poll failed", String(e?.message || e));
         }
@@ -1853,6 +1786,137 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
     ignored,
     link_only: linkOnly,
     results,
+  };
+}
+
+async function runScorePending_(env, ai, body = {}, opts = {}) {
+  const defaultStatuses = Array.isArray(opts.defaultStatuses) && opts.defaultStatuses.length
+    ? opts.defaultStatuses
+    : ["NEW"];
+  const allowedStatuses = new Set(["NEW", "SCORED"]);
+  const limit = clampInt_(body.limit || 30, 1, 200);
+
+  const statusIn = body.status;
+  const requestedStatuses = Array.isArray(statusIn)
+    ? statusIn
+    : String(statusIn || "").split(",");
+  const normalized = requestedStatuses
+    .map((s) => String(s || "").trim().toUpperCase())
+    .filter(Boolean);
+  const statuses = (normalized.length ? normalized : defaultStatuses).filter((s) => allowedStatuses.has(s));
+
+  if (!statuses.length) {
+    return { ok: false, status: 400, error: "Invalid status filter. Allowed: NEW,SCORED" };
+  }
+  if (!ai) {
+    return { ok: false, status: 500, error: "Missing Workers AI binding (env.AI or AI_BINDING)" };
+  }
+
+  const targets = await loadTargets_(env);
+  if (!targets.length) return { ok: false, status: 400, error: "No targets configured" };
+  const cfg = await loadSysCfg_(env);
+
+  const placeholders = statuses.map(() => "?").join(",");
+  const rows = await env.DB.prepare(`
+    SELECT * FROM jobs
+    WHERE status IN (${placeholders})
+    ORDER BY updated_at ASC
+    LIMIT ?;
+  `.trim()).bind(...statuses, limit).all();
+
+  const jobs = rows.results || [];
+  let updated = 0;
+  const results = [];
+
+  for (const j of jobs) {
+    try {
+      const jdClean = String(j.jd_text_clean || "").trim();
+      const roleTitle = String(j.role_title || "").trim();
+
+      if (!jdClean && !roleTitle) {
+        results.push({ job_key: j.job_key, ok: false, error: "missing_jd_and_title" });
+        continue;
+      }
+
+      const scoring = await scoreJobWithModel_(ai, {
+        role_title: roleTitle,
+        location: String(j.location || ""),
+        seniority: String(j.seniority || ""),
+        jd_clean: jdClean,
+      }, targets, cfg);
+
+      const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
+      const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
+
+      const rejectReasons = [];
+      if (hasRejectMarker_(jdClean)) rejectReasons.push("Contains 'Reject:' marker in JD");
+      if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
+      if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
+
+      const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
+      const transition = applyStatusTransition_(j, "scored", {
+        final_score: finalScore,
+        reject_triggered: mergedRejectTriggered,
+        cfg,
+      });
+
+      const now = Date.now();
+      const r = await env.DB.prepare(`
+        UPDATE jobs SET
+          primary_target_id = ?,
+          score_must = ?,
+          score_nice = ?,
+          final_score = ?,
+          reject_triggered = ?,
+          reject_reasons_json = ?,
+          reject_evidence = ?,
+          reason_top_matches = ?,
+          next_status = ?,
+          system_status = ?,
+          status = ?,
+          updated_at = ?,
+          last_scored_at = ?
+        WHERE job_key = ?;
+      `.trim()).bind(
+        scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+        clampInt_(scoring.score_must, 0, 100),
+        clampInt_(scoring.score_nice, 0, 100),
+        finalScore,
+        mergedRejectTriggered ? 1 : 0,
+        JSON.stringify(rejectReasons),
+        mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
+        String(scoring.reason_top_matches || "").slice(0, 1000),
+        transition.next_status,
+        transition.system_status,
+        transition.status,
+        now,
+        now,
+        j.job_key
+      ).run();
+
+      if (r.success && r.changes) updated += 1;
+      results.push({
+        job_key: j.job_key,
+        ok: true,
+        final_score: finalScore,
+        status: transition.status,
+        primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID
+      });
+    } catch (e) {
+      results.push({ job_key: j.job_key, ok: false, error: String(e?.message || e) });
+    }
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    limit,
+    statuses,
+    data: {
+      picked: jobs.length,
+      updated,
+      jobs: results,
+    },
   };
 }
 
