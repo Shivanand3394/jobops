@@ -263,3 +263,33 @@ Invoke-WebRequest -Uri "$BASE_URL/ingest" -Method POST -ContentType "application
 3. Tighten production CORS to Pages origin only; keep `*` for debug profiles.
 4. Add a small admin page/CLI script to inspect recent `events` quickly.
 5. Add deployment checklist in CI (migrations applied, secrets present, bindings validated).
+
+## Branch Protection (GitHub)
+Use the guide in [`docs/BRANCH_PROTECTION.md`](/c:/Users/dell/Documents/GitHub/jobops/docs/BRANCH_PROTECTION.md).
+
+Minimum settings for `main`:
+- Require pull request before merge
+- Require at least 1 review
+- Require status checks to pass
+- Require conversation resolution
+- Disallow force push
+- Disallow branch deletion
+
+## CI Validation
+This repo includes a validation-only workflow: [`.github/workflows/ci.yml`](/c:/Users/dell/Documents/GitHub/jobops/.github/workflows/ci.yml).
+
+What it checks on `push` and `pull_request` to `main`:
+- `worker/wrangler.jsonc` is parseable JSONC
+- D1 binding `DB` exists in wrangler config
+- `worker/src/worker.js` passes syntax check (`node --check`)
+- `ui/index.html` exists
+- `worker/migrations/001_init.sql` exists
+
+No deployment happens in CI.
+
+## Recommended Git Workflow
+1. Create feature branch from `main`.
+2. Make changes and run local checks.
+3. Open PR to `main`.
+4. Wait for CI pass + review approval.
+5. Merge PR (avoid direct commit/push to `main`).
