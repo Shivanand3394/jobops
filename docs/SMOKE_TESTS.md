@@ -242,15 +242,69 @@ Invoke-WebRequest -Uri "$BASE_URL/gmail/poll" -Method POST -Headers @{ "x-api-ke
 
 Expected:
 - HTTP `200`
-- response shape:
+- response shape includes:
+  - `data.run_id`
+  - `data.ts`
+  - `data.query_used`
   - `data.scanned`
   - `data.processed`
-  - `data.skipped_existing`
-  - `data.inserted_or_updated`
-  - `data.ignored`
-  - `data.link_only`
+  - `data.skipped_already_ingested` (and back-compat `data.skipped_existing`)
+  - `data.urls_found_total`
+  - `data.urls_unique_total`
+  - `data.ignored_domains_count`
+  - `data.ingested_count` (and back-compat `data.inserted_or_updated`)
+  - `data.inserted_count`
+  - `data.updated_count`
+  - `data.link_only_count` (and back-compat `data.link_only`)
+  - `data.ignored_count` (and back-compat `data.ignored`)
 
-## 14) Verify Gmail-ingested jobs appear
+## 14) Gmail debug: force `scanned > 0`
+1. Set Worker var `GMAIL_QUERY` to:
+   - `in:anywhere newer_than:7d`
+2. Run `POST /gmail/poll` (section 13).
+3. Verify `data.scanned > 0`.
+
+If `data.scanned = 0`, either:
+- query does not match mailbox visibility, or
+- OAuth account has no matching emails.
+
+Override query without changing Worker vars:
+
+### curl
+```bash
+curl -sS "$BASE_URL/gmail/poll" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"query":"in:anywhere newer_than:7d","max_per_run":50}'
+```
+
+### PowerShell
+```powershell
+$body = @{ query = "in:anywhere newer_than:7d"; max_per_run = 50 } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/gmail/poll" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- `data.scanned > 0`
+- `data.urls_unique_total > 0` (for URL-bearing emails)
+
+## 15) Deterministic end-to-end test email
+1. Send yourself an email:
+   - Subject: `JobOps Test 1`
+   - Body: one supported URL on its own line (`linkedin/iimjobs/naukri`).
+2. Set query temporarily:
+   - `in:anywhere newer_than:2d subject:"JobOps Test 1"`
+3. Run `POST /gmail/poll`.
+4. Verify:
+   - `data.scanned > 0`
+   - `data.processed > 0`
+   - `data.urls_found_total > 0`
+   - `data.urls_job_domains_total > 0`
+5. Confirm jobs ingestion:
+   - `GET /jobs?limit=20&offset=0` with `x-ui-key`.
+
+## 16) Verify Gmail-ingested jobs appear
 1. Run manual Gmail poll.
 2. Fetch jobs:
 
