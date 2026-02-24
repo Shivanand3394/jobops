@@ -20,6 +20,7 @@ const state = {
   activeKey: null,
   targets: [],
   activeTargetId: null,
+  metrics: null,
   rejectKeywordsEnabled: true,
   resumeProfiles: [],
   activeProfileId: "primary",
@@ -166,17 +167,94 @@ function showView(view) {
   state.view = view;
   const jobsView = $("jobsView");
   const targetsView = $("targetsView");
+  const metricsView = $("metricsView");
   jobsView.classList.toggle("hidden", view !== "jobs");
   targetsView.classList.toggle("hidden", view !== "targets");
+  metricsView.classList.toggle("hidden", view !== "metrics");
 
   $("btnTabJobs").classList.toggle("active-tab", view === "jobs");
   $("btnTabTargets").classList.toggle("active-tab", view === "targets");
+  $("btnTabMetrics").classList.toggle("active-tab", view === "metrics");
 
   const jobsActionsHidden = view !== "jobs";
   $("btnAdd").classList.toggle("hidden", jobsActionsHidden);
   $("btnRescore").classList.toggle("hidden", jobsActionsHidden);
 
   if (view === "targets") loadTargets();
+  if (view === "metrics") loadMetrics();
+}
+
+function fmtNum(v) {
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toLocaleString() : "0";
+}
+
+function fmtTs(v) {
+  const n = Number(v || 0);
+  if (!n) return "-";
+  const d = new Date(n);
+  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
+}
+
+function metricCard(label, value, sub = "") {
+  return `
+    <div class="metric-card">
+      <div class="metric-label">${escapeHtml(label)}</div>
+      <div class="metric-value">${escapeHtml(fmtNum(value))}</div>
+      <div class="metric-sub">${escapeHtml(sub)}</div>
+    </div>
+  `;
+}
+
+function renderMetrics() {
+  const m = state.metrics || {};
+  const statuses = m.statuses || {};
+  const systems = m.systems || {};
+  const totals = m.totals || {};
+  const gmailLatest = m.gmail?.latest || {};
+  const gmail24 = m.gmail?.last_24h || {};
+
+  $("metricsGeneratedAt").value = fmtTs(m.generated_at);
+  $("metricsHint").textContent = `Jobs: ${fmtNum(totals.jobs_total)} | Gmail polls (24h): ${fmtNum(gmail24.poll_runs)} | Avg score: ${totals.avg_final_score ?? "-"}`;
+
+  $("metricsCards").innerHTML = [
+    metricCard("SHORTLISTED", statuses.SHORTLISTED || 0, "ready-to-apply"),
+    metricCard("REJECTED", statuses.REJECTED || 0, "screened out"),
+    metricCard("ARCHIVED", statuses.ARCHIVED || 0, "parked"),
+    metricCard("LINK_ONLY", statuses.LINK_ONLY || 0, "needs enrichment"),
+    metricCard("NEEDS_MANUAL_JD", systems.NEEDS_MANUAL_JD || 0, "manual JD required"),
+    metricCard("AI_UNAVAILABLE", systems.AI_UNAVAILABLE || 0, "AI config missing"),
+    metricCard("Ingested (24h)", gmail24.inserted_or_updated || 0, "inserted + updated"),
+    metricCard("Skipped Existing (24h)", gmail24.skipped_existing || 0, "dedupe hits"),
+    metricCard("Promo Rejected (24h)", gmail24.skipped_promotional || 0, "ads/premium/newsletters"),
+    metricCard("Latest Scanned", gmailLatest.scanned || 0, `query: ${gmailLatest.query_used || "-"}`),
+    metricCard("Latest Processed", gmailLatest.processed || 0, `at ${fmtTs(gmailLatest.ts)}`),
+    metricCard("Scored Jobs", totals.scored_jobs || 0, "jobs with final_score"),
+  ].join("");
+
+  const sources = Array.isArray(m.sources) ? m.sources : [];
+  $("metricsSources").innerHTML = sources.length
+    ? `<ul class="metrics-list">${sources.map((s) => `<li><b>${escapeHtml(s.source || "unknown")}:</b> ${escapeHtml(fmtNum(s.count || 0))}</li>`).join("")}</ul>`
+    : "-";
+
+  const events = Array.isArray(m.events_last_24h) ? m.events_last_24h : [];
+  $("metricsEvents").innerHTML = events.length
+    ? `<ul class="metrics-list">${events.map((e) => `<li><b>${escapeHtml(e.event_type || "-")}:</b> ${escapeHtml(fmtNum(e.count || 0))}</li>`).join("")}</ul>`
+    : "-";
+}
+
+async function loadMetrics() {
+  try {
+    spin(true);
+    const res = await api("/metrics");
+    state.metrics = res.data || {};
+    renderMetrics();
+  } catch (e) {
+    $("metricsHint").textContent = "Metrics load failed";
+    toast("Metrics failed: " + e.message);
+  } finally {
+    spin(false);
+  }
 }
 
 function filterJobs(jobs, status, q) {
@@ -460,6 +538,20 @@ function textToKeywords(text) {
     .filter(Boolean);
 }
 
+function appendKeyword(textareaId, inputId) {
+  const box = $(textareaId);
+  const input = $(inputId);
+  if (!box || !input) return;
+  const kw = String(input.value || "").trim();
+  if (!kw) return;
+  const list = textToKeywords(box.value || "");
+  const seen = new Set(list.map((x) => x.toLowerCase()));
+  if (!seen.has(kw.toLowerCase())) list.push(kw);
+  box.value = list.join(", ");
+  input.value = "";
+  input.focus();
+}
+
 function renderTargetEditor(t) {
   $("targetEditor").classList.remove("empty");
   $("tTitle").textContent = t.id || "Target";
@@ -470,6 +562,10 @@ function renderTargetEditor(t) {
       <div class="field">
         <label>reject_keywords_json</label>
         <textarea id="tReject" rows="3" placeholder="keyword1, keyword2">${escapeHtml(keywordsToText(t.reject_keywords_json ?? t.reject_keywords))}</textarea>
+        <div class="target-keyword-row">
+          <input id="tRejectAdd" placeholder="Add reject keyword..." />
+          <button class="btn btn-ghost" type="button" onclick="appendKeyword('tReject','tRejectAdd')">+ Reject</button>
+        </div>
       </div>
     `
     : `<div class="muted tiny">Reject keywords not enabled in DB schema.</div>`;
@@ -499,10 +595,18 @@ function renderTargetEditor(t) {
       <div class="field">
         <label>must_keywords_json</label>
         <textarea id="tMust" rows="3" placeholder="keyword1, keyword2">${escapeHtml(keywordsToText(t.must_keywords_json ?? t.must_keywords))}</textarea>
+        <div class="target-keyword-row">
+          <input id="tMustAdd" placeholder="Add must keyword..." />
+          <button class="btn btn-ghost" type="button" onclick="appendKeyword('tMust','tMustAdd')">+ Must</button>
+        </div>
       </div>
       <div class="field">
         <label>nice_keywords_json</label>
         <textarea id="tNice" rows="3" placeholder="keyword1, keyword2">${escapeHtml(keywordsToText(t.nice_keywords_json ?? t.nice_keywords))}</textarea>
+        <div class="target-keyword-row">
+          <input id="tNiceAdd" placeholder="Add nice keyword..." />
+          <button class="btn btn-ghost" type="button" onclick="appendKeyword('tNice','tNiceAdd')">+ Nice</button>
+        </div>
       </div>
       ${rejectBlock}
       <div class="row" style="justify-content:flex-start;">
@@ -557,10 +661,39 @@ async function setActiveTarget(targetId) {
   }
 }
 
+async function createNewTarget() {
+  const idIn = prompt("New target id (example: TGT-003)");
+  const targetId = String(idIn || "").trim();
+  if (!targetId) return;
+  const nameIn = prompt("Target name", "New Target");
+  const name = String(nameIn || "").trim() || targetId;
+  const body = {
+    name,
+    primary_role: "",
+    seniority_pref: "",
+    location_pref: "",
+    must_keywords_json: [],
+    nice_keywords_json: [],
+  };
+  if (state.rejectKeywordsEnabled) body.reject_keywords_json = [];
+
+  try {
+    spin(true);
+    await api("/targets/" + encodeURIComponent(targetId), { method: "POST", body });
+    toast("Target created");
+    await loadTargets();
+    await setActiveTarget(targetId);
+  } catch (e) {
+    toast("Create target failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
 async function saveActiveTarget() {
-  const targetId = state.activeTargetId;
+  const targetId = String(state.activeTargetId || $("tId")?.value || "").trim();
   if (!targetId) {
-    toast("Select a target first");
+    toast("Target id is required");
     return;
   }
 
@@ -932,6 +1065,7 @@ async function saveSettings() {
   toast("Saved settings");
   if (state.view === "jobs") await loadJobs();
   if (state.view === "targets") await loadTargets();
+  if (state.view === "metrics") await loadMetrics();
 }
 
 (function init() {
@@ -944,6 +1078,7 @@ async function saveSettings() {
 
   $("btnTabJobs").onclick = () => showView("jobs");
   $("btnTabTargets").onclick = () => showView("targets");
+  $("btnTabMetrics").onclick = () => showView("metrics");
 
   $("btnAdd").onclick = () => openModal("modalAdd");
   $("btnCloseAdd").onclick = () => closeModal("modalAdd");
@@ -964,6 +1099,8 @@ async function saveSettings() {
   $("btnBatchRescoreScored").onclick = async () => { closeModal("modalBatch"); await rescorePending("SCORED"); };
 
   $("btnTargetsRefresh").onclick = loadTargets;
+  $("btnTargetNew").onclick = createNewTarget;
+  $("btnMetricsRefresh").onclick = loadMetrics;
   $("targetSearch").oninput = renderTargets;
 
   $("statusFilter").onchange = loadJobs;
@@ -981,6 +1118,8 @@ window.updateStatus = updateStatus;
 window.rescoreOne = rescoreOne;
 window.saveAndRescoreManualJd = saveAndRescoreManualJd;
 window.saveActiveTarget = saveActiveTarget;
+window.createNewTarget = createNewTarget;
+window.appendKeyword = appendKeyword;
 window.saveResumeProfileFromUi = saveResumeProfileFromUi;
 window.generateApplicationPack = generateApplicationPack;
 window.copyPackSummary = copyPackSummary;

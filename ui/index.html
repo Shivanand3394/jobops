@@ -17,6 +17,7 @@
     <div class="right">
       <button class="btn btn-ghost" id="btnTabJobs">Jobs</button>
       <button class="btn btn-ghost" id="btnTabTargets">Targets</button>
+      <button class="btn btn-ghost" id="btnTabMetrics">Metrics</button>
       <button class="btn btn-ghost hidden" id="btnShowAiNotice" title="Show AI notice">Show AI notice</button>
       <button class="btn btn-ghost" id="btnSettings" title="Settings">Settings</button>
       <button class="btn" id="btnAdd">+ Add job URL</button>
@@ -93,6 +94,7 @@
           <label>Targets</label>
           <input id="targetSearch" type="search" placeholder="ID, name, role..." />
         </div>
+        <button class="btn btn-secondary" id="btnTargetNew" title="Create target">+ New target</button>
         <button class="btn btn-ghost" id="btnTargetsRefresh" title="Refresh">Refresh</button>
       </div>
       <div class="list-meta">
@@ -111,6 +113,48 @@
       <div id="targetEditor" class="detail-body empty">
         <div class="empty-state">
           <div class="h3">Pick a target from the left.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="app hidden" id="metricsView">
+    <section class="panel panel-left">
+      <div class="toolbar">
+        <div class="field grow">
+          <label>Pipeline Snapshot</label>
+          <input id="metricsGeneratedAt" type="text" readonly />
+        </div>
+        <button class="btn btn-ghost" id="btnMetricsRefresh" title="Refresh">Refresh</button>
+      </div>
+      <div class="list-meta">
+        <div id="metricsHint" class="muted">Loading metrics...</div>
+      </div>
+      <div id="metricsCards" class="metrics-grid"></div>
+    </section>
+    <section class="panel panel-right">
+      <div class="detail-header">
+        <div class="detail-title">
+          <div class="h2">Sources and Events</div>
+          <div class="muted">Live operational counts</div>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="kv">
+          <div class="k">By source</div>
+          <div class="v" id="metricsSources">-</div>
+          <div class="k">Events (24h)</div>
+          <div class="v" id="metricsEvents">-</div>
+        </div>
+        <div class="kv">
+          <div class="k">Suggested next metrics</div>
+          <div class="v" id="metricsSuggestions">
+            - Time to shortlist (created_at -> SHORTLISTED)<br/>
+            - Manual JD ratio (NEEDS_MANUAL_JD / total)<br/>
+            - Source quality (SHORTLISTED per source_domain)<br/>
+            - Rejection reason trends (target reject keywords)<br/>
+            - Gmail promo reject drift (skipped_promotional %)
+          </div>
         </div>
       </div>
     </section>
