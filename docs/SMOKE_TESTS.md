@@ -366,6 +366,79 @@ Invoke-WebRequest -Uri "$BASE_URL/jobs?limit=10&offset=0" -Method GET -Headers @
 ```
 
 Expected:
-- each row has non-empty `display_title` (`role_title` fallback, then `(Needs JD)` / `(Untitled)`)
+- each row has non-empty `display_title` (`role_title` fallback, then `(Needs AI)` / `(Needs JD)` / `(Untitled)`)
 - `display_company` is always present (empty string when company is missing)
 - UI list and detail headers do not show blank title/company rows
+
+## 18) Verify resume-pack tables exist (D1)
+Run from `worker/` directory.
+
+### Bash
+```bash
+wrangler d1 execute jobops-db --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('resume_profiles','resume_drafts');"
+```
+
+### PowerShell
+```powershell
+wrangler d1 execute jobops-db --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('resume_profiles','resume_drafts');"
+```
+
+Expected:
+- both `resume_profiles` and `resume_drafts` appear
+- if missing, apply migration: `wrangler d1 migrations apply jobops-db --remote`
+
+## 19) Save profile + generate application pack (UI key)
+Use a real job key from `/jobs`.
+
+### curl: save profile
+```bash
+curl -sS "$BASE_URL/resume/profiles" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"id":"primary","name":"Primary","profile_json":{"basics":{"name":"Test User"},"summary":"Operator","experience":[],"skills":[]}}'
+```
+
+### PowerShell: save profile
+```powershell
+$body = @{ id="primary"; name="Primary"; profile_json=@{ basics=@{ name="Test User" }; summary="Operator"; experience=@(); skills=@() } } | ConvertTo-Json -Depth 10
+Invoke-WebRequest -Uri "$BASE_URL/resume/profiles" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+### curl: generate pack
+```bash
+curl -sS "$BASE_URL/jobs/$JOB_KEY/generate-application-pack" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"profile_id":"primary","force":false,"renderer":"reactive_resume"}'
+```
+
+### PowerShell: generate pack
+```powershell
+$body = @{ profile_id="primary"; force=$false; renderer="reactive_resume" } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/generate-application-pack" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+### curl: fetch pack
+```bash
+curl -sS "$BASE_URL/jobs/$JOB_KEY/application-pack?profile_id=primary" -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell: fetch pack
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/application-pack?profile_id=primary" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- save profile returns `ok:true` with `id`
+- generate returns `ok:true` with `status` (`DRAFT_READY` or `NEEDS_AI`)
+- fetch pack returns saved `pack_json`, `ats_json`, `rr_export_json`
+
+## 20) If titles/company are missing
+1. Call `/jobs?limit=5` and confirm rows include `display_title` and `display_company`.
+2. If many rows show `(Needs AI)` and `system_status=AI_UNAVAILABLE`, AI extraction has not run.
+3. Verify AI binding exists for Worker:
+   - binding `AI` (preferred), or var `AI_BINDING` pointing to a valid AI binding name.
+4. Validate AI routes:
+   - `POST /extract-jd` with `x-api-key` should return `ok:true` for valid text.

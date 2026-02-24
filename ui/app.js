@@ -136,7 +136,14 @@ function renderIngestResultBox(data) {
 }
 
 function getDisplayTitle(j) {
-  return j.display_title || j.role_title || "(Untitled)";
+  const fromApi = String(j.display_title || "").trim();
+  if (fromApi) return fromApi;
+  const role = String(j.role_title || "").trim();
+  if (role) return role;
+  const systemStatus = String(j.system_status || "").trim().toUpperCase();
+  if (systemStatus === "AI_UNAVAILABLE") return "(Needs AI)";
+  if (systemStatus === "NEEDS_MANUAL_JD") return "(Needs JD)";
+  return "(Untitled)";
 }
 
 function getDisplayCompany(j) {
