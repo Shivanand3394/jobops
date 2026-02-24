@@ -1,50 +1,103 @@
-# GitHub Issues Backlog
+## Issue: Detect low-quality JD fetch and mark NEEDS_MANUAL_JD
 
-## 1. Low-Quality JD Detection  
-**Goal:** Implement a system to automatically detect and flag low-quality job descriptions (JDs).  
-**Acceptance Criteria:**  
-- System can analyze job description text for quality indicators.  
-- Flags JDs with a quality score below a certain threshold for review.  
-**Notes:** Investigate NLP tools for text analysis to aid in detection.
+**Goal:**
+Detect blocked/junk fetched pages (cookie/privacy/enable javascript shells) during ingest and route jobs to manual JD flow.
 
-## 2. Manual JD Flow  
-**Goal:** Establish a manual review process for job descriptions.  
-**Acceptance Criteria:**  
-- Define steps for manual review of JDs.  
-- Ensure all reviewers have access to a shared review platform.  
-**Notes:** Review process should allow for feedback and improvements.
+**Acceptance Criteria:**
+- `POST /ingest` inspects fetched text for shell markers (cookie/privacy/enable javascript/captcha).
+- If detected, D1 `jobs.fetch_status` is set to `blocked` and `jobs.system_status` is set to `NEEDS_MANUAL_JD`.
+- Job is set to `status=LINK_ONLY` for blocked fetch cases.
+- AI extraction is skipped when the resolved JD content is low-quality or empty.
+- API response clearly indicates blocked/manual-needed outcome for the URL.
 
-## 3. Prevent Untitled Jobs  
-**Goal:** Ensure all job postings have a title before submission.
-**Acceptance Criteria:**  
-- Title field is mandatory in job submission form.  
-- Alert users if they attempt to submit a job without a title.  
-**Notes:** User experience should be tested to ensure clarity.
+**Notes:**
+Keep detection deterministic and lightweight; avoid model calls for shell detection.
 
-## 4. Ingest UX Improvements  
-**Goal:** Enhance user experience for job ingestion process.  
-**Acceptance Criteria:**  
-- Conduct user testing to identify pain points.  
-- Implement at least three improvements based on feedback.  
-**Notes:** Consider collaboration with UX designers.
+## Issue: Manual JD endpoint
 
-## 5. Targets Page CRUD  
-**Goal:** Create a CRUD interface for managing target job postings.
-**Acceptance Criteria:**  
-- Users can create, read, update, and delete target jobs.  
-- Changes should be reflected in real-time on targets page.  
-**Notes:** Ensure proper error handling throughout the interface.
+**Goal:**
+Allow users to submit clean JD text manually and trigger normal extract + score pipeline.
 
-## 6. Rescore Consistency  
-**Goal:** Ensure consistency in how jobs are rescored after updates.  
-**Acceptance Criteria:**  
-- Document current scoring process.  
-- Establish a set guideline for rescoring jobs after any changes.  
-**Notes:** Keeping a log of changes to review rescoring decisions could be beneficial.
+**Acceptance Criteria:**
+- Add/verify `POST /jobs/:job_key/manual-jd` with `x-ui-key` auth.
+- Endpoint accepts `{ jd_text_clean }` and validates minimum useful length.
+- D1 updates `jobs.jd_text_clean` and `jobs.jd_source="manual"`.
+- Endpoint triggers extraction and scoring (same logic path as automated pipeline).
+- D1 updates scoring/status fields (`score_*`, `final_score`, `status`, `system_status`, `last_scored_at`, `updated_at`).
+- Response returns updated status/score fields for immediate UI refresh.
 
-## 7. CORS Tightening
-**Goal:** Improve security measures related to Cross-Origin Resource Sharing (CORS).  
-**Acceptance Criteria:**  
-- Audit current CORS settings and implement stricter policies.  
-- Test to ensure only intended origins can access resources.  
-**Notes:** Look into best practices for setting CORS in the application context.
+**Notes:**
+Do not expose `API_KEY` in UI; UI must call with `x-ui-key` only.
+
+## Issue: Prevent Untitled in UI
+
+**Goal:**
+Ensure every job row/detail view has a readable title even when `role_title` is missing.
+
+**Acceptance Criteria:**
+- Worker list/detail responses provide `display_title` fallback to `(Needs JD)` when `role_title` is null/empty.
+- UI list cards and detail header render `display_title` first.
+- No empty or untitled labels appear for missing-title jobs.
+- D1 data remains unchanged unless explicit extraction/manual update occurs.
+
+**Notes:**
+Fallback is presentation-only and should not overwrite source role text.
+
+## Issue: Ingest UX improvements
+
+**Goal:**
+Make ingest behavior explicit for success, duplicates, and manual-needed outcomes.
+
+**Acceptance Criteria:**
+- After successful ingest, URL input is cleared automatically.
+- UI shows duplicate feedback when `job_key` already exists in D1.
+- Ingest response includes per-item duplicate/result metadata for display.
+- Duplicate URLs do not silently appear as new records.
+- UI refreshes list and opens the most relevant ingested item.
+
+**Notes:**
+Use `job_key` as dedupe key and keep messaging concise for mobile use.
+
+## Issue: Targets CRUD improvements
+
+**Goal:**
+Improve targets management to support reliable scoring configuration.
+
+**Acceptance Criteria:**
+- Targets UI supports create/read/update/delete using existing `/targets` routes.
+- Must/nice/reject keyword editing is explicit and persisted to D1 target JSON fields.
+- Default target selection behavior is documented and visible in UI.
+- Optional active toggle is supported if introduced, with D1 persistence and backward compatibility.
+- Target updates are reflected in subsequent scoring (`/score-pending`, `/jobs/:job_key/rescore`).
+
+**Notes:**
+Prefer minimal schema changes; preserve compatibility with current target table.
+
+## Issue: Rescore consistency
+
+**Goal:**
+Standardize single-job and batch rescore behavior with consistent auth and D1 updates.
+
+**Acceptance Criteria:**
+- UI uses `x-ui-key` for `POST /score-pending` and `POST /jobs/:job_key/rescore`.
+- UI shows clear success/error feedback for both actions.
+- Rescore updates D1 consistently (`status`, `system_status`, `final_score`, `last_scored_at`, `updated_at`).
+- Error responses are surfaced to user instead of silent failures.
+- Batch response includes `picked` and `updated` counts and per-job results.
+
+**Notes:**
+Align single-job and batch scoring field updates to avoid drift.
+
+## Issue: CORS tightening
+
+**Goal:**
+Restrict production CORS while keeping debug flexibility.
+
+**Acceptance Criteria:**
+- Production `ALLOW_ORIGIN` is set to `https://getjobs.shivanand-shah94.workers.dev`.
+- `*` is used only in debug/troubleshooting environments.
+- Required headers (`Content-Type`, `x-ui-key`, `x-api-key`) remain allowed in preflight.
+- Public endpoint (`GET /health`) remains accessible cross-origin as configured.
+
+**Notes:**
+Document exact environment values per deployment stage to avoid accidental wildcard rollout.
