@@ -23,6 +23,9 @@ const state = {
   rejectKeywordsEnabled: true,
 };
 
+const AI_NOTICE_SESSION_KEY = "jobops_ai_notice_seen_session";
+const AI_NOTICE_DETECTED_KEY = "jobops_ai_notice_detected";
+
 function toast(msg) {
   const t = $("toast");
   t.textContent = msg;
@@ -33,6 +36,25 @@ function toast(msg) {
 
 function spin(on) {
   $("spinner").classList.toggle("hidden", !on);
+}
+
+function isAiBindingMissingMessage(msg) {
+  const s = String(msg || "").toLowerCase();
+  return s.includes("missing workers ai binding") || s.includes("workers ai binding is unavailable");
+}
+
+function showAiNotice(force = false) {
+  const el = $("aiNotice");
+  if (!el) return;
+  localStorage.setItem(AI_NOTICE_DETECTED_KEY, "1");
+  $("btnShowAiNotice")?.classList.remove("hidden");
+  if (!force && sessionStorage.getItem(AI_NOTICE_SESSION_KEY) === "1") return;
+  sessionStorage.setItem(AI_NOTICE_SESSION_KEY, "1");
+  el.classList.remove("hidden");
+}
+
+function hideAiNotice() {
+  $("aiNotice")?.classList.add("hidden");
 }
 
 async function api(path, { method = "GET", body = null, useUiKey = true } = {}) {
@@ -55,6 +77,9 @@ async function api(path, { method = "GET", body = null, useUiKey = true } = {}) 
 
   if (!res.ok || data?.ok === false) {
     const msg = data?.error || data?.detail || data?.text || ("HTTP " + res.status);
+    if (isAiBindingMissingMessage(msg)) {
+      showAiNotice(false);
+    }
     const err = new Error(msg);
     err.httpStatus = res.status;
     err.payload = data;
@@ -70,6 +95,42 @@ function escapeHtml(s) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function renderIngestResultBox(data) {
+  const results = Array.isArray(data?.results) ? data.results : [];
+  const inserted = Number.isFinite(data?.inserted_count)
+    ? data.inserted_count
+    : results.filter((r) => r?.action === "inserted").length;
+  const updated = Number.isFinite(data?.updated_count)
+    ? data.updated_count
+    : results.filter((r) => r?.action === "updated").length;
+  const ignored = Number.isFinite(data?.ignored)
+    ? data.ignored
+    : results.filter((r) => r?.action === "ignored").length;
+  const linkOnly = Number.isFinite(data?.link_only)
+    ? data.link_only
+    : results.filter((r) => String(r?.status || "").toUpperCase() === "LINK_ONLY").length;
+
+  const rows = results.map((r) => {
+    const action = String(r?.action || "updated");
+    const actionLabel = (action === "updated" && r?.was_existing) ? "updated (already existed)" : action;
+    const status = String(r?.status || "-");
+    const key = String(r?.job_key || "-");
+    const raw = String(r?.raw_url || "-");
+    return `<li><b>${escapeHtml(actionLabel)}</b> - ${escapeHtml(status)} - ${escapeHtml(key)}<br><span class="muted tiny">${escapeHtml(raw)}</span></li>`;
+  }).join("");
+
+  return `
+    <div><b>inserted:</b> ${escapeHtml(String(inserted))}</div>
+    <div><b>updated:</b> ${escapeHtml(String(updated))}</div>
+    <div><b>ignored:</b> ${escapeHtml(String(ignored))}</div>
+    <div><b>link_only:</b> ${escapeHtml(String(linkOnly))}</div>
+    <details style="margin-top:8px;">
+      <summary>Last ingest results (${escapeHtml(String(results.length))})</summary>
+      <ul style="margin:8px 0 0 18px; padding:0;">${rows || "<li>-</li>"}</ul>
+    </details>
+  `;
 }
 
 function getDisplayTitle(j) {
@@ -524,32 +585,31 @@ async function doIngest() {
   try {
     spin(true);
     box.classList.add("hidden");
-    box.textContent = "";
+    box.innerHTML = "";
 
     const res = await ingestUrls($("addUrlText").value);
     const data = res?.data || {};
     const results = Array.isArray(data.results) ? data.results : [];
-    const linkOnly = results.filter((r) => String(r?.status || "").toUpperCase() === "LINK_ONLY").length;
-    const keys = results.map((r) => String(r?.job_key || "").trim()).filter(Boolean);
-    const uniqueKeyCount = new Set(keys).size;
-    const dedupeDetected = uniqueKeyCount > 0 && uniqueKeyCount < keys.length;
+    const inserted = Number.isFinite(data?.inserted_count)
+      ? data.inserted_count
+      : results.filter((r) => r?.action === "inserted").length;
+    const updated = Number.isFinite(data?.updated_count)
+      ? data.updated_count
+      : results.filter((r) => r?.action === "updated").length;
+    const ignored = Number.isFinite(data?.ignored)
+      ? data.ignored
+      : results.filter((r) => r?.action === "ignored").length;
+    const linkOnly = Number.isFinite(data?.link_only)
+      ? data.link_only
+      : results.filter((r) => String(r?.status || "").toUpperCase() === "LINK_ONLY").length;
 
-    const lines = [
-      `inserted_or_updated: ${data.inserted_or_updated ?? 0}`,
-      `ignored: ${data.ignored ?? 0}`,
-      `link_only: ${linkOnly}`,
-    ];
-    if (dedupeDetected) {
-      lines.push("Already existed -> updated");
-    }
-
-    box.textContent = lines.join("\n") + "\n\n" + JSON.stringify(data, null, 2);
+    box.innerHTML = renderIngestResultBox(data);
     box.classList.remove("hidden");
     $("addUrlText").value = "";
 
     $("statusFilter").value = "";
     $("search").value = "";
-    toast(`Ingested: ${data.inserted_or_updated ?? 0} updated, ${data.ignored ?? 0} ignored, ${linkOnly} link-only`);
+    toast(`Ingested: ${inserted} inserted, ${updated} updated, ${ignored} ignored, ${linkOnly} link-only`);
     await loadJobs();
 
     const firstKey = Array.isArray(results) && results[0]?.job_key ? results[0].job_key : null;
@@ -608,6 +668,12 @@ async function saveSettings() {
 }
 
 (function init() {
+  $("btnDismissAiNotice").onclick = hideAiNotice;
+  $("btnShowAiNotice").onclick = () => showAiNotice(true);
+  if (localStorage.getItem(AI_NOTICE_DETECTED_KEY) === "1") {
+    $("btnShowAiNotice").classList.remove("hidden");
+  }
+
   $("btnTabJobs").onclick = () => showView("jobs");
   $("btnTabTargets").onclick = () => showView("targets");
 

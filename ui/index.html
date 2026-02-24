@@ -16,12 +16,20 @@
     <div class="right">
       <button class="btn btn-ghost" id="btnTabJobs">Jobs</button>
       <button class="btn btn-ghost" id="btnTabTargets">Targets</button>
+      <button class="btn btn-ghost hidden" id="btnShowAiNotice" title="Show AI notice">Show AI notice</button>
       <button class="btn btn-ghost" id="btnSettings" title="Settings">Settings</button>
       <button class="btn" id="btnAdd">+ Add job URL</button>
       <button class="btn btn-secondary" id="btnRescore">Rescore NEW+SCORED</button>
       <button class="btn btn-secondary" id="btnRescore2">Rescore (safe)</button>
     </div>
   </header>
+
+  <div id="aiNotice" class="notice hidden" role="status" aria-live="polite">
+    <div>AI not configured: ingest works, scoring/rescore disabled until Workers AI binding is added.</div>
+    <div class="notice-actions">
+      <button class="btn btn-ghost" id="btnDismissAiNotice">Dismiss</button>
+    </div>
+  </div>
 
   <main class="app" id="jobsView">
     <section class="panel panel-left">
