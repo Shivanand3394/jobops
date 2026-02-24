@@ -21,6 +21,8 @@ const state = {
   targets: [],
   activeTargetId: null,
   rejectKeywordsEnabled: true,
+  resumeProfiles: [],
+  activeProfileId: "primary",
 };
 
 const AI_NOTICE_SESSION_KEY = "jobops_ai_notice_seen_session";
@@ -319,6 +321,36 @@ function renderDetail(j) {
       <div class="k">Job URL</div><div class="v"><a class="muted" href="${escapeHtml(j.job_url || "#")}" target="_blank" rel="noopener">${escapeHtml(j.job_url || "-")}</a></div>
     </div>
 
+    <div id="appPackSection" class="kv">
+      <div class="k">Application Pack</div><div class="v">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span id="appPackStatus"><span class="badge">-</span></span>
+          <span class="chip">ATS: <b id="appAtsScore">-</b></span>
+        </div>
+      </div>
+      <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
+      <div class="k">Profile</div><div class="v">
+        <select id="appProfileSelect"></select>
+        <select id="appRenderer" style="margin-top:8px;">
+          <option value="reactive_resume">reactive_resume</option>
+          <option value="html_simple">html_simple</option>
+        </select>
+      </div>
+      <div class="k">Profile ID</div><div class="v"><input id="appProfileId" placeholder="primary" /></div>
+      <div class="k">Profile Name</div><div class="v"><input id="appProfileName" placeholder="Primary" /></div>
+      <div class="k">Profile JSON</div><div class="v"><textarea id="appProfileJson" rows="5" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea></div>
+      <div class="k">Actions</div><div class="v">
+        <div class="row" style="justify-content:flex-start; margin-top:0;">
+          <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
+          <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
+          <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
+          <button class="btn btn-secondary" onclick="copyPackSummary()">Copy tailored summary</button>
+          <button class="btn btn-secondary" onclick="copyPackBullets()">Copy tailored bullets</button>
+          <button class="btn btn-secondary" onclick="downloadRrJson()">Download RR JSON</button>
+        </div>
+      </div>
+    </div>
+
     ${needsManualJd ? `
       <div class="h3" style="margin: 12px 0 8px;">Paste JD (Manual)</div>
       <div class="muted tiny" style="margin-bottom: 8px;">Paste full JD text and save to extract + rescore.</div>
@@ -328,6 +360,7 @@ function renderDetail(j) {
       </div>
     ` : ""}
   `;
+  hydrateApplicationPack(j.job_key);
 }
 
 function getTargetDisplay(t) {
@@ -516,6 +549,154 @@ async function saveActiveTarget() {
   }
 }
 
+async function loadResumeProfiles() {
+  try {
+    const res = await api("/resume/profiles");
+    state.resumeProfiles = Array.isArray(res.data) ? res.data : [];
+    if (!state.resumeProfiles.length) return;
+    if (!state.resumeProfiles.some((p) => p.id === state.activeProfileId)) {
+      state.activeProfileId = state.resumeProfiles[0].id;
+    }
+  } catch (e) {
+    toast("Profiles load failed: " + e.message);
+  }
+}
+
+function getActiveProfile() {
+  return state.resumeProfiles.find((p) => p.id === state.activeProfileId) || null;
+}
+
+function resumeProfilesOptionsHtml() {
+  return state.resumeProfiles
+    .map((p) => `<option value="${escapeHtml(p.id)}"${p.id === state.activeProfileId ? " selected" : ""}>${escapeHtml(p.name || p.id)}</option>`)
+    .join("");
+}
+
+async function saveResumeProfileFromUi() {
+  const id = String($("appProfileId")?.value || "primary").trim() || "primary";
+  const name = String($("appProfileName")?.value || "Primary").trim() || "Primary";
+  const txt = String($("appProfileJson")?.value || "{}").trim();
+  let profileObj = {};
+  try {
+    profileObj = JSON.parse(txt || "{}");
+  } catch {
+    toast("Profile JSON is invalid");
+    return;
+  }
+  try {
+    spin(true);
+    await api("/resume/profiles", { method: "POST", body: { id, name, profile_json: profileObj } });
+    await loadResumeProfiles();
+    state.activeProfileId = id;
+    toast("Profile saved");
+  } catch (e) {
+    toast("Profile save failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
+async function generateApplicationPack(jobKey, force = false) {
+  try {
+    spin(true);
+    const renderer = String($("appRenderer")?.value || "reactive_resume");
+    const profileId = String($("appProfileSelect")?.value || state.activeProfileId || "").trim();
+    if (profileId) state.activeProfileId = profileId;
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/generate-application-pack`, {
+      method: "POST",
+      body: {
+        profile_id: state.activeProfileId || "primary",
+        force: Boolean(force),
+        renderer,
+      },
+    });
+    toast(`Pack ${res?.data?.status || "generated"} (${res?.data?.ats_score ?? "-"})`);
+    await hydrateApplicationPack(jobKey);
+  } catch (e) {
+    toast("Generate pack failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
+async function hydrateApplicationPack(jobKey) {
+  const section = $("appPackSection");
+  if (!section) return;
+
+  const profileSelect = $("appProfileSelect");
+  if (profileSelect) {
+    profileSelect.innerHTML = resumeProfilesOptionsHtml() || `<option value="primary">Primary</option>`;
+    profileSelect.value = state.activeProfileId || "primary";
+    profileSelect.onchange = () => {
+      state.activeProfileId = profileSelect.value || "primary";
+      const p = getActiveProfile();
+      if (p) {
+        $("appProfileId").value = p.id || "primary";
+        $("appProfileName").value = p.name || "Primary";
+      }
+    };
+  }
+
+  const p = getActiveProfile();
+  if ($("appProfileId")) $("appProfileId").value = p?.id || state.activeProfileId || "primary";
+  if ($("appProfileName")) $("appProfileName").value = p?.name || "Primary";
+  if ($("appProfileJson")) {
+    $("appProfileJson").value = JSON.stringify({
+      basics: { name: "", email: "", phone: "", location: "" },
+      summary: "",
+      experience: [],
+      skills: [],
+    }, null, 2);
+  }
+
+  try {
+    const q = state.activeProfileId ? `?profile_id=${encodeURIComponent(state.activeProfileId)}` : "";
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/application-pack${q}`);
+    const d = res.data || {};
+    const status = String(d.status || "-");
+    const ats = d.ats_json || {};
+    const missing = Array.isArray(ats.missing_keywords) ? ats.missing_keywords : [];
+    $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
+    $("appAtsScore").textContent = String(ats.score ?? "-");
+    $("appMissingKw").textContent = missing.length ? missing.join(", ") : "-";
+    section.dataset.packSummary = String(d?.pack_json?.tailoring?.summary || "");
+    section.dataset.packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
+    section.dataset.rrJson = JSON.stringify(d?.rr_export_json || {}, null, 2);
+  } catch (e) {
+    $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
+    $("appAtsScore").textContent = "-";
+    $("appMissingKw").textContent = e.httpStatus === 404 ? "No pack yet" : ("Error: " + e.message);
+    section.dataset.packSummary = "";
+    section.dataset.packBullets = "";
+    section.dataset.rrJson = "{}";
+  }
+}
+
+async function copyPackSummary() {
+  const txt = String($("appPackSection")?.dataset?.packSummary || "").trim();
+  if (!txt) return toast("No summary");
+  try { await navigator.clipboard.writeText(txt); toast("Summary copied"); } catch { toast("Copy failed"); }
+}
+
+async function copyPackBullets() {
+  const txt = String($("appPackSection")?.dataset?.packBullets || "").trim();
+  if (!txt) return toast("No bullets");
+  try { await navigator.clipboard.writeText(txt); toast("Bullets copied"); } catch { toast("Copy failed"); }
+}
+
+function downloadRrJson() {
+  const txt = String($("appPackSection")?.dataset?.rrJson || "{}");
+  const blob = new Blob([txt], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "reactive-resume-export.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function updateStatus(jobKey, status) {
   try {
     spin(true);
@@ -700,6 +881,7 @@ async function saveSettings() {
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
   hydrateSettingsUI();
+  loadResumeProfiles();
   showView("jobs");
   loadJobs();
 })();
@@ -708,3 +890,8 @@ window.updateStatus = updateStatus;
 window.rescoreOne = rescoreOne;
 window.saveAndRescoreManualJd = saveAndRescoreManualJd;
 window.saveActiveTarget = saveActiveTarget;
+window.saveResumeProfileFromUi = saveResumeProfileFromUi;
+window.generateApplicationPack = generateApplicationPack;
+window.copyPackSummary = copyPackSummary;
+window.copyPackBullets = copyPackBullets;
+window.downloadRrJson = downloadRrJson;
