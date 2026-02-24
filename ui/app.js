@@ -327,6 +327,7 @@ function renderDetail(j) {
           <span id="appPackStatus"><span class="badge">-</span></span>
           <span class="chip">ATS: <b id="appAtsScore">-</b></span>
         </div>
+        <div id="appPackEmpty" class="muted tiny" style="margin-top:8px;">No Application Pack yet</div>
       </div>
       <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
       <div class="k">Profile</div><div class="v">
@@ -360,6 +361,9 @@ function renderDetail(j) {
       </div>
     ` : ""}
   `;
+  if (window.location.hostname.includes("workers.dev")) {
+    console.log("Rendering Application Pack", j.job_key);
+  }
   hydrateApplicationPack(j.job_key);
 }
 
@@ -653,19 +657,24 @@ async function hydrateApplicationPack(jobKey) {
     const q = state.activeProfileId ? `?profile_id=${encodeURIComponent(state.activeProfileId)}` : "";
     const res = await api(`/jobs/${encodeURIComponent(jobKey)}/application-pack${q}`);
     const d = res.data || {};
+    if (window.location.hostname.includes("workers.dev")) {
+      console.log("Draft response", { status: d.status || null, hasAts: Boolean(d.ats_json) });
+    }
     const status = String(d.status || "-");
     const ats = d.ats_json || {};
     const missing = Array.isArray(ats.missing_keywords) ? ats.missing_keywords : [];
     $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
     $("appAtsScore").textContent = String(ats.score ?? "-");
     $("appMissingKw").textContent = missing.length ? missing.join(", ") : "-";
+    $("appPackEmpty").textContent = "Application Pack loaded";
     section.dataset.packSummary = String(d?.pack_json?.tailoring?.summary || "");
     section.dataset.packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
     section.dataset.rrJson = JSON.stringify(d?.rr_export_json || {}, null, 2);
   } catch (e) {
     $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
     $("appAtsScore").textContent = "-";
-    $("appMissingKw").textContent = e.httpStatus === 404 ? "No pack yet" : ("Error: " + e.message);
+    $("appMissingKw").textContent = e.httpStatus === 404 ? "-" : ("Error: " + e.message);
+    $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
     section.dataset.rrJson = "{}";
