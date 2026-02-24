@@ -50,6 +50,7 @@ export default {
       const isUiRoute =
         path === "/ingest" ||
         path === "/jobs" ||
+        path === "/metrics" ||
         path.startsWith("/jobs/") ||
         path === "/targets" ||
         path.startsWith("/targets/") ||
@@ -212,6 +213,14 @@ export default {
           return { ...row, ...display };
         });
         return json_({ ok: true, data: rows }, env, 200);
+      }
+
+      // ============================
+      // UI: Dashboard metrics
+      // ============================
+      if (path === "/metrics" && request.method === "GET") {
+        const data = await loadUiMetrics_(env);
+        return json_({ ok: true, data }, env, 200);
       }
 
       // ============================
@@ -854,18 +863,23 @@ export default {
         const now = Date.now();
         const r = targetSchema.hasRejectKeywords
           ? await env.DB.prepare(`
-              UPDATE targets SET
-                name = COALESCE(NULLIF(?, ''), name),
-                primary_role = COALESCE(NULLIF(?, ''), primary_role),
-                seniority_pref = COALESCE(NULLIF(?, ''), seniority_pref),
-                location_pref = COALESCE(NULLIF(?, ''), location_pref),
-                must_keywords_json = ?,
-                nice_keywords_json = ?,
-                reject_keywords_json = ?,
-                updated_at = ?
-              WHERE id = ?;
+              INSERT INTO targets (
+                id, name, primary_role, seniority_pref, location_pref,
+                must_keywords_json, nice_keywords_json, reject_keywords_json,
+                created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                name = COALESCE(NULLIF(excluded.name, ''), targets.name),
+                primary_role = COALESCE(NULLIF(excluded.primary_role, ''), targets.primary_role),
+                seniority_pref = COALESCE(NULLIF(excluded.seniority_pref, ''), targets.seniority_pref),
+                location_pref = COALESCE(NULLIF(excluded.location_pref, ''), targets.location_pref),
+                must_keywords_json = excluded.must_keywords_json,
+                nice_keywords_json = excluded.nice_keywords_json,
+                reject_keywords_json = excluded.reject_keywords_json,
+                updated_at = excluded.updated_at;
             `.trim()).bind(
-            name,
+            targetId,
+            name || targetId,
             primaryRole,
             seniorityPref,
             locationPref,
@@ -873,30 +887,35 @@ export default {
             JSON.stringify(nice),
             JSON.stringify(reject),
             now,
-            targetId
+            now
           ).run()
           : await env.DB.prepare(`
-              UPDATE targets SET
-                name = COALESCE(NULLIF(?, ''), name),
-                primary_role = COALESCE(NULLIF(?, ''), primary_role),
-                seniority_pref = COALESCE(NULLIF(?, ''), seniority_pref),
-                location_pref = COALESCE(NULLIF(?, ''), location_pref),
-                must_keywords_json = ?,
-                nice_keywords_json = ?,
-                updated_at = ?
-              WHERE id = ?;
+              INSERT INTO targets (
+                id, name, primary_role, seniority_pref, location_pref,
+                must_keywords_json, nice_keywords_json,
+                created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                name = COALESCE(NULLIF(excluded.name, ''), targets.name),
+                primary_role = COALESCE(NULLIF(excluded.primary_role, ''), targets.primary_role),
+                seniority_pref = COALESCE(NULLIF(excluded.seniority_pref, ''), targets.seniority_pref),
+                location_pref = COALESCE(NULLIF(excluded.location_pref, ''), targets.location_pref),
+                must_keywords_json = excluded.must_keywords_json,
+                nice_keywords_json = excluded.nice_keywords_json,
+                updated_at = excluded.updated_at;
             `.trim()).bind(
-            name,
+            targetId,
+            name || targetId,
             primaryRole,
             seniorityPref,
             locationPref,
             JSON.stringify(must),
             JSON.stringify(nice),
             now,
-            targetId
+            now
           ).run();
 
-        if (!r.success || r.changes === 0) return json_({ ok: false, error: "Not found" }, env, 404);
+        if (!r.success) return json_({ ok: false, error: "Failed to save target" }, env, 500);
 
         await logEvent_(env, "TARGET_UPDATED", null, { id: targetId, ts: now });
         return json_({ ok: true, data: { id: targetId, updated_at: now } }, env, 200);
@@ -1161,6 +1180,153 @@ function decorateJobRow_(row) {
   const display = computeDisplayFields_(row);
   row.display_title = display.display_title;
   row.display_company = display.display_company;
+}
+
+async function loadUiMetrics_(env) {
+  const now = Date.now();
+  const dayAgo = now - 24 * 60 * 60 * 1000;
+
+  const statusDefaults = {
+    NEW: 0,
+    SCORED: 0,
+    SHORTLISTED: 0,
+    APPLIED: 0,
+    REJECTED: 0,
+    ARCHIVED: 0,
+    LINK_ONLY: 0,
+  };
+  const systemDefaults = {
+    NEEDS_MANUAL_JD: 0,
+    AI_UNAVAILABLE: 0,
+  };
+
+  const statusRows = await env.DB.prepare(`
+    SELECT UPPER(COALESCE(status, 'UNKNOWN')) AS k, COUNT(*) AS c
+    FROM jobs
+    GROUP BY UPPER(COALESCE(status, 'UNKNOWN'));
+  `.trim()).all();
+  for (const r of (statusRows.results || [])) {
+    const key = String(r.k || "UNKNOWN").toUpperCase();
+    statusDefaults[key] = Number(r.c || 0);
+  }
+
+  const systemRows = await env.DB.prepare(`
+    SELECT UPPER(TRIM(system_status)) AS k, COUNT(*) AS c
+    FROM jobs
+    WHERE TRIM(COALESCE(system_status, '')) != ''
+    GROUP BY UPPER(TRIM(system_status));
+  `.trim()).all();
+  for (const r of (systemRows.results || [])) {
+    const key = String(r.k || "").toUpperCase();
+    if (!key) continue;
+    systemDefaults[key] = Number(r.c || 0);
+  }
+
+  const sourceRows = await env.DB.prepare(`
+    SELECT LOWER(COALESCE(source_domain, 'unknown')) AS source, COUNT(*) AS c
+    FROM jobs
+    GROUP BY LOWER(COALESCE(source_domain, 'unknown'))
+    ORDER BY c DESC;
+  `.trim()).all();
+
+  const totals = await env.DB.prepare(`
+    SELECT
+      COUNT(*) AS jobs_total,
+      SUM(CASE WHEN final_score IS NOT NULL THEN 1 ELSE 0 END) AS scored_jobs,
+      AVG(CASE WHEN final_score IS NOT NULL THEN final_score END) AS avg_final_score
+    FROM jobs;
+  `.trim()).first();
+
+  const pollRows = await env.DB.prepare(`
+    SELECT payload_json, ts
+    FROM events
+    WHERE event_type = 'GMAIL_POLL' AND ts >= ?
+    ORDER BY ts DESC
+    LIMIT 300;
+  `.trim()).bind(dayAgo).all();
+
+  const latestPollRow = await env.DB.prepare(`
+    SELECT payload_json, ts
+    FROM events
+    WHERE event_type = 'GMAIL_POLL'
+    ORDER BY ts DESC
+    LIMIT 1;
+  `.trim()).first();
+
+  const poll24 = {
+    poll_runs: 0,
+    scanned: 0,
+    processed: 0,
+    skipped_existing: 0,
+    inserted_or_updated: 0,
+    inserted_count: 0,
+    updated_count: 0,
+    link_only: 0,
+    ignored: 0,
+    skipped_promotional: 0,
+  };
+  for (const r of (pollRows.results || [])) {
+    const p = safeJsonParse_(r.payload_json) || {};
+    poll24.poll_runs += 1;
+    poll24.scanned += numOr_(p.scanned, 0);
+    poll24.processed += numOr_(p.processed, 0);
+    poll24.skipped_existing += numOr_(p.skipped_existing ?? p.skipped_already_ingested, 0);
+    poll24.inserted_or_updated += numOr_(p.inserted_or_updated, 0);
+    poll24.inserted_count += numOr_(p.inserted_count, 0);
+    poll24.updated_count += numOr_(p.updated_count, 0);
+    poll24.link_only += numOr_(p.link_only, 0);
+    poll24.ignored += numOr_(p.ignored, 0);
+    poll24.skipped_promotional += numOr_(p.skipped_promotional, 0);
+  }
+
+  const latestPayload = safeJsonParse_(latestPollRow?.payload_json) || {};
+  const latestPoll = {
+    ts: numOrNull_(latestPollRow?.ts),
+    query_used: String(latestPayload.query_used || ""),
+    scanned: numOr_(latestPayload.scanned, 0),
+    processed: numOr_(latestPayload.processed, 0),
+    skipped_existing: numOr_(latestPayload.skipped_existing ?? latestPayload.skipped_already_ingested, 0),
+    inserted_or_updated: numOr_(latestPayload.inserted_or_updated, 0),
+    inserted_count: numOr_(latestPayload.inserted_count, 0),
+    updated_count: numOr_(latestPayload.updated_count, 0),
+    link_only: numOr_(latestPayload.link_only, 0),
+    ignored: numOr_(latestPayload.ignored, 0),
+    skipped_promotional: numOr_(latestPayload.skipped_promotional, 0),
+  };
+
+  const eventRows = await env.DB.prepare(`
+    SELECT event_type, COUNT(*) AS c
+    FROM events
+    WHERE ts >= ?
+    GROUP BY event_type
+    ORDER BY c DESC
+    LIMIT 30;
+  `.trim()).bind(dayAgo).all();
+
+  return {
+    generated_at: now,
+    statuses: statusDefaults,
+    systems: systemDefaults,
+    sources: (sourceRows.results || []).map((r) => ({
+      source: String(r.source || "unknown"),
+      count: Number(r.c || 0),
+    })),
+    totals: {
+      jobs_total: Number(totals?.jobs_total || 0),
+      scored_jobs: Number(totals?.scored_jobs || 0),
+      avg_final_score: Number.isFinite(Number(totals?.avg_final_score))
+        ? Math.round(Number(totals.avg_final_score) * 10) / 10
+        : null,
+    },
+    gmail: {
+      latest: latestPoll,
+      last_24h: poll24,
+    },
+    events_last_24h: (eventRows.results || []).map((r) => ({
+      event_type: String(r.event_type || ""),
+      count: Number(r.c || 0),
+    })),
+  };
 }
 
 function computeDisplayFields_(row) {
@@ -2171,6 +2337,7 @@ function routeModeFor_(path) {
 
   if (
     path === "/jobs" ||
+    path === "/metrics" ||
     path.startsWith("/jobs/") ||
     path === "/ingest" ||
     path === "/targets" ||
