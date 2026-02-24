@@ -467,6 +467,10 @@ export default {
       if (path.startsWith("/jobs/") && path.endsWith("/checklist") && request.method === "GET") {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const jobsSchema = await getJobsSchema_(env);
+        if (!jobsSchema.hasChecklistFields) {
+          return json_({ ok: false, error: "Checklist fields not enabled in DB schema" }, env, 400);
+        }
 
         const row = await env.DB.prepare(`
           SELECT job_key, applied_note, follow_up_at, referral_status, applied_at
@@ -480,6 +484,10 @@ export default {
       if (path.startsWith("/jobs/") && path.endsWith("/checklist") && request.method === "POST") {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const jobsSchema = await getJobsSchema_(env);
+        if (!jobsSchema.hasChecklistFields) {
+          return json_({ ok: false, error: "Checklist fields not enabled in DB schema" }, env, 400);
+        }
 
         const body = await request.json().catch(() => ({}));
         const appliedNote = String(body.applied_note || "").slice(0, 2000);
@@ -841,7 +849,10 @@ export default {
         const now = Date.now();
         const results = [];
         let insertedOrUpdated = 0;
+        let insertedCount = 0;
+        let updatedCount = 0;
         let ignored = 0;
+        let linkOnly = 0;
 
         const aiForIngest = ai || getAi_(env);
         const aiAvailable = Boolean(aiForIngest);
@@ -850,8 +861,18 @@ export default {
           const norm = await normalizeJobUrl_(String(rawUrl || "").trim());
           if (!norm || norm.ignored) {
             ignored += 1;
+            results.push({
+              raw_url: rawUrl,
+              was_existing: false,
+              action: "ignored",
+            });
             continue;
           }
+
+          const existing = await env.DB.prepare(
+            `SELECT 1 AS ok FROM jobs WHERE job_key = ? LIMIT 1;`
+          ).bind(norm.job_key).first();
+          const wasExisting = Boolean(existing && existing.ok === 1);
 
           // Resolve JD
           const resolved = await resolveJd_(norm.job_url, { emailHtml, emailText });
@@ -952,11 +973,22 @@ export default {
           ).run();
 
           if (r.success) insertedOrUpdated += 1;
+          if (transition.status === "LINK_ONLY") linkOnly += 1;
+
+          let action = wasExisting ? "updated" : "inserted";
+          if (transition.status === "LINK_ONLY" && aiAvailable) {
+            action = "link_only";
+          }
+
+          if (action === "inserted") insertedCount += 1;
+          if (action === "updated") updatedCount += 1;
 
           results.push({
             raw_url: rawUrl,
             job_key: norm.job_key,
             job_url: norm.job_url,
+            was_existing: wasExisting,
+            action,
             status: transition.status,
             jd_source: resolved.jd_source,
             fetch_status: effectiveFetchStatus,
@@ -969,7 +1001,10 @@ export default {
           data: {
             count_in: rawUrls.length,
             inserted_or_updated: insertedOrUpdated,
+            inserted_count: insertedCount,
+            updated_count: updatedCount,
             ignored,
+            link_only: linkOnly,
             results
           }
         }, env, 200);
@@ -1018,6 +1053,21 @@ async function getTargetsSchema_(env) {
     };
   } catch {
     return { hasRejectKeywords: false };
+  }
+}
+
+async function getJobsSchema_(env) {
+  try {
+    const rows = await env.DB.prepare(`PRAGMA table_info(jobs);`).all();
+    const names = new Set((rows.results || []).map((r) => String(r.name || "").trim()));
+    return {
+      hasChecklistFields:
+        names.has("applied_note") &&
+        names.has("follow_up_at") &&
+        names.has("referral_status"),
+    };
+  } catch {
+    return { hasChecklistFields: false };
   }
 }
 
