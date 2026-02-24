@@ -1690,6 +1690,7 @@ async function runGmailPoll_(env, opts = {}) {
   return pollGmailAndIngest_(env, {
     query,
     maxPerRun,
+    normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     ingestFn: async ({ raw_urls, email_text, email_html }) => {
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(raw_urls) ? raw_urls : [],

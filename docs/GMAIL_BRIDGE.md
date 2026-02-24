@@ -63,8 +63,9 @@ Polling behavior:
 2. Refreshes access token if needed.
 3. Lists Gmail messages using query + run limit.
 4. Skips already ingested messages (`gmail_ingest_log.msg_id`).
-5. Extracts URLs + email bodies.
-6. Reuses internal ingest pipeline (same normalize/resolve/manual behavior).
+5. Extracts URLs from text/plain and text/html.
+6. Classifies URLs using Worker normalization (same `normalizeJobUrl_` pipeline as `/normalize-job`) so tracking links can still canonicalize to job URLs.
+7. Reuses internal ingest pipeline (same normalize/resolve/manual behavior).
 7. Persists ingest log + advances `gmail_state.last_seen_internal_date`.
 
 Poll response now includes run-level counters for diagnosis:
@@ -114,6 +115,8 @@ Example response shape:
    - `skipped_already_ingested`: dedupe skipped by `msg_id`.
    - `urls_found_total` / `ignored_domains_count`: extraction vs unsupported domains.
    - `ingested_count` + inserted/updated/link_only/ignored counts: ingest outcomes.
+   - `urls_job_domains_total`: canonical job candidates kept after normalization.
+   - `ignored_domains_count`: rejected by normalization (`ignored=true`) or unsupported link.
 
 Test-email path (deterministic):
 1. Send yourself an email with subject `JobOps Test 1`.

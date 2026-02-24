@@ -304,6 +304,16 @@ Expected:
 5. Confirm jobs ingestion:
    - `GET /jobs?limit=20&offset=0` with `x-ui-key`.
 
+Tracking-link normalization check:
+1. Send test mail with subject `JobOps Test 2`.
+2. Include a LinkedIn tracking/collections URL that ultimately resolves to a jobs link.
+3. Run poll with override query:
+   - `in:anywhere newer_than:2d subject:"JobOps Test 2"`
+4. Verify counters:
+   - `data.urls_found_total > 0`
+   - `data.urls_job_domains_total > 0` after normalization
+   - `data.ingested_count > 0` or `data.ingest_ignored_count` explains rejection
+
 ## 16) Verify Gmail-ingested jobs appear
 1. Run manual Gmail poll.
 2. Fetch jobs:

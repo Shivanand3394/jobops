@@ -59,7 +59,7 @@ export async function handleGmailOAuthCallback_(env, { code, redirectUri }) {
   return { connected: true, has_refresh_token: true };
 }
 
-export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn }) {
+export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn, normalizeFn }) {
   if (!env.DB) throw new Error("Missing D1 binding env.DB (bind your D1 as DB)");
   if (typeof ingestFn !== "function") throw new Error("ingestFn is required");
 
@@ -134,7 +134,7 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn }) {
 
     const parsed = parseGmailMessage_(full);
     const urlStats = scanUrls_(parsed.combined_text);
-    const classified = classifyJobUrls_(urlStats.unique_urls);
+    const classified = await classifyJobUrls_(urlStats.unique_urls, normalizeFn);
     const urls = classified.supported_urls;
     urlsFoundTotal += urlStats.found_urls.length;
     urlsJobDomainsTotal += urls.length;
@@ -369,7 +369,48 @@ function scanUrls_(text) {
   return { found_urls: found, unique_urls: unique_(found) };
 }
 
-function classifyJobUrls_(urls) {
+async function classifyJobUrls_(urls, normalizeFn) {
+  // Prefer post-normalization classification so tracking links can still resolve to canonical job URLs.
+  if (typeof normalizeFn === "function") {
+    const supported = [];
+    const seenByKey = new Set();
+    const seenByUrl = new Set();
+    let ignoredDomains = 0;
+
+    for (const raw of urls || []) {
+      let norm = null;
+      try {
+        norm = await normalizeFn(String(raw || ""));
+      } catch {
+        norm = null;
+      }
+
+      if (!norm || norm.ignored || !norm.job_url) {
+        ignoredDomains += 1;
+        continue;
+      }
+
+      const key = String(norm.job_key || "").trim();
+      const canonicalUrl = String(norm.job_url || "").trim();
+      if (!canonicalUrl) {
+        ignoredDomains += 1;
+        continue;
+      }
+
+      // Deduplicate by job_key first; fallback to canonical URL.
+      if (key) {
+        if (seenByKey.has(key)) continue;
+        seenByKey.add(key);
+      } else {
+        if (seenByUrl.has(canonicalUrl)) continue;
+        seenByUrl.add(canonicalUrl);
+      }
+      supported.push(canonicalUrl);
+    }
+
+    return { supported_urls: supported, ignored_domains_count: ignoredDomains };
+  }
+
   const supported = [];
   let ignoredDomains = 0;
   for (const raw of urls || []) {
