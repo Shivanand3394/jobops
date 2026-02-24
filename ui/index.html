@@ -20,8 +20,7 @@
       <button class="btn btn-ghost hidden" id="btnShowAiNotice" title="Show AI notice">Show AI notice</button>
       <button class="btn btn-ghost" id="btnSettings" title="Settings">Settings</button>
       <button class="btn" id="btnAdd">+ Add job URL</button>
-      <button class="btn btn-secondary" id="btnRescore">Rescore NEW+SCORED</button>
-      <button class="btn btn-secondary" id="btnRescore2">Rescore (safe)</button>
+      <button class="btn btn-secondary" id="btnRescore">Rescore NEW</button>
     </div>
   </header>
 
@@ -55,6 +54,7 @@
         </div>
 
         <button class="btn btn-ghost" id="btnRefresh" title="Refresh">Refresh</button>
+        <button class="btn btn-ghost" id="btnBatchOps" title="Batch operations">Batch Ops</button>
       </div>
 
       <div class="list-meta">
@@ -153,6 +153,24 @@
           <button class="btn btn-ghost" id="btnCancelSettings">Cancel</button>
         </div>
         <div class="muted tiny">We store these in your browser localStorage.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Ops Modal -->
+  <div id="modalBatch" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="h3">Batch Operations</div>
+        <button class="btn btn-ghost" id="btnCloseBatch">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="muted tiny">Run scoring by status explicitly.</div>
+        <div class="row" style="justify-content:flex-start;">
+          <button class="btn" id="btnBatchRescoreNew">Rescore NEW</button>
+          <button class="btn btn-secondary" id="btnBatchRescoreScored">Rescore SCORED</button>
+          <button class="btn btn-ghost" id="btnBatchCancel">Cancel</button>
+        </div>
       </div>
     </div>
   </div>

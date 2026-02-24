@@ -314,6 +314,17 @@ textarea, input{
   max-width: min(680px, calc(100% - 22px));
   text-align: center;
 }
+.toast.info{
+  border-color: var(--line);
+}
+.toast.success{
+  border-color: rgba(34,197,94,.55);
+  background: rgba(7, 30, 18, .92);
+}
+.toast.error{
+  border-color: rgba(239,68,68,.7);
+  background: rgba(60, 10, 20, .92);
+}
 .toast.hidden{display:none}
 
 .spinner{

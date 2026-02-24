@@ -23,17 +23,29 @@ const state = {
   rejectKeywordsEnabled: true,
   resumeProfiles: [],
   activeProfileId: "primary",
+  profileJsonDraftById: {},
 };
 
 const AI_NOTICE_SESSION_KEY = "jobops_ai_notice_seen_session";
 const AI_NOTICE_DETECTED_KEY = "jobops_ai_notice_detected";
 
-function toast(msg) {
+function toast(msg, opts = {}) {
   const t = $("toast");
-  t.textContent = msg;
-  t.classList.remove("hidden");
+  const text = String(msg || "");
+  const lower = text.toLowerCase();
+  const kind = opts.kind || (lower.includes("fail") || lower.includes("error") ? "error" : (lower.includes("saved") || lower.includes("rescored") || lower.includes("copied") ? "success" : "info"));
+  const sticky = Boolean(opts.sticky);
+  const duration = Number.isFinite(Number(opts.duration))
+    ? Number(opts.duration)
+    : (kind === "error" ? 5000 : 2200);
+
+  t.textContent = text;
+  t.classList.remove("hidden", "info", "success", "error");
+  t.classList.add(kind);
   clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => t.classList.add("hidden"), 2200);
+  if (!sticky) {
+    toast._timer = setTimeout(() => t.classList.add("hidden"), duration);
+  }
 }
 
 function spin(on) {
@@ -163,7 +175,6 @@ function showView(view) {
   const jobsActionsHidden = view !== "jobs";
   $("btnAdd").classList.toggle("hidden", jobsActionsHidden);
   $("btnRescore").classList.toggle("hidden", jobsActionsHidden);
-  $("btnRescore2").classList.toggle("hidden", jobsActionsHidden);
 
   if (view === "targets") loadTargets();
 }
@@ -596,10 +607,45 @@ function getActiveProfile() {
   return state.resumeProfiles.find((p) => p.id === state.activeProfileId) || null;
 }
 
+function defaultProfileTemplate_() {
+  return {
+    basics: { name: "", email: "", phone: "", location: "" },
+    summary: "",
+    experience: [],
+    skills: [],
+  };
+}
+
 function resumeProfilesOptionsHtml() {
   return state.resumeProfiles
     .map((p) => `<option value="${escapeHtml(p.id)}"${p.id === state.activeProfileId ? " selected" : ""}>${escapeHtml(p.name || p.id)}</option>`)
     .join("");
+}
+
+async function loadResumeProfileDetail(profileId, { silent = false } = {}) {
+  const id = String(profileId || "").trim();
+  if (!id) return;
+  try {
+    const res = await api(`/resume/profiles/${encodeURIComponent(id)}`);
+    const p = res.data || {};
+    const canonicalId = String(p.id || id).trim() || id;
+    const canonicalName = String(p.name || canonicalId).trim() || canonicalId;
+    const profileObj = (p.profile_json && typeof p.profile_json === "object") ? p.profile_json : defaultProfileTemplate_();
+    const txt = JSON.stringify(profileObj, null, 2);
+    state.activeProfileId = canonicalId;
+    state.profileJsonDraftById[canonicalId] = txt;
+
+    if ($("appProfileId")) $("appProfileId").value = canonicalId;
+    if ($("appProfileName")) $("appProfileName").value = canonicalName;
+    if ($("appProfileJson")) $("appProfileJson").value = txt;
+  } catch (e) {
+    if (!silent) toast("Profile load failed: " + e.message, { kind: "error" });
+    if ($("appProfileId")) $("appProfileId").value = id;
+    if ($("appProfileName")) $("appProfileName").value = id;
+    const fallback = state.profileJsonDraftById[id] || JSON.stringify(defaultProfileTemplate_(), null, 2);
+    state.profileJsonDraftById[id] = fallback;
+    if ($("appProfileJson")) $("appProfileJson").value = fallback;
+  }
 }
 
 async function saveResumeProfileFromUi() {
@@ -618,6 +664,7 @@ async function saveResumeProfileFromUi() {
     await api("/resume/profiles", { method: "POST", body: { id, name, profile_json: profileObj } });
     await loadResumeProfiles();
     state.activeProfileId = id;
+    state.profileJsonDraftById[id] = JSON.stringify(profileObj, null, 2);
     toast("Profile saved");
   } catch (e) {
     toast("Profile save failed: " + e.message);
@@ -657,26 +704,24 @@ async function hydrateApplicationPack(jobKey) {
   if (profileSelect) {
     profileSelect.innerHTML = resumeProfilesOptionsHtml() || `<option value="primary">Primary</option>`;
     profileSelect.value = state.activeProfileId || "primary";
-    profileSelect.onchange = () => {
+    profileSelect.onchange = async () => {
       state.activeProfileId = profileSelect.value || "primary";
-      const p = getActiveProfile();
-      if (p) {
-        $("appProfileId").value = p.id || "primary";
-        $("appProfileName").value = p.name || "Primary";
-      }
+      await loadResumeProfileDetail(state.activeProfileId, { silent: true });
     };
   }
 
   const p = getActiveProfile();
   if ($("appProfileId")) $("appProfileId").value = p?.id || state.activeProfileId || "primary";
   if ($("appProfileName")) $("appProfileName").value = p?.name || "Primary";
+  const profileId = state.activeProfileId || "primary";
+  await loadResumeProfileDetail(profileId, { silent: true });
   if ($("appProfileJson")) {
-    $("appProfileJson").value = JSON.stringify({
-      basics: { name: "", email: "", phone: "", location: "" },
-      summary: "",
-      experience: [],
-      skills: [],
-    }, null, 2);
+    const draft = state.profileJsonDraftById[profileId];
+    if (draft) $("appProfileJson").value = draft;
+    $("appProfileJson").oninput = () => {
+      const activeId = String($("appProfileId")?.value || state.activeProfileId || "primary").trim() || "primary";
+      state.profileJsonDraftById[activeId] = $("appProfileJson").value;
+    };
   }
 
   try {
@@ -733,6 +778,10 @@ function downloadRrJson() {
 }
 
 async function updateStatus(jobKey, status) {
+  const upper = String(status || "").toUpperCase();
+  if ((upper === "REJECTED" || upper === "ARCHIVED") && !confirm(`Mark this job as ${upper}?`)) {
+    return;
+  }
   try {
     spin(true);
     await api(`/jobs/${encodeURIComponent(jobKey)}/status`, { method: "POST", body: { status } });
@@ -839,11 +888,13 @@ async function doIngest() {
   }
 }
 
-async function rescorePending() {
+async function rescorePending(status = "NEW") {
   try {
     spin(true);
-    const res = await api("/score-pending", { method: "POST", body: { limit: 50 } });
-    toast(`Rescore done - picked ${res.data?.picked ?? "-"} - updated ${res.data?.updated ?? "-"}`);
+    const body = { limit: 50 };
+    if (status) body.status = status;
+    const res = await api("/score-pending", { method: "POST", body });
+    toast(`Rescore ${status || "NEW"} done - picked ${res.data?.picked ?? "-"} - updated ${res.data?.updated ?? "-"}`);
     await loadJobs();
   } catch (e) {
     toast("Rescore failed: " + e.message);
@@ -884,6 +935,7 @@ async function saveSettings() {
 }
 
 (function init() {
+  $("toast").onclick = () => $("toast").classList.add("hidden");
   $("btnDismissAiNotice").onclick = hideAiNotice;
   $("btnShowAiNotice").onclick = () => showAiNotice(true);
   if (localStorage.getItem(AI_NOTICE_DETECTED_KEY) === "1") {
@@ -904,8 +956,12 @@ async function saveSettings() {
   $("btnSaveSettings").onclick = saveSettings;
 
   $("btnRefresh").onclick = loadJobs;
-  $("btnRescore").onclick = rescorePending;
-  $("btnRescore2").onclick = rescorePending;
+  $("btnRescore").onclick = () => rescorePending("NEW");
+  $("btnBatchOps").onclick = () => openModal("modalBatch");
+  $("btnCloseBatch").onclick = () => closeModal("modalBatch");
+  $("btnBatchCancel").onclick = () => closeModal("modalBatch");
+  $("btnBatchRescoreNew").onclick = async () => { closeModal("modalBatch"); await rescorePending("NEW"); };
+  $("btnBatchRescoreScored").onclick = async () => { closeModal("modalBatch"); await rescorePending("SCORED"); };
 
   $("btnTargetsRefresh").onclick = loadTargets;
   $("targetSearch").oninput = renderTargets;

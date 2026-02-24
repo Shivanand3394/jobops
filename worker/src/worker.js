@@ -620,6 +620,27 @@ export default {
         return json_({ ok: true, data: res.results || [] }, env, 200);
       }
 
+      if (path.startsWith("/resume/profiles/") && request.method === "GET") {
+        const profileId = decodeURIComponent(path.split("/")[3] || "").trim();
+        if (!profileId) return json_({ ok: false, error: "Missing profile id" }, env, 400);
+        const row = await env.DB.prepare(`
+          SELECT id, name, profile_json, updated_at
+          FROM resume_profiles
+          WHERE id = ?
+          LIMIT 1;
+        `.trim()).bind(profileId).first();
+        if (!row) return json_({ ok: false, error: "Not found" }, env, 404);
+        return json_({
+          ok: true,
+          data: {
+            id: row.id,
+            name: row.name || row.id,
+            profile_json: safeJsonParse_(row.profile_json) || {},
+            updated_at: row.updated_at,
+          }
+        }, env, 200);
+      }
+
       if (path === "/resume/profiles" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
         const id = String(body.id || body.profile_id || crypto.randomUUID()).trim().slice(0, 80);
