@@ -136,7 +136,11 @@ function renderIngestResultBox(data) {
 }
 
 function getDisplayTitle(j) {
-  return j.display_title || j.role_title || "(Needs JD)";
+  return j.display_title || j.role_title || "(Untitled)";
+}
+
+function getDisplayCompany(j) {
+  return j.company || j.display_company || j.source_domain || "";
 }
 
 function showView(view) {
@@ -179,9 +183,13 @@ function renderListMeta() {
 function jobCard(j) {
   const score = (j.final_score === null || j.final_score === undefined) ? "-" : j.final_score;
   const loc = j.location || "-";
-  const comp = j.company || "-";
+  const comp = getDisplayCompany(j) || "-";
   const role = getDisplayTitle(j);
   const status = String(j.status || "").toUpperCase();
+  const systemStatus = String(j.system_status || "").toUpperCase();
+  const needsJdBadge = systemStatus === "NEEDS_MANUAL_JD"
+    ? `<span class="chip">Needs JD</span>`
+    : "";
   const isActive = state.activeKey === j.job_key;
 
   return `
@@ -195,6 +203,7 @@ function jobCard(j) {
       </div>
       <div class="meta">
         <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
+        ${needsJdBadge}
         <span class="chip">${escapeHtml(j.source_domain || "-")}</span>
         <span class="chip">${escapeHtml(j.seniority || "-")}</span>
       </div>
@@ -267,8 +276,18 @@ async function setActive(jobKey) {
 
 function renderDetail(j) {
   $("detailBody").classList.remove("empty");
-  $("dRole").textContent = getDisplayTitle(j);
-  $("dCompany").textContent = j.company || "-";
+  const headerTitle = getDisplayTitle(j);
+  const headerCompany = getDisplayCompany(j) || "-";
+  const missingCore = !String(j.role_title || "").trim() && !String(j.company || "").trim();
+  const fetchedLowQuality =
+    String(j.jd_source || "").toLowerCase() === "fetched" &&
+    (
+      String(j.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD" ||
+      ["blocked", "low_quality", "failed"].includes(String(j.fetch_status || "").toLowerCase())
+    );
+  const headerHint = (missingCore && fetchedLowQuality) ? " Paste JD and Save & Rescore." : "";
+  $("dRole").textContent = headerTitle;
+  $("dCompany").textContent = `${headerCompany}${headerHint}`;
 
   const openHref = j.job_url || "#";
   const openBtn = $("dOpen");

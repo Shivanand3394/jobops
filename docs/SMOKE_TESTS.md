@@ -351,3 +351,21 @@ Invoke-WebRequest -Uri "$BASE_URL/jobs?limit=20&offset=0" -Method GET -Headers @
 
 Expected:
 - newly ingested jobs visible in jobs list.
+
+## 17) Verify title/company fallback rendering
+1. Call jobs list and confirm each row includes display fields:
+
+### curl
+```bash
+curl -sS "$BASE_URL/jobs?limit=10&offset=0" -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/jobs?limit=10&offset=0" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- each row has non-empty `display_title` (`role_title` fallback, then `(Needs JD)` / `(Untitled)`)
+- `display_company` is always present (empty string when company is missing)
+- UI list and detail headers do not show blank title/company rows
