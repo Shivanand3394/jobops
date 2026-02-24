@@ -47,6 +47,9 @@ jobs:
       - name: Check Worker JS syntax
         run: node --check worker/src/worker.js
 
+      - name: Check resume_pack module syntax
+        run: node --check worker/src/resume_pack.js
+
       - name: Ensure UI index exists
         shell: bash
         run: test -f ui/index.html
@@ -54,3 +57,7 @@ jobs:
       - name: Ensure baseline migration exists
         shell: bash
         run: test -f worker/migrations/001_init.sql
+
+      - name: Ensure resume pack migration exists
+        shell: bash
+        run: test -f worker/migrations/003_resume_pack.sql
