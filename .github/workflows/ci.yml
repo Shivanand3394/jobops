@@ -1,0 +1,56 @@
+name: CI Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate wrangler.jsonc parse + DB binding
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require("fs");
+          const path = "worker/wrangler.jsonc";
+          const raw = fs.readFileSync(path, "utf8");
+          const noBlock = raw.replace(/\/\*[\s\S]*?\*\//g, "");
+          const noLine = noBlock.replace(/^\s*\/\/.*$/gm, "");
+          let cfg;
+          try {
+            cfg = JSON.parse(noLine);
+          } catch (e) {
+            console.error("Invalid JSONC in worker/wrangler.jsonc:", e.message);
+            process.exit(1);
+          }
+          const d1 = Array.isArray(cfg.d1_databases) ? cfg.d1_databases : [];
+          const hasDbBinding = d1.some((x) => x && x.binding === "DB");
+          if (!hasDbBinding) {
+            console.error("Missing required D1 binding 'DB' in worker/wrangler.jsonc");
+            process.exit(1);
+          }
+          console.log("wrangler.jsonc OK and D1 binding DB present");
+          NODE
+
+      - name: Check Worker JS syntax
+        run: node --check worker/src/worker.js
+
+      - name: Ensure UI index exists
+        shell: bash
+        run: test -f ui/index.html
+
+      - name: Ensure baseline migration exists
+        shell: bash
+        run: test -f worker/migrations/001_init.sql
