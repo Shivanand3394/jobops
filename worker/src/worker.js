@@ -1,5 +1,6 @@
 ﻿// worker_jobops_v2_ui_plus_clean.js
 import { buildGmailAuthUrl_, handleGmailOAuthCallback_, pollGmailAndIngest_ } from "./gmail.js";
+import { ensurePrimaryProfile_, generateApplicationPack_, persistResumeDraft_ } from "./resume_pack.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -51,7 +52,8 @@ export default {
         path === "/jobs" ||
         path.startsWith("/jobs/") ||
         path === "/targets" ||
-        path.startsWith("/targets/");
+        path.startsWith("/targets/") ||
+        path.startsWith("/resume/");
 
       const isAdminRoute =
         path === "/normalize-job" ||
@@ -217,7 +219,7 @@ export default {
       // ============================
       // UI: JOB detail
       // ============================
-      if (path.startsWith("/jobs/") && request.method === "GET" && !path.endsWith("/status") && !path.endsWith("/rescore") && !path.endsWith("/checklist") && !path.endsWith("/resume-payload")) {
+      if (path.startsWith("/jobs/") && request.method === "GET" && !path.endsWith("/status") && !path.endsWith("/rescore") && !path.endsWith("/checklist") && !path.endsWith("/resume-payload") && !path.endsWith("/application-pack")) {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
@@ -605,6 +607,160 @@ export default {
         };
 
         return json_({ ok: true, data: payload }, env, 200);
+      }
+
+      // ============================
+      // UI: Resume profiles
+      // ============================
+      if (path === "/resume/profiles" && request.method === "GET") {
+        await ensurePrimaryProfile_(env);
+        const res = await env.DB.prepare(`
+          SELECT id, name, updated_at
+          FROM resume_profiles
+          ORDER BY updated_at DESC;
+        `.trim()).all();
+        return json_({ ok: true, data: res.results || [] }, env, 200);
+      }
+
+      if (path === "/resume/profiles" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const id = String(body.id || body.profile_id || crypto.randomUUID()).trim().slice(0, 80);
+        const name = String(body.name || "Primary").trim().slice(0, 120) || "Primary";
+        const profileObj = (body.profile_json && typeof body.profile_json === "object")
+          ? body.profile_json
+          : safeJsonParse_(body.profile_json) || {};
+        const now = Date.now();
+
+        await env.DB.prepare(`
+          INSERT INTO resume_profiles (id, name, profile_json, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            profile_json = excluded.profile_json,
+            updated_at = excluded.updated_at;
+        `.trim()).bind(id, name, JSON.stringify(profileObj), now, now).run();
+
+        return json_({ ok: true, data: { id, name, updated_at: now } }, env, 200);
+      }
+
+      // ============================
+      // UI: Generate application pack
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/generate-application-pack") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const body = await request.json().catch(() => ({}));
+        const force = Boolean(body.force);
+        const renderer = String(body.renderer || "reactive_resume").trim().toLowerCase();
+        const rendererSafe = (renderer === "html_simple" || renderer === "reactive_resume") ? renderer : "reactive_resume";
+
+        const job = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
+        if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        let profile = null;
+        const profileIdIn = String(body.profile_id || "").trim();
+        if (profileIdIn) {
+          profile = await env.DB.prepare(`SELECT * FROM resume_profiles WHERE id = ? LIMIT 1;`).bind(profileIdIn).first();
+        }
+        if (!profile) profile = await ensurePrimaryProfile_(env);
+
+        const targets = await loadTargets_(env);
+        const target = targets.find((t) => t.id === String(job.primary_target_id || "")) || null;
+        const aiForPack = getAi_(env);
+
+        let packData = null;
+        try {
+          packData = await generateApplicationPack_({
+            env,
+            ai: aiForPack || null,
+            job,
+            target,
+            profile,
+            renderer: rendererSafe,
+          });
+        } catch (e) {
+          packData = {
+            status: aiForPack ? "ERROR" : "NEEDS_AI",
+            error_text: String(e?.message || e).slice(0, 1000),
+            pack_json: {
+              job: { job_key: job.job_key, job_url: job.job_url, source_domain: job.source_domain, status: job.status },
+              target: target || null,
+              extracted: { role_title: job.role_title, company: job.company, location: job.location, seniority: job.seniority, final_score: job.final_score },
+              tailoring: { summary: "", bullets: [], must_keywords: safeJsonParseArray_(job.must_have_keywords_json), nice_keywords: safeJsonParseArray_(job.nice_to_have_keywords_json) },
+              renderer: rendererSafe,
+            },
+            ats_json: { score: 0, missing_keywords: safeJsonParseArray_(job.must_have_keywords_json).slice(0, 20), coverage: {}, notes: "Pack generation failed. Retry later." },
+            rr_export_json: {},
+            ats_score: 0,
+          };
+        }
+
+        const saved = await persistResumeDraft_({
+          env,
+          jobKey: job.job_key,
+          profileId: profile.id,
+          pack: packData,
+          force,
+        });
+
+        await logEvent_(env, "APPLICATION_PACK_GENERATED", jobKey, {
+          profile_id: profile.id,
+          status: packData.status,
+          ats_score: packData.ats_score,
+          ts: Date.now(),
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: job.job_key,
+            draft_id: saved.draft_id,
+            profile_id: profile.id,
+            status: packData.status,
+            ats_score: packData.ats_score,
+          }
+        }, env, 200);
+      }
+
+      // ============================
+      // UI: Get application pack
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/application-pack") && request.method === "GET") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const profileId = String(url.searchParams.get("profile_id") || "").trim();
+
+        const row = profileId
+          ? await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ? AND profile_id = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey, profileId).first()
+          : await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey).first();
+
+        if (!row) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        return json_({
+          ok: true,
+          data: {
+            id: row.id,
+            job_key: row.job_key,
+            profile_id: row.profile_id,
+            status: row.status,
+            error_text: row.error_text || "",
+            pack_json: safeJsonParse_(row.pack_json) || {},
+            ats_json: safeJsonParse_(row.ats_json) || {},
+            rr_export_json: safeJsonParse_(row.rr_export_json) || {},
+            updated_at: row.updated_at,
+          }
+        }, env, 200);
       }
 
       // ============================
@@ -1721,7 +1877,8 @@ function routeModeFor_(path) {
     path.startsWith("/jobs/") ||
     path === "/ingest" ||
     path === "/targets" ||
-    path.startsWith("/targets/")
+    path.startsWith("/targets/") ||
+    path.startsWith("/resume/")
   ) return "ui";
 
   if (path === "/score-pending") return "either";
