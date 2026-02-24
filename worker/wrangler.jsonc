@@ -9,6 +9,9 @@
       "database_id": "ed4e86a7-db3c-4f2c-b392-a1aa90ea2e84"
     }
   ],
+  "ai": {
+    "binding": "AI"
+  },
   "vars": {
     "ALLOW_ORIGIN": "*",
     "GMAIL_CLIENT_ID": "773808649704-l0re7bam051sb2e7kg5e5nqjt1ijpqnf.apps.googleusercontent.com",
