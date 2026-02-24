@@ -63,6 +63,8 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn }) {
   if (!env.DB) throw new Error("Missing D1 binding env.DB (bind your D1 as DB)");
   if (typeof ingestFn !== "function") throw new Error("ingestFn is required");
 
+  const runId = crypto.randomUUID();
+  const ts = Date.now();
   const accessToken = await getAccessToken_(env);
   const state = await loadGmailState_(env);
   const lastSeen = Number(state?.last_seen_internal_date || 0);
@@ -84,16 +86,26 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn }) {
   const listJson = await listResp.json();
   const messages = Array.isArray(listJson?.messages) ? listJson.messages : [];
 
-  let scanned = 0;
+  let scanned = Array.isArray(messages) ? messages.length : 0;
   let processed = 0;
   let skippedExisting = 0;
+  let blockedOrFailedFetch = 0;
   let insertedOrUpdated = 0;
+  let insertedCount = 0;
+  let updatedCount = 0;
   let ignored = 0;
+  let ignoredCount = 0;
   let linkOnly = 0;
+  let linkOnlyCount = 0;
+  let urlsFoundTotal = 0;
+  let urlsJobDomainsTotal = 0;
+  let ignoredDomainsCount = 0;
+  let ingestedCount = 0;
+  const urlsUnique = new Set();
+  const resultsSample = [];
   let newestInternalDate = lastSeen;
 
   for (const m of messages) {
-    scanned += 1;
     const msgId = String(m?.id || "").trim();
     if (!msgId) continue;
 
@@ -110,7 +122,7 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn }) {
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     if (!fullResp.ok) {
-      skippedExisting += 1;
+      blockedOrFailedFetch += 1;
       continue;
     }
     const full = await fullResp.json();
@@ -121,19 +133,36 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn }) {
     }
 
     const parsed = parseGmailMessage_(full);
-    const urls = filterJobUrls_(extractUrls_(parsed.combined_text));
+    const urlStats = scanUrls_(parsed.combined_text);
+    const classified = classifyJobUrls_(urlStats.unique_urls);
+    const urls = classified.supported_urls;
+    urlsFoundTotal += urlStats.found_urls.length;
+    urlsJobDomainsTotal += urls.length;
+    ignoredDomainsCount += classified.ignored_domains_count;
+    for (const u of urlStats.unique_urls) urlsUnique.add(u);
+
     const ingestData = urls.length
       ? await ingestFn({ raw_urls: urls, email_text: parsed.email_text, email_html: parsed.email_html })
-      : { inserted_or_updated: 0, ignored: 1, link_only: 0, results: [] };
+      : { inserted_or_updated: 0, inserted_count: 0, updated_count: 0, ignored: 1, link_only: 0, results: [] };
+    if (urls.length) ingestedCount += 1;
 
     processed += 1;
     insertedOrUpdated += numOr0_(ingestData.inserted_or_updated);
+    insertedCount += numOr0_(ingestData.inserted_count);
+    updatedCount += numOr0_(ingestData.updated_count);
     ignored += numOr0_(ingestData.ignored);
+    ignoredCount += numOr0_(ingestData.ignored);
     linkOnly += numOr0_(ingestData.link_only);
+    linkOnlyCount += numOr0_(ingestData.link_only);
 
     const jobKeys = Array.isArray(ingestData?.results)
       ? ingestData.results.map((r) => String(r?.job_key || "").trim()).filter(Boolean)
       : [];
+    for (const k of jobKeys) {
+      if (resultsSample.length >= 3) break;
+      if (resultsSample.includes(k)) continue;
+      resultsSample.push(k);
+    }
 
     await env.DB.prepare(`
       INSERT INTO gmail_ingest_log (
@@ -165,12 +194,33 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, ingestFn }) {
   }
 
   return {
+    run_id: runId,
+    ts,
+    query_used: effectiveQuery,
+    max_results: maxResults,
+    messages_listed: messages.length,
     scanned,
     processed,
+    skipped_already_ingested: skippedExisting,
     skipped_existing: skippedExisting,
+    blocked_or_failed_fetch: blockedOrFailedFetch,
+    urls_found_total: urlsFoundTotal,
+    urls_unique_total: urlsUnique.size,
+    urls_job_domains_total: urlsJobDomainsTotal,
+    ignored_domains_count: ignoredDomainsCount,
+    ingested_count: ingestedCount,
+    ingest_inserted_count: insertedCount,
+    ingest_updated_count: updatedCount,
+    ingest_link_only_count: linkOnlyCount,
+    ingest_ignored_count: ignoredCount,
+    results_sample: resultsSample,
     inserted_or_updated: insertedOrUpdated,
+    inserted_count: insertedCount,
+    updated_count: updatedCount,
     ignored,
+    ignored_count: ignoredCount,
     link_only: linkOnly,
+    link_only_count: linkOnlyCount,
   };
 }
 
@@ -309,6 +359,39 @@ function extractUrls_(text) {
   const s = String(text || "");
   const m = s.match(/https?:\/\/[^\s"'<>)\]]+/gi) || [];
   return unique_(m.map((x) => x.replace(/[),.;]+$/g, "").trim()).filter(Boolean));
+}
+
+function scanUrls_(text) {
+  const s = String(text || "");
+  const found = (s.match(/https?:\/\/[^\s"'<>)\]]+/gi) || [])
+    .map((x) => String(x || "").replace(/[),.;]+$/g, "").trim())
+    .filter(Boolean);
+  return { found_urls: found, unique_urls: unique_(found) };
+}
+
+function classifyJobUrls_(urls) {
+  const supported = [];
+  let ignoredDomains = 0;
+  for (const raw of urls || []) {
+    let u;
+    try {
+      u = new URL(String(raw));
+    } catch {
+      continue;
+    }
+    const host = u.hostname.toLowerCase();
+    const path = u.pathname.toLowerCase();
+    const isLinkedIn = host.includes("linkedin.com") && path.includes("/jobs/");
+    const isIimjobs = host.includes("iimjobs.com") && path.includes("/j/");
+    const isNaukri = host.includes("naukri.com") && path.includes("/job-listings-");
+    if (!isLinkedIn && !isIimjobs && !isNaukri) {
+      ignoredDomains += 1;
+      continue;
+    }
+    u.hash = "";
+    supported.push(u.toString().replace(/\/+$/, ""));
+  }
+  return { supported_urls: unique_(supported), ignored_domains_count: ignoredDomains };
 }
 
 function filterJobUrls_(urls) {

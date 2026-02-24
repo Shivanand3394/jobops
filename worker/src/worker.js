@@ -147,9 +147,17 @@ export default {
         const isCron = isCronRequest_(request);
         const apiAuthorized = isApiAuth_(request, env);
         if (!isCron && !apiAuthorized) {
-          return json_({ ok: false, error: "Unauthorized" }, env, 401);
+          const providedApiKey = String(request.headers.get("x-api-key") || "").trim();
+          const hint = looksLikeGoogleClientSecret_(providedApiKey)
+            ? "Unauthorized. Use API_KEY (Worker secret), not OAuth client secret."
+            : "Unauthorized";
+          return json_({ ok: false, error: hint }, env, 401);
         }
-        const data = await runGmailPoll_(env);
+        const body = await request.json().catch(() => ({}));
+        const query = typeof body.query === "string" ? body.query : "";
+        const maxPerRunRaw = body.max_per_run ?? body.maxPerRun;
+        const maxPerRun = Number.isFinite(Number(maxPerRunRaw)) ? Number(maxPerRunRaw) : undefined;
+        const data = await runGmailPoll_(env, { query, maxPerRun });
         await logEvent_(env, "GMAIL_POLL", null, { source: isCron ? "cron" : "api", ...data, ts: Date.now() });
         return json_({ ok: true, data }, env, 200);
       }
@@ -1671,10 +1679,17 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
   };
 }
 
-async function runGmailPoll_(env) {
+async function runGmailPoll_(env, opts = {}) {
+  const query = typeof opts.query === "string" && opts.query.trim()
+    ? opts.query.trim()
+    : String(env.GMAIL_QUERY || "label:JobOps newer_than:14d");
+  const maxPerRun = Number.isFinite(Number(opts.maxPerRun))
+    ? clampInt_(Number(opts.maxPerRun), 1, 100)
+    : clampInt_(env.GMAIL_MAX_PER_RUN || 25, 1, 100);
+
   return pollGmailAndIngest_(env, {
-    query: String(env.GMAIL_QUERY || "label:JobOps newer_than:14d"),
-    maxPerRun: clampInt_(env.GMAIL_MAX_PER_RUN || 25, 1, 100),
+    query,
+    maxPerRun,
     ingestFn: async ({ raw_urls, email_text, email_html }) => {
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
@@ -1693,8 +1708,7 @@ function routeModeFor_(path) {
     path.startsWith("/jobs/") ||
     path === "/ingest" ||
     path === "/targets" ||
-    path.startsWith("/targets/") ||
-    path === "/gmail/auth"
+    path.startsWith("/targets/")
   ) return "ui";
 
   if (path === "/score-pending") return "either";
@@ -1733,6 +1747,11 @@ function isApiAuth_(request, env) {
 
 function isCronRequest_(request) {
   return Boolean(String(request.headers.get("cf-cron") || "").trim());
+}
+
+function looksLikeGoogleClientSecret_(s) {
+  const v = String(s || "").trim();
+  return /^GOCSPX[-_A-Za-z0-9]+$/.test(v);
 }
 
 function getCookie_(request, name) {
