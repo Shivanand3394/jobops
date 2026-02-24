@@ -6,7 +6,7 @@
     {
       "binding": "DB",
       "database_name": "jobops-db",
-      "database_id": "PASTE_YOUR_D1_DATABASE_ID_HERE"
+      "database_id": "ed4e86a7-db3c-4f2c-b392-a1aa90ea2e84"
     }
   ],
   "vars": {
