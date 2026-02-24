@@ -527,15 +527,31 @@ async function doIngest() {
     box.textContent = "";
 
     const res = await ingestUrls($("addUrlText").value);
-    box.textContent = JSON.stringify(res.data || res, null, 2);
+    const data = res?.data || {};
+    const results = Array.isArray(data.results) ? data.results : [];
+    const linkOnly = results.filter((r) => String(r?.status || "").toUpperCase() === "LINK_ONLY").length;
+    const keys = results.map((r) => String(r?.job_key || "").trim()).filter(Boolean);
+    const uniqueKeyCount = new Set(keys).size;
+    const dedupeDetected = uniqueKeyCount > 0 && uniqueKeyCount < keys.length;
+
+    const lines = [
+      `inserted_or_updated: ${data.inserted_or_updated ?? 0}`,
+      `ignored: ${data.ignored ?? 0}`,
+      `link_only: ${linkOnly}`,
+    ];
+    if (dedupeDetected) {
+      lines.push("Already existed -> updated");
+    }
+
+    box.textContent = lines.join("\n") + "\n\n" + JSON.stringify(data, null, 2);
     box.classList.remove("hidden");
+    $("addUrlText").value = "";
 
     $("statusFilter").value = "";
     $("search").value = "";
-    toast("Ingested. Refreshing list...");
+    toast(`Ingested: ${data.inserted_or_updated ?? 0} updated, ${data.ignored ?? 0} ignored, ${linkOnly} link-only`);
     await loadJobs();
 
-    const results = res?.data?.results;
     const firstKey = Array.isArray(results) && results[0]?.job_key ? results[0].job_key : null;
     if (firstKey) await setActive(firstKey);
   } catch (e) {
