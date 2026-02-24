@@ -153,7 +153,13 @@ export async function pollGmailAndIngest_(env, { query, maxPerRun, maxJobsPerEma
     for (const u of urlStats.unique_urls) urlsUnique.add(u);
 
     const ingestData = urlsKept.length
-      ? await ingestFn({ raw_urls: urlsKept, email_text: parsed.email_text, email_html: parsed.email_html })
+      ? await ingestFn({
+        raw_urls: urlsKept,
+        email_text: parsed.email_text,
+        email_html: parsed.email_html,
+        email_subject: parsed.subject,
+        email_from: parsed.from_email,
+      })
       : { inserted_or_updated: 0, inserted_count: 0, updated_count: 0, ignored: 1, link_only: 0, results: [] };
     if (urlsKept.length) ingestedCount += 1;
     jobsKeptTotal += urlsKept.length;

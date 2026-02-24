@@ -923,9 +923,11 @@ export default {
         const jobUrl = String(body.job_url || "").trim();
         const emailHtml = typeof body.email_html === "string" ? body.email_html : "";
         const emailText = typeof body.email_text === "string" ? body.email_text : "";
+        const emailSubject = typeof body.email_subject === "string" ? body.email_subject : "";
+        const emailFrom = typeof body.email_from === "string" ? body.email_from : "";
         if (!jobUrl) return json_({ ok: false, error: "Missing job_url" }, env, 400);
 
-        const resolved = await resolveJd_(jobUrl, { emailHtml, emailText });
+        const resolved = await resolveJd_(jobUrl, { emailHtml, emailText, emailSubject, emailFrom });
         return json_({ ok: true, data: resolved }, env, 200);
       }
 
@@ -1004,9 +1006,11 @@ export default {
         const rawUrls = Array.isArray(body.raw_urls) ? body.raw_urls : [];
         const emailText = typeof body.email_text === "string" ? body.email_text : "";
         const emailHtml = typeof body.email_html === "string" ? body.email_html : "";
+        const emailSubject = typeof body.email_subject === "string" ? body.email_subject : "";
+        const emailFrom = typeof body.email_from === "string" ? body.email_from : "";
 
         if (!rawUrls.length) return json_({ ok: false, error: "Missing raw_urls[]" }, env, 400);
-        const data = await ingestRawUrls_(env, { rawUrls, emailText, emailHtml });
+        const data = await ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject, emailFrom });
         return json_({ ok: true, data }, env, 200);
       }
 
@@ -1371,8 +1375,8 @@ async function normalizeJobUrl_(rawUrl) {
       const canonical = `https://www.linkedin.com/jobs/view/${id}/`;
       return { ignored: false, source_domain: "linkedin", job_id: id, job_url: canonical, job_key: await sha1Hex(`linkedin|${id}`) };
     }
-    const canonical = strip(rawUrl);
-    return { ignored: false, source_domain: "linkedin", job_id: null, job_url: canonical, job_key: await sha1Hex(`url|${canonical}`) };
+    // Ignore non-job LinkedIn links (collections/search/share/tracking without concrete job id).
+    return { ignored: true };
   }
 
   if (host.includes("iimjobs.com")) {
@@ -1397,7 +1401,7 @@ async function normalizeJobUrl_(rawUrl) {
  * JD resolution (fetch + email fallback + window extraction)
  * ========================================================= */
 
-async function resolveJd_(jobUrl, { emailHtml, emailText }) {
+async function resolveJd_(jobUrl, { emailHtml, emailText, emailSubject, emailFrom }) {
   const out = { jd_text_clean: "", jd_source: "none", fetch_status: "failed", debug: {} };
   const sourceDomain = sourceDomainFromUrl_(jobUrl);
 
@@ -1426,7 +1430,7 @@ async function resolveJd_(jobUrl, { emailHtml, emailText }) {
       if (isLowQualityJd_(cleaned, sourceDomain)) {
         out.fetch_status = "blocked";
         out.debug.low_quality = true;
-      } else if (cleaned.length >= 600) {
+      } else if (cleaned.length >= 260) {
         out.jd_text_clean = cleaned.slice(0, 12000);
         out.jd_source = "fetched";
         out.fetch_status = "ok";
@@ -1441,8 +1445,8 @@ async function resolveJd_(jobUrl, { emailHtml, emailText }) {
   }
 
   // Email fallback
-  const fallback = extractJdFromEmail_(emailHtml, emailText);
-  if (fallback && fallback.length >= 200) {
+  const fallback = extractJdFromEmail_(emailHtml, emailText, emailSubject, emailFrom);
+  if (fallback && fallback.length >= 180) {
     out.jd_text_clean = fallback.slice(0, 12000);
     out.jd_source = "email";
     return out;
@@ -1462,7 +1466,7 @@ function sourceDomainFromUrl_(rawUrl) {
 function isLowQualityJd_(text, sourceDomain) {
   const cleaned = cleanJdText_(text);
   const low = cleaned.toLowerCase();
-  if (cleaned.length < 400) return true;
+  if (cleaned.length < 220) return true;
 
   if (low.includes("linkedin respects your privacy")) return true;
   if (low.includes("enable javascript")) return true;
@@ -1478,7 +1482,7 @@ function isLowQualityJd_(text, sourceDomain) {
 function shouldRequireManualJd_(resolved, jdText) {
   const fetchStatus = String(resolved?.fetch_status || "").toLowerCase();
   if (fetchStatus === "blocked" || fetchStatus === "low_quality") return true;
-  return String(jdText || "").trim().length < 400;
+  return String(jdText || "").trim().length < 220;
 }
 
 function extractJdWindow_(t) {
@@ -1507,9 +1511,16 @@ function extractJdWindow_(t) {
   return slice.replace(/\n{3,}/g, "\n\n").replace(/[ \t]{2,}/g, " ").trim();
 }
 
-function extractJdFromEmail_(emailHtml, emailText) {
+function extractJdFromEmail_(emailHtml, emailText, emailSubject, emailFrom) {
   const textFromHtml = emailHtml ? htmlToText_(emailHtml) : "";
-  const combined = [String(emailText || ""), String(textFromHtml || "")].join("\n");
+  const subjectLine = String(emailSubject || "").trim();
+  const fromLine = String(emailFrom || "").trim();
+  const metadata = [];
+  if (subjectLine) metadata.push(`Subject: ${subjectLine}`);
+  if (fromLine) metadata.push(`From: ${fromLine}`);
+  const combined = [metadata.join("\n"), String(emailText || ""), String(textFromHtml || "")]
+    .filter(Boolean)
+    .join("\n\n");
   const t = combined.replace(/\r/g, "").trim();
   if (!t) return "";
 
@@ -1538,10 +1549,11 @@ function extractJdFromEmail_(emailHtml, emailText) {
     .replace(/unsubscribe[\s\S]*$/i, "")
     .replace(/copyright[\s\S]*$/i, "")
     .replace(/all rights reserved[\s\S]*$/i, "")
-    .replace(/\s+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
     .trim();
 
-  return cleanJdText_(snippet);
+  return cleanJdText_(extractJdWindow_(snippet));
 }
 
 function htmlToText_(html) {
@@ -1653,7 +1665,7 @@ function getAi_(env) {
   return null;
 }
 
-async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
+async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject, emailFrom }) {
   const now = Date.now();
   const results = [];
   let insertedOrUpdated = 0;
@@ -1664,6 +1676,18 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
 
   const aiForIngest = getAi_(env);
   const aiAvailable = Boolean(aiForIngest);
+  let targets = [];
+  let cfg = null;
+  if (aiAvailable) {
+    try {
+      targets = await loadTargets_(env);
+      if (targets.length) cfg = await loadSysCfg_(env);
+    } catch {
+      targets = [];
+      cfg = null;
+    }
+  }
+  const canAutoScore = aiAvailable && targets.length > 0 && !!cfg;
 
   for (const rawUrl of rawUrls || []) {
     const norm = await normalizeJobUrl_(String(rawUrl || "").trim());
@@ -1682,12 +1706,12 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
     ).bind(norm.job_key).first();
     const wasExisting = Boolean(existing && existing.ok === 1);
 
-    const resolved = await resolveJd_(norm.job_url, { emailHtml, emailText });
+    const resolved = await resolveJd_(norm.job_url, { emailHtml, emailText, emailSubject, emailFrom });
 
     const jdText = String(resolved.jd_text_clean || "").trim();
     const needsManual = !aiAvailable || shouldRequireManualJd_(resolved, jdText);
     let extracted = null;
-    if (!needsManual && jdText && jdText.length >= 200) {
+    if (!needsManual && jdText && jdText.length >= 180) {
       extracted = await extractJdWithModel_(aiForIngest, jdText)
         .then((x) => sanitizeExtracted_(x, jdText))
         .catch(() => null);
@@ -1704,13 +1728,47 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
     const nice = Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [];
     const reject = Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [];
 
+    let scoring = null;
+    let finalScore = null;
+    let mergedRejectTriggered = false;
+    let rejectReasons = [];
+    if (!needsManual && canAutoScore && jdText && jdText.length >= 180) {
+      const roleTitleForScore = String(extracted?.role_title || "").trim();
+      const locationForScore = String(extracted?.location || "").trim();
+      const seniorityForScore = String(extracted?.seniority || "").trim();
+      if (roleTitleForScore || jdText) {
+        scoring = await scoreJobWithModel_(aiForIngest, {
+          role_title: roleTitleForScore,
+          location: locationForScore,
+          seniority: seniorityForScore,
+          jd_clean: jdText,
+        }, targets, cfg).catch(() => null);
+      }
+
+      if (scoring) {
+        const rejectFromTargets = computeTargetReject_(jdText, scoring.primary_target_id, targets);
+        mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdText));
+        if (hasRejectMarker_(jdText)) rejectReasons.push("Contains 'Reject:' marker in JD");
+        if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
+        if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
+        finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
+      }
+    }
+
     const effectiveFetchStatus = aiAvailable ? String(resolved.fetch_status || "failed") : "ai_unavailable";
     const fetchDebug = { ...(resolved.debug || {}), ai_available: aiAvailable };
-    const transition = !aiAvailable
+    let transition = !aiAvailable
       ? applyStatusTransition_(null, "ingest_ai_unavailable")
       : (needsManual
         ? applyStatusTransition_(null, "ingest_needs_manual")
         : applyStatusTransition_(null, "ingest_ready"));
+    if (scoring) {
+      transition = applyStatusTransition_(null, "scored", {
+        final_score: finalScore,
+        reject_triggered: mergedRejectTriggered,
+        cfg,
+      });
+    }
 
     const r = await env.DB.prepare(`
       INSERT INTO jobs (
@@ -1777,6 +1835,51 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
       now
     ).run();
 
+    if (scoring) {
+      const scoreNow = Date.now();
+      await env.DB.prepare(`
+        UPDATE jobs SET
+          primary_target_id = ?,
+          score_must = ?,
+          score_nice = ?,
+          final_score = ?,
+          reject_triggered = ?,
+          reject_reasons_json = ?,
+          reject_evidence = ?,
+          reason_top_matches = ?,
+          status = CASE
+            WHEN status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN status
+            ELSE ?
+          END,
+          system_status = CASE
+            WHEN status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN system_status
+            ELSE ?
+          END,
+          next_status = CASE
+            WHEN status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN next_status
+            ELSE ?
+          END,
+          last_scored_at = ?,
+          updated_at = ?
+        WHERE job_key = ?;
+      `.trim()).bind(
+        scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+        clampInt_(scoring.score_must, 0, 100),
+        clampInt_(scoring.score_nice, 0, 100),
+        finalScore,
+        mergedRejectTriggered ? 1 : 0,
+        JSON.stringify(rejectReasons),
+        mergedRejectTriggered ? extractRejectEvidence_(jdText) : "",
+        String(scoring.reason_top_matches || "").slice(0, 1000),
+        transition.status,
+        transition.system_status,
+        transition.next_status,
+        scoreNow,
+        scoreNow,
+        norm.job_key
+      ).run();
+    }
+
     if (r.success) insertedOrUpdated += 1;
     if (transition.status === "LINK_ONLY") linkOnly += 1;
 
@@ -1795,7 +1898,9 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
       status: transition.status,
       jd_source: resolved.jd_source,
       fetch_status: effectiveFetchStatus,
-      system_status: transition.system_status
+      system_status: transition.system_status,
+      final_score: finalScore,
+      primary_target_id: scoring?.primary_target_id || null
     });
   }
 
@@ -1961,11 +2066,13 @@ async function runGmailPoll_(env, opts = {}) {
     maxJobsPerEmail,
     maxJobsPerPoll,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
-    ingestFn: async ({ raw_urls, email_text, email_html }) => {
+    ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
         emailText: typeof email_text === "string" ? email_text : "",
         emailHtml: typeof email_html === "string" ? email_html : "",
+        emailSubject: typeof email_subject === "string" ? email_subject : "",
+        emailFrom: typeof email_from === "string" ? email_from : "",
       });
     },
   });
