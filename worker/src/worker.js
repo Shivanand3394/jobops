@@ -207,12 +207,10 @@ export default {
         args.push(limit, offset);
 
         const res = await env.DB.prepare(sql).bind(...args).all();
-        const rows = (res.results || []).map((row) => ({
-          ...row,
-          display_title: String(row.role_title || "").trim()
-            ? `${String(row.role_title || "").trim()}${String(row.company || "").trim() ? ` - ${String(row.company || "").trim()}` : ""}`
-            : "(Needs JD)",
-        }));
+        const rows = (res.results || []).map((row) => {
+          const display = computeDisplayFields_(row);
+          return { ...row, ...display };
+        });
         return json_({ ok: true, data: rows }, env, 200);
       }
 
@@ -1202,9 +1200,26 @@ function decorateJobRow_(row) {
   row.nice_to_have_keywords = safeJsonParseArray_(row.nice_to_have_keywords_json);
   row.reject_keywords = safeJsonParseArray_(row.reject_keywords_json);
   row.reject_reasons = safeJsonParseArray_(row.reject_reasons_json);
-  row.display_title = String(row.role_title || "").trim()
-    ? `${String(row.role_title || "").trim()}${String(row.company || "").trim() ? ` - ${String(row.company || "").trim()}` : ""}`
-    : "(Needs JD)";
+  const display = computeDisplayFields_(row);
+  row.display_title = display.display_title;
+  row.display_company = display.display_company;
+}
+
+function computeDisplayFields_(row) {
+  const roleTitle = String(row?.role_title || "").trim();
+  const company = String(row?.company || "").trim();
+  const systemStatus = String(row?.system_status || "").trim().toUpperCase();
+
+  const displayTitle = roleTitle
+    ? roleTitle
+    : (company
+      ? company
+      : (systemStatus === "NEEDS_MANUAL_JD" ? "(Needs JD)" : "(Untitled)"));
+
+  return {
+    display_title: displayTitle,
+    display_company: company || "",
+  };
 }
 
 /* =========================================================
