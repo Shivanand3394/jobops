@@ -56,21 +56,9 @@ export default {
         path === "/extract-jd" ||
         path === "/score-jd";
 
-      // UI auth
-      if (isUiRoute) {
-        const uiKey = request.headers.get("x-ui-key");
-        if (!env.UI_KEY || uiKey !== env.UI_KEY) {
-          return json_({ ok: false, error: "Unauthorized" }, env, 401);
-        }
-      }
-
-      // Admin/API auth
-      if (isAdminRoute) {
-        const apiKey = request.headers.get("x-api-key");
-        if (!env.API_KEY || apiKey !== env.API_KEY) {
-          return json_({ ok: false, error: "Unauthorized" }, env, 401);
-        }
-      }
+      const authType = isUiRoute ? "ui" : (isAdminRoute ? "api" : "none");
+      const authErr = requireAuth_(request, env, authType);
+      if (authErr) return authErr;
 
       // DB required for most routes except /health and pure AI extraction/scoring
       const needsDB =
@@ -685,17 +673,6 @@ export default {
       // ADMIN: Batch score pending jobs
       // ============================
       if (path === "/score-pending" && request.method === "POST") {
-        // Accept auth via x-api-key (already), but ALSO allow UI to call this endpoint
-        // If request includes x-ui-key and matches, we accept too.
-        // (This route is in isAdminRoute; but we can allow UI calls by checking header here.)
-        const apiKey = request.headers.get("x-api-key");
-        const uiKey = request.headers.get("x-ui-key");
-        const okAsUi = env.UI_KEY && uiKey === env.UI_KEY;
-        const okAsApi = env.API_KEY && apiKey === env.API_KEY;
-        if (!okAsUi && !okAsApi) {
-          return json_({ ok: false, error: "Unauthorized" }, env, 401);
-        }
-
         const body = await request.json().catch(() => ({}));
         const limit = clampInt_(body.limit || 30, 1, 200);
         const statusFilter = String(body.status || "").trim().toUpperCase(); // optional
@@ -1462,6 +1439,22 @@ function getAi_(env) {
   if (env && env.AI) return env.AI;
   const name = env && env.AI_BINDING ? String(env.AI_BINDING).trim() : "";
   if (name && env && env[name]) return env[name];
+  return null;
+}
+
+function requireAuth_(request, env, type) {
+  if (type === "ui") {
+    const uiKey = request.headers.get("x-ui-key");
+    if (!env.UI_KEY || uiKey !== env.UI_KEY) {
+      return json_({ ok: false, error: "Unauthorized" }, env, 401);
+    }
+  }
+  if (type === "api") {
+    const apiKey = request.headers.get("x-api-key");
+    if (!env.API_KEY || apiKey !== env.API_KEY) {
+      return json_({ ok: false, error: "Unauthorized" }, env, 401);
+    }
+  }
   return null;
 }
 
