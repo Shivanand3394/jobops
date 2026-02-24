@@ -11,6 +11,7 @@
   ],
   "vars": {
     "ALLOW_ORIGIN": "*",
+    "GMAIL_CLIENT_ID": "REPLACE_IN_DASHBOARD",
     "GMAIL_QUERY": "label:JobOps newer_than:14d",
     "GMAIL_MAX_PER_RUN": "25"
   },
