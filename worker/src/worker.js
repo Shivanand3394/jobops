@@ -1,4 +1,6 @@
 ﻿// worker_jobops_v2_ui_plus_clean.js
+import { buildGmailAuthUrl_, handleGmailOAuthCallback_, pollGmailAndIngest_ } from "./gmail.js";
+
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
 // - D1-backed Jobs + Targets + Events
@@ -65,7 +67,8 @@ export default {
         isUiRoute ||
         path === "/score-pending" ||
         path === "/ingest" ||
-        path === "/resolve-jd"; // resolve-jd optionally updates DB in some flows
+        path === "/resolve-jd" ||
+        path.startsWith("/gmail/"); // gmail bridge requires D1 state
 
       if (needsDB && !env.DB) {
         return json_({ ok: false, error: "Missing D1 binding env.DB (bind your D1 as DB)" }, env, 500);
@@ -91,6 +94,64 @@ export default {
           status: 200,
           headers: { "Content-Type": "text/plain; charset=utf-8", ...corsHeaders_(env) },
         });
+      }
+
+      // ============================
+      // UI: Gmail OAuth connect
+      // ============================
+      if (path === "/gmail/auth" && request.method === "GET") {
+        const redirectUri = `${url.origin}/gmail/callback`;
+        const state = crypto.randomUUID();
+        const authUrl = buildGmailAuthUrl_(env, { redirectUri, state });
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: authUrl,
+            "Set-Cookie": `jobops_gmail_oauth_state=${state}; Max-Age=600; Path=/; HttpOnly; Secure; SameSite=Lax`,
+            ...corsHeaders_(env),
+          },
+        });
+      }
+
+      if (path === "/gmail/callback" && request.method === "GET") {
+        const code = String(url.searchParams.get("code") || "").trim();
+        const state = String(url.searchParams.get("state") || "").trim();
+        const cookieState = getCookie_(request, "jobops_gmail_oauth_state");
+        const uiAuthorized = isUiAuth_(request, env);
+        if (!uiAuthorized && (!state || state !== cookieState)) {
+          return json_({ ok: false, error: "Unauthorized" }, env, 401);
+        }
+
+        if (!code) return json_({ ok: false, error: "Missing code" }, env, 400);
+        const redirectUri = `${url.origin}/gmail/callback`;
+        await handleGmailOAuthCallback_(env, { code, redirectUri });
+
+        return new Response(
+          "<!doctype html><html><body><h3>Gmail connected.</h3><p>You can close this tab.</p></body></html>",
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Set-Cookie": "jobops_gmail_oauth_state=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax",
+              ...corsHeaders_(env),
+            },
+          }
+        );
+      }
+
+      // ============================
+      // ADMIN/CRON: Gmail poll
+      // ============================
+      if (path === "/gmail/poll" && request.method === "POST") {
+        const isCron = isCronRequest_(request);
+        const apiAuthorized = isApiAuth_(request, env);
+        if (!isCron && !apiAuthorized) {
+          return json_({ ok: false, error: "Unauthorized" }, env, 401);
+        }
+        const data = await runGmailPoll_(env);
+        await logEvent_(env, "GMAIL_POLL", null, { source: isCron ? "cron" : "api", ...data, ts: Date.now() });
+        return json_({ ok: true, data }, env, 200);
       }
 
       // ============================
@@ -845,169 +906,8 @@ export default {
         const emailHtml = typeof body.email_html === "string" ? body.email_html : "";
 
         if (!rawUrls.length) return json_({ ok: false, error: "Missing raw_urls[]" }, env, 400);
-
-        const now = Date.now();
-        const results = [];
-        let insertedOrUpdated = 0;
-        let insertedCount = 0;
-        let updatedCount = 0;
-        let ignored = 0;
-        let linkOnly = 0;
-
-        const aiForIngest = ai || getAi_(env);
-        const aiAvailable = Boolean(aiForIngest);
-
-        for (const rawUrl of rawUrls) {
-          const norm = await normalizeJobUrl_(String(rawUrl || "").trim());
-          if (!norm || norm.ignored) {
-            ignored += 1;
-            results.push({
-              raw_url: rawUrl,
-              was_existing: false,
-              action: "ignored",
-            });
-            continue;
-          }
-
-          const existing = await env.DB.prepare(
-            `SELECT 1 AS ok FROM jobs WHERE job_key = ? LIMIT 1;`
-          ).bind(norm.job_key).first();
-          const wasExisting = Boolean(existing && existing.ok === 1);
-
-          // Resolve JD
-          const resolved = await resolveJd_(norm.job_url, { emailHtml, emailText });
-
-          // Extract minimal from job_url if resolution failed
-          const jdText = String(resolved.jd_text_clean || "").trim();
-          const needsManual = !aiAvailable || shouldRequireManualJd_(resolved, jdText);
-          let extracted = null;
-          if (!needsManual && jdText && jdText.length >= 200) {
-            extracted = await extractJdWithModel_(aiForIngest, jdText)
-              .then((x) => sanitizeExtracted_(x, jdText))
-              .catch(() => null);
-          }
-
-          const company = extracted?.company ?? null;
-          const roleTitle = extracted?.role_title ?? null;
-          const location = extracted?.location ?? null;
-          const workMode = extracted?.work_mode ?? null;
-          const seniority = extracted?.seniority ?? null;
-
-          const skills = Array.isArray(extracted?.skills) ? extracted.skills : [];
-          const must = Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : [];
-          const nice = Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [];
-          const reject = Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [];
-
-          const effectiveFetchStatus = aiAvailable ? String(resolved.fetch_status || "failed") : "ai_unavailable";
-          const fetchDebug = { ...(resolved.debug || {}), ai_available: aiAvailable };
-          const transition = !aiAvailable
-            ? applyStatusTransition_(null, "ingest_ai_unavailable")
-            : (needsManual
-              ? applyStatusTransition_(null, "ingest_needs_manual")
-              : applyStatusTransition_(null, "ingest_ready"));
-
-          // Upsert jobs row
-          const r = await env.DB.prepare(`
-            INSERT INTO jobs (
-              job_key, job_url, job_url_raw, source_domain, job_id,
-              company, role_title, location, work_mode, seniority,
-              experience_years_min, experience_years_max,
-              skills_json, must_have_keywords_json, nice_to_have_keywords_json, reject_keywords_json,
-              jd_text_clean, jd_source, fetch_status, fetch_debug_json,
-              status, next_status, system_status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(job_key) DO UPDATE SET
-              job_url = excluded.job_url,
-              job_url_raw = excluded.job_url_raw,
-              source_domain = excluded.source_domain,
-              job_id = excluded.job_id,
-              company = COALESCE(excluded.company, jobs.company),
-              role_title = COALESCE(excluded.role_title, jobs.role_title),
-              location = COALESCE(excluded.location, jobs.location),
-              work_mode = COALESCE(excluded.work_mode, jobs.work_mode),
-              seniority = COALESCE(excluded.seniority, jobs.seniority),
-              experience_years_min = COALESCE(excluded.experience_years_min, jobs.experience_years_min),
-              experience_years_max = COALESCE(excluded.experience_years_max, jobs.experience_years_max),
-              skills_json = CASE WHEN excluded.skills_json != '[]' THEN excluded.skills_json ELSE jobs.skills_json END,
-              must_have_keywords_json = CASE WHEN excluded.must_have_keywords_json != '[]' THEN excluded.must_have_keywords_json ELSE jobs.must_have_keywords_json END,
-              nice_to_have_keywords_json = CASE WHEN excluded.nice_to_have_keywords_json != '[]' THEN excluded.nice_to_have_keywords_json ELSE jobs.nice_to_have_keywords_json END,
-              reject_keywords_json = CASE WHEN excluded.reject_keywords_json != '[]' THEN excluded.reject_keywords_json ELSE jobs.reject_keywords_json END,
-              jd_text_clean = CASE WHEN excluded.jd_text_clean != '' THEN excluded.jd_text_clean ELSE jobs.jd_text_clean END,
-              jd_source = COALESCE(excluded.jd_source, jobs.jd_source),
-              fetch_status = COALESCE(excluded.fetch_status, jobs.fetch_status),
-              fetch_debug_json = COALESCE(excluded.fetch_debug_json, jobs.fetch_debug_json),
-              status = CASE
-                WHEN jobs.status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN jobs.status
-                WHEN excluded.status = 'LINK_ONLY' AND jobs.status IN ('NEW', 'SCORED', 'LINK_ONLY') THEN 'LINK_ONLY'
-                ELSE jobs.status
-              END,
-              next_status = excluded.next_status,
-              system_status = excluded.system_status,
-              updated_at = excluded.updated_at;
-          `.trim()).bind(
-            norm.job_key,
-            norm.job_url,
-            rawUrl,
-            norm.source_domain,
-            norm.job_id,
-            company,
-            roleTitle,
-            location,
-            workMode,
-            seniority,
-            numOrNull_(extracted?.experience_years_min),
-            numOrNull_(extracted?.experience_years_max),
-            JSON.stringify(skills),
-            JSON.stringify(must),
-            JSON.stringify(nice),
-            JSON.stringify(reject),
-            jdText.slice(0, 12000),
-            resolved.jd_source,
-            effectiveFetchStatus,
-            JSON.stringify(fetchDebug),
-            transition.status,
-            transition.next_status,
-            transition.system_status,
-            now,
-            now
-          ).run();
-
-          if (r.success) insertedOrUpdated += 1;
-          if (transition.status === "LINK_ONLY") linkOnly += 1;
-
-          let action = wasExisting ? "updated" : "inserted";
-          if (transition.status === "LINK_ONLY" && aiAvailable) {
-            action = "link_only";
-          }
-
-          if (action === "inserted") insertedCount += 1;
-          if (action === "updated") updatedCount += 1;
-
-          results.push({
-            raw_url: rawUrl,
-            job_key: norm.job_key,
-            job_url: norm.job_url,
-            was_existing: wasExisting,
-            action,
-            status: transition.status,
-            jd_source: resolved.jd_source,
-            fetch_status: effectiveFetchStatus,
-            system_status: transition.system_status
-          });
-        }
-
-        return json_({
-          ok: true,
-          data: {
-            count_in: rawUrls.length,
-            inserted_or_updated: insertedOrUpdated,
-            inserted_count: insertedCount,
-            updated_count: updatedCount,
-            ignored,
-            link_only: linkOnly,
-            results
-          }
-        }, env, 200);
+        const data = await ingestRawUrls_(env, { rawUrls, emailText, emailHtml });
+        return json_({ ok: true, data }, env, 200);
       }
 
       // ----------------------------
@@ -1022,6 +922,20 @@ export default {
         500
       );
     }
+  },
+
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const data = await runGmailPoll_(env);
+          await logEvent_(env, "GMAIL_POLL", null, { source: "cron", ...data, ts: Date.now() });
+          console.log("gmail poll ok", JSON.stringify(data));
+        } catch (e) {
+          console.error("gmail poll failed", String(e?.message || e));
+        }
+      })()
+    );
   },
 };
 
@@ -1600,6 +1514,177 @@ function getAi_(env) {
   return null;
 }
 
+async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml }) {
+  const now = Date.now();
+  const results = [];
+  let insertedOrUpdated = 0;
+  let insertedCount = 0;
+  let updatedCount = 0;
+  let ignored = 0;
+  let linkOnly = 0;
+
+  const aiForIngest = getAi_(env);
+  const aiAvailable = Boolean(aiForIngest);
+
+  for (const rawUrl of rawUrls || []) {
+    const norm = await normalizeJobUrl_(String(rawUrl || "").trim());
+    if (!norm || norm.ignored) {
+      ignored += 1;
+      results.push({
+        raw_url: rawUrl,
+        was_existing: false,
+        action: "ignored",
+      });
+      continue;
+    }
+
+    const existing = await env.DB.prepare(
+      `SELECT 1 AS ok FROM jobs WHERE job_key = ? LIMIT 1;`
+    ).bind(norm.job_key).first();
+    const wasExisting = Boolean(existing && existing.ok === 1);
+
+    const resolved = await resolveJd_(norm.job_url, { emailHtml, emailText });
+
+    const jdText = String(resolved.jd_text_clean || "").trim();
+    const needsManual = !aiAvailable || shouldRequireManualJd_(resolved, jdText);
+    let extracted = null;
+    if (!needsManual && jdText && jdText.length >= 200) {
+      extracted = await extractJdWithModel_(aiForIngest, jdText)
+        .then((x) => sanitizeExtracted_(x, jdText))
+        .catch(() => null);
+    }
+
+    const company = extracted?.company ?? null;
+    const roleTitle = extracted?.role_title ?? null;
+    const location = extracted?.location ?? null;
+    const workMode = extracted?.work_mode ?? null;
+    const seniority = extracted?.seniority ?? null;
+
+    const skills = Array.isArray(extracted?.skills) ? extracted.skills : [];
+    const must = Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : [];
+    const nice = Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [];
+    const reject = Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [];
+
+    const effectiveFetchStatus = aiAvailable ? String(resolved.fetch_status || "failed") : "ai_unavailable";
+    const fetchDebug = { ...(resolved.debug || {}), ai_available: aiAvailable };
+    const transition = !aiAvailable
+      ? applyStatusTransition_(null, "ingest_ai_unavailable")
+      : (needsManual
+        ? applyStatusTransition_(null, "ingest_needs_manual")
+        : applyStatusTransition_(null, "ingest_ready"));
+
+    const r = await env.DB.prepare(`
+      INSERT INTO jobs (
+        job_key, job_url, job_url_raw, source_domain, job_id,
+        company, role_title, location, work_mode, seniority,
+        experience_years_min, experience_years_max,
+        skills_json, must_have_keywords_json, nice_to_have_keywords_json, reject_keywords_json,
+        jd_text_clean, jd_source, fetch_status, fetch_debug_json,
+        status, next_status, system_status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(job_key) DO UPDATE SET
+        job_url = excluded.job_url,
+        job_url_raw = excluded.job_url_raw,
+        source_domain = excluded.source_domain,
+        job_id = excluded.job_id,
+        company = COALESCE(excluded.company, jobs.company),
+        role_title = COALESCE(excluded.role_title, jobs.role_title),
+        location = COALESCE(excluded.location, jobs.location),
+        work_mode = COALESCE(excluded.work_mode, jobs.work_mode),
+        seniority = COALESCE(excluded.seniority, jobs.seniority),
+        experience_years_min = COALESCE(excluded.experience_years_min, jobs.experience_years_min),
+        experience_years_max = COALESCE(excluded.experience_years_max, jobs.experience_years_max),
+        skills_json = CASE WHEN excluded.skills_json != '[]' THEN excluded.skills_json ELSE jobs.skills_json END,
+        must_have_keywords_json = CASE WHEN excluded.must_have_keywords_json != '[]' THEN excluded.must_have_keywords_json ELSE jobs.must_have_keywords_json END,
+        nice_to_have_keywords_json = CASE WHEN excluded.nice_to_have_keywords_json != '[]' THEN excluded.nice_to_have_keywords_json ELSE jobs.nice_to_have_keywords_json END,
+        reject_keywords_json = CASE WHEN excluded.reject_keywords_json != '[]' THEN excluded.reject_keywords_json ELSE jobs.reject_keywords_json END,
+        jd_text_clean = CASE WHEN excluded.jd_text_clean != '' THEN excluded.jd_text_clean ELSE jobs.jd_text_clean END,
+        jd_source = COALESCE(excluded.jd_source, jobs.jd_source),
+        fetch_status = COALESCE(excluded.fetch_status, jobs.fetch_status),
+        fetch_debug_json = COALESCE(excluded.fetch_debug_json, jobs.fetch_debug_json),
+        status = CASE
+          WHEN jobs.status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN jobs.status
+          WHEN excluded.status = 'LINK_ONLY' AND jobs.status IN ('NEW', 'SCORED', 'LINK_ONLY') THEN 'LINK_ONLY'
+          ELSE jobs.status
+        END,
+        next_status = excluded.next_status,
+        system_status = excluded.system_status,
+        updated_at = excluded.updated_at;
+    `.trim()).bind(
+      norm.job_key,
+      norm.job_url,
+      rawUrl,
+      norm.source_domain,
+      norm.job_id,
+      company,
+      roleTitle,
+      location,
+      workMode,
+      seniority,
+      numOrNull_(extracted?.experience_years_min),
+      numOrNull_(extracted?.experience_years_max),
+      JSON.stringify(skills),
+      JSON.stringify(must),
+      JSON.stringify(nice),
+      JSON.stringify(reject),
+      jdText.slice(0, 12000),
+      resolved.jd_source,
+      effectiveFetchStatus,
+      JSON.stringify(fetchDebug),
+      transition.status,
+      transition.next_status,
+      transition.system_status,
+      now,
+      now
+    ).run();
+
+    if (r.success) insertedOrUpdated += 1;
+    if (transition.status === "LINK_ONLY") linkOnly += 1;
+
+    let action = wasExisting ? "updated" : "inserted";
+    if (transition.status === "LINK_ONLY" && aiAvailable) action = "link_only";
+
+    if (action === "inserted") insertedCount += 1;
+    if (action === "updated") updatedCount += 1;
+
+    results.push({
+      raw_url: rawUrl,
+      job_key: norm.job_key,
+      job_url: norm.job_url,
+      was_existing: wasExisting,
+      action,
+      status: transition.status,
+      jd_source: resolved.jd_source,
+      fetch_status: effectiveFetchStatus,
+      system_status: transition.system_status
+    });
+  }
+
+  return {
+    count_in: Array.isArray(rawUrls) ? rawUrls.length : 0,
+    inserted_or_updated: insertedOrUpdated,
+    inserted_count: insertedCount,
+    updated_count: updatedCount,
+    ignored,
+    link_only: linkOnly,
+    results,
+  };
+}
+
+async function runGmailPoll_(env) {
+  return pollGmailAndIngest_(env, {
+    query: String(env.GMAIL_QUERY || "label:JobOps newer_than:14d"),
+    maxPerRun: clampInt_(env.GMAIL_MAX_PER_RUN || 25, 1, 100),
+    ingestFn: async ({ raw_urls, email_text, email_html }) => {
+      return ingestRawUrls_(env, {
+        rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
+        emailText: typeof email_text === "string" ? email_text : "",
+        emailHtml: typeof email_html === "string" ? email_html : "",
+      });
+    },
+  });
+}
+
 function routeModeFor_(path) {
   if (path === "/health" || path === "/") return "public";
 
@@ -1608,7 +1693,8 @@ function routeModeFor_(path) {
     path.startsWith("/jobs/") ||
     path === "/ingest" ||
     path === "/targets" ||
-    path.startsWith("/targets/")
+    path.startsWith("/targets/") ||
+    path === "/gmail/auth"
   ) return "ui";
 
   if (path === "/score-pending") return "either";
@@ -1625,17 +1711,41 @@ function routeModeFor_(path) {
 
 function requireAuth_(request, env, routeMode) {
   if (routeMode === "public") return null;
-
-  const uiKey = request.headers.get("x-ui-key");
-  const apiKey = request.headers.get("x-api-key");
-  const uiOk = Boolean(env.UI_KEY) && uiKey === env.UI_KEY;
-  const apiOk = Boolean(env.API_KEY) && apiKey === env.API_KEY;
+  const uiOk = isUiAuth_(request, env);
+  const apiOk = isApiAuth_(request, env);
 
   if (routeMode === "ui" && !uiOk) return json_({ ok: false, error: "Unauthorized" }, env, 401);
   if (routeMode === "api" && !apiOk) return json_({ ok: false, error: "Unauthorized" }, env, 401);
   if (routeMode === "either" && !uiOk && !apiOk) return json_({ ok: false, error: "Unauthorized" }, env, 401);
 
   return null;
+}
+
+function isUiAuth_(request, env) {
+  const uiKey = request.headers.get("x-ui-key");
+  return Boolean(env.UI_KEY) && uiKey === env.UI_KEY;
+}
+
+function isApiAuth_(request, env) {
+  const apiKey = request.headers.get("x-api-key");
+  return Boolean(env.API_KEY) && apiKey === env.API_KEY;
+}
+
+function isCronRequest_(request) {
+  return Boolean(String(request.headers.get("cf-cron") || "").trim());
+}
+
+function getCookie_(request, name) {
+  const cookies = String(request.headers.get("cookie") || "");
+  const parts = cookies.split(";").map((x) => x.trim()).filter(Boolean);
+  for (const p of parts) {
+    const idx = p.indexOf("=");
+    if (idx === -1) continue;
+    const k = p.slice(0, idx).trim();
+    if (k !== name) continue;
+    return decodeURIComponent(p.slice(idx + 1));
+  }
+  return "";
 }
 
 function corsHeaders_(env) {
