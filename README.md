@@ -128,6 +128,40 @@ Invoke-WebRequest `
   -Body $body | Select-Object -ExpandProperty Content
 ```
 
+Manual JD submit (`x-ui-key`):
+
+```powershell
+$jobKey = "<job_key>"
+$body = @{
+  jd_text_clean = "Paste full JD text here with at least 200 characters."
+} | ConvertTo-Json -Depth 5
+
+Invoke-WebRequest `
+  -Uri "$BASE_URL/jobs/$jobKey/manual-jd" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Headers @{ "x-ui-key" = $UI_KEY } `
+  -Body $body | Select-Object -ExpandProperty Content
+```
+
+LinkedIn blocked -> manual flow example:
+
+```powershell
+# 1) Ingest LinkedIn URL (often blocked shell content)
+$ingest = @{
+  raw_urls = @("https://www.linkedin.com/jobs/view/<job_id>/")
+} | ConvertTo-Json -Depth 5
+Invoke-WebRequest `
+  -Uri "$BASE_URL/ingest" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Headers @{ "x-ui-key" = $UI_KEY } `
+  -Body $ingest | Select-Object -ExpandProperty Content
+
+# 2) Verify job shows system_status NEEDS_MANUAL_JD in /jobs or /jobs/:job_key
+# 3) Submit manual JD via /jobs/:job_key/manual-jd
+```
+
 ### Known behavior
 
 - LinkedIn fetch often returns cookie/privacy shell pages in server-side fetch.

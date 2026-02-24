@@ -1,5 +1,5 @@
-// worker_jobops_v2_ui_plus_clean.js
-// JobOps V2 — consolidated Worker (Option D + UI Plus)
+﻿// worker_jobops_v2_ui_plus_clean.js
+// JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
 // - D1-backed Jobs + Targets + Events
 // - URL normalization + JD resolution (fetch + email fallback)
@@ -89,6 +89,7 @@ export default {
         path === "/score-jd" ||
         path === "/score-pending" ||
         path === "/ingest" ||
+        (path.startsWith("/jobs/") && path.endsWith("/manual-jd")) ||
         (path.startsWith("/jobs/") && path.endsWith("/rescore"));
 
       const ai = needsAI ? getAi_(env) : null;
@@ -145,7 +146,13 @@ export default {
         args.push(limit, offset);
 
         const res = await env.DB.prepare(sql).bind(...args).all();
-        return json_({ ok: true, data: res.results || [] }, env, 200);
+        const rows = (res.results || []).map((row) => ({
+          ...row,
+          display_title: String(row.role_title || "").trim()
+            ? `${String(row.role_title || "").trim()}${String(row.company || "").trim() ? ` - ${String(row.company || "").trim()}` : ""}`
+            : "(Needs JD)",
+        }));
+        return json_({ ok: true, data: rows }, env, 200);
       }
 
       // ============================
@@ -197,6 +204,124 @@ export default {
 
         await logEvent_(env, "STATUS_CHANGED", jobKey, { status, ts: now });
         return json_({ ok: true, data: { job_key: jobKey, status, updated_at: now } }, env, 200);
+      }
+
+      // ============================
+      // UI: Manual JD submit + rescore
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/manual-jd") && request.method === "POST") {
+        const parts = path.split("/");
+        const jobKey = decodeURIComponent(parts[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const existing = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
+        if (!existing) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const body = await request.json().catch(() => ({}));
+        const jdText = cleanJdText_(String(body.jd_text_clean || ""));
+        if (jdText.length < 200) {
+          return json_({ ok: false, error: "jd_text_clean must be at least 200 chars" }, env, 400);
+        }
+
+        const now = Date.now();
+        await env.DB.prepare(`
+          UPDATE jobs
+          SET jd_text_clean = ?, jd_source = 'manual', fetch_status = 'ok', fetch_debug_json = '{}', updated_at = ?
+          WHERE job_key = ?;
+        `.trim()).bind(jdText.slice(0, 12000), now, jobKey).run();
+
+        const extracted = await extractJdWithModel_(ai, jdText);
+        const targets = await loadTargets_(env);
+        if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
+        const cfg = await loadSysCfg_(env);
+
+        const roleTitle = String(extracted?.role_title || existing.role_title || "").trim();
+        const location = String(extracted?.location || existing.location || "").trim();
+        const seniority = String(extracted?.seniority || existing.seniority || "").trim();
+
+        const scoring = await scoreJobWithModel_(ai, {
+          role_title: roleTitle,
+          location,
+          seniority,
+          jd_clean: jdText,
+        }, targets, cfg);
+
+        const rejectFromTargets = computeTargetReject_(jdText, scoring.primary_target_id, targets);
+        const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdText));
+        const rejectReasons = [];
+        if (hasRejectMarker_(jdText)) rejectReasons.push("Contains 'Reject:' marker in JD");
+        if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
+        if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
+
+        const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
+        const nextStatus = computeSystemStatus_(finalScore, mergedRejectTriggered, cfg);
+
+        await env.DB.prepare(`
+          UPDATE jobs
+          SET
+            company = COALESCE(?, company),
+            role_title = COALESCE(?, role_title),
+            location = COALESCE(?, location),
+            work_mode = COALESCE(?, work_mode),
+            seniority = COALESCE(?, seniority),
+            experience_years_min = COALESCE(?, experience_years_min),
+            experience_years_max = COALESCE(?, experience_years_max),
+            skills_json = ?,
+            must_have_keywords_json = ?,
+            nice_to_have_keywords_json = ?,
+            reject_keywords_json = ?,
+            primary_target_id = ?,
+            score_must = ?,
+            score_nice = ?,
+            final_score = ?,
+            reject_triggered = ?,
+            reject_reasons_json = ?,
+            reject_evidence = ?,
+            reason_top_matches = ?,
+            next_status = ?,
+            system_status = ?,
+            status = ?,
+            last_scored_at = ?,
+            updated_at = ?
+          WHERE job_key = ?;
+        `.trim()).bind(
+          extracted?.company ?? null,
+          extracted?.role_title ?? null,
+          extracted?.location ?? null,
+          extracted?.work_mode ?? null,
+          extracted?.seniority ?? null,
+          numOrNull_(extracted?.experience_years_min),
+          numOrNull_(extracted?.experience_years_max),
+          JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+          JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
+          scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+          clampInt_(scoring.score_must, 0, 100),
+          clampInt_(scoring.score_nice, 0, 100),
+          finalScore,
+          mergedRejectTriggered ? 1 : 0,
+          JSON.stringify(rejectReasons),
+          mergedRejectTriggered ? extractRejectEvidence_(jdText) : "",
+          String(scoring.reason_top_matches || "").slice(0, 1000),
+          nextStatus,
+          nextStatus,
+          nextStatus,
+          now,
+          now,
+          jobKey
+        ).run();
+
+        await logEvent_(env, "MANUAL_JD_RESCORED", jobKey, { status: nextStatus, final_score: finalScore, ts: now });
+        return json_({
+          ok: true,
+          data: {
+            job_key: jobKey,
+            status: nextStatus,
+            final_score: finalScore,
+            primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+          }
+        }, env, 200);
       }
 
       // ============================
@@ -627,7 +752,7 @@ export default {
       }
 
       // ============================
-      // ADMIN: Ingest (raw URLs) — optional utility
+      // ADMIN: Ingest (raw URLs) â€” optional utility
       // ============================
       if (path === "/ingest" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
@@ -654,8 +779,9 @@ export default {
 
           // Extract minimal from job_url if resolution failed
           const jdText = String(resolved.jd_text_clean || "").trim();
+          const needsManual = shouldRequireManualJd_(resolved, jdText);
           let extracted = null;
-          if (jdText && jdText.length >= 200) {
+          if (!needsManual && jdText && jdText.length >= 200) {
             extracted = await extractJdWithModel_(ai, jdText).catch(() => null);
           }
 
@@ -670,6 +796,9 @@ export default {
           const nice = Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [];
           const reject = Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [];
 
+          const rowStatus = needsManual ? "LINK_ONLY" : "NEW";
+          const systemStatus = needsManual ? "NEEDS_MANUAL_JD" : "NEW";
+
           // Upsert jobs row
           const r = await env.DB.prepare(`
             INSERT INTO jobs (
@@ -678,8 +807,8 @@ export default {
               experience_years_min, experience_years_max,
               skills_json, must_have_keywords_json, nice_to_have_keywords_json, reject_keywords_json,
               jd_text_clean, jd_source, fetch_status, fetch_debug_json,
-              status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              status, next_status, system_status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(job_key) DO UPDATE SET
               job_url = excluded.job_url,
               job_url_raw = excluded.job_url_raw,
@@ -700,6 +829,18 @@ export default {
               jd_source = COALESCE(excluded.jd_source, jobs.jd_source),
               fetch_status = COALESCE(excluded.fetch_status, jobs.fetch_status),
               fetch_debug_json = COALESCE(excluded.fetch_debug_json, jobs.fetch_debug_json),
+              status = CASE
+                WHEN excluded.status = 'LINK_ONLY' AND jobs.status IN ('NEW', 'SCORED', 'LINK_ONLY') THEN 'LINK_ONLY'
+                ELSE jobs.status
+              END,
+              next_status = CASE
+                WHEN excluded.system_status = 'NEEDS_MANUAL_JD' THEN 'NEEDS_MANUAL_JD'
+                ELSE jobs.next_status
+              END,
+              system_status = CASE
+                WHEN excluded.system_status = 'NEEDS_MANUAL_JD' THEN 'NEEDS_MANUAL_JD'
+                ELSE jobs.system_status
+              END,
               updated_at = excluded.updated_at;
           `.trim()).bind(
             norm.job_key,
@@ -722,7 +863,9 @@ export default {
             resolved.jd_source,
             resolved.fetch_status,
             JSON.stringify(resolved.debug || {}),
-            "NEW",
+            rowStatus,
+            systemStatus,
+            systemStatus,
             now,
             now
           ).run();
@@ -733,9 +876,10 @@ export default {
             raw_url: rawUrl,
             job_key: norm.job_key,
             job_url: norm.job_url,
-            status: "NEW",
+            status: rowStatus,
             jd_source: resolved.jd_source,
-            fetch_status: resolved.fetch_status
+            fetch_status: resolved.fetch_status,
+            system_status: systemStatus
           });
         }
 
@@ -831,6 +975,9 @@ function decorateJobRow_(row) {
   row.nice_to_have_keywords = safeJsonParseArray_(row.nice_to_have_keywords_json);
   row.reject_keywords = safeJsonParseArray_(row.reject_keywords_json);
   row.reject_reasons = safeJsonParseArray_(row.reject_reasons_json);
+  row.display_title = String(row.role_title || "").trim()
+    ? `${String(row.role_title || "").trim()}${String(row.company || "").trim() ? ` - ${String(row.company || "").trim()}` : ""}`
+    : "(Needs JD)";
 }
 
 /* =========================================================
@@ -1022,6 +1169,7 @@ async function normalizeJobUrl_(rawUrl) {
 
 async function resolveJd_(jobUrl, { emailHtml, emailText }) {
   const out = { jd_text_clean: "", jd_source: "none", fetch_status: "failed", debug: {} };
+  const sourceDomain = sourceDomainFromUrl_(jobUrl);
 
   // Try fetch first
   try {
@@ -1045,14 +1193,17 @@ async function resolveJd_(jobUrl, { emailHtml, emailText }) {
       const cleanedAll = cleanJdText_(text);
       const cleaned = extractJdWindow_(cleanedAll);
 
-      if (cleaned.length >= 600) {
+      if (isLowQualityJd_(cleaned, sourceDomain)) {
+        out.fetch_status = "blocked";
+        out.debug.low_quality = true;
+      } else if (cleaned.length >= 600) {
         out.jd_text_clean = cleaned.slice(0, 12000);
         out.jd_source = "fetched";
         out.fetch_status = "ok";
         return out;
+      } else {
+        out.fetch_status = out.fetch_status === "blocked" ? "blocked" : "failed";
       }
-
-      out.fetch_status = out.fetch_status === "blocked" ? "blocked" : "failed";
     }
   } catch (e) {
     out.fetch_status = "blocked";
@@ -1068,6 +1219,36 @@ async function resolveJd_(jobUrl, { emailHtml, emailText }) {
   }
 
   return out;
+}
+
+function sourceDomainFromUrl_(rawUrl) {
+  try {
+    return new URL(String(rawUrl || "")).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function isLowQualityJd_(text, sourceDomain) {
+  const cleaned = cleanJdText_(text);
+  const low = cleaned.toLowerCase();
+  if (cleaned.length < 400) return true;
+
+  if (low.includes("linkedin respects your privacy")) return true;
+  if (low.includes("enable javascript")) return true;
+
+  const cookieMentions = (low.match(/cookie/g) || []).length;
+  const privacyMentions = (low.match(/privacy/g) || []).length;
+  const linkedInShell = String(sourceDomain || "").includes("linkedin.com");
+  if ((cookieMentions + privacyMentions >= 6) || (linkedInShell && cookieMentions + privacyMentions >= 3)) return true;
+
+  return false;
+}
+
+function shouldRequireManualJd_(resolved, jdText) {
+  const fetchStatus = String(resolved?.fetch_status || "").toLowerCase();
+  if (fetchStatus === "blocked" || fetchStatus === "low_quality") return true;
+  return String(jdText || "").trim().length < 400;
 }
 
 function extractJdWindow_(t) {
@@ -1309,3 +1490,4 @@ function unique_(arr) {
   }
   return out;
 }
+
