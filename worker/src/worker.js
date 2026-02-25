@@ -1502,8 +1502,21 @@ function inferDisplayTitleFromUrl_(jobUrl, sourceDomain) {
 }
 
 function titleCaseMaybe_(s) {
-  const txt = String(s || "").trim();
+  const raw = String(s || "").trim();
+  const txt = raw.replace(/[_=;]+/g, " ").replace(/\s+/g, " ").trim();
   if (!txt) return "";
+
+  // Reject obvious tracking/token noise from malformed URL slugs.
+  const words = txt.split(" ").filter(Boolean);
+  const letters = (txt.match(/[a-z]/gi) || []).length;
+  const digits = (txt.match(/\d/g) || []).length;
+  const hasNoiseChars = /[=;]/.test(raw);
+  const looksLikeSingleTokenNoise = words.length === 1 && words[0].length > 24;
+  const looksLikeQueryNoise = /\b(utm|trk|token|session|redirect|clickid|fbclid|gclid)\b/i.test(raw);
+  if (hasNoiseChars || looksLikeSingleTokenNoise || looksLikeQueryNoise || letters < 3 || digits > letters) {
+    return "";
+  }
+
   const out = txt
     .split(" ")
     .map((w) => (w ? (w[0].toUpperCase() + w.slice(1)) : ""))
