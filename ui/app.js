@@ -536,6 +536,7 @@ function trackingCard(j) {
       </div>
       <div class="track-actions">
         <button class="btn btn-ghost btn-xs" data-track-action="open" data-track-key="${escapeHtml(j.job_key)}">Open</button>
+        <button class="btn btn-ghost btn-xs" data-track-action="pdf" data-track-key="${escapeHtml(j.job_key)}">PDF</button>
         <button class="btn btn-ghost btn-xs" data-track-action="shortlist" data-track-key="${escapeHtml(j.job_key)}">Shortlist</button>
         <button class="btn btn-ghost btn-xs" data-track-action="applied" data-track-key="${escapeHtml(j.job_key)}">Applied</button>
         <button class="btn btn-ghost btn-xs" data-track-action="archive" data-track-key="${escapeHtml(j.job_key)}">Archive</button>
@@ -550,6 +551,21 @@ async function handleTrackingAction(action, jobKey) {
   if (action === "open") {
     showView("jobs");
     await setActive(key);
+    return;
+  }
+  if (action === "pdf") {
+    try {
+      spin(true);
+      const d = await ensureRrPdfForJob_(key, { forceExport: false });
+      const pdfUrl = String(d?.rr_pdf_url || "").trim();
+      if (!pdfUrl) throw new Error("PDF URL not available after export");
+      window.open(pdfUrl, "_blank", "noopener");
+      toast("PDF ready");
+    } catch (e) {
+      toast("PDF failed: " + e.message);
+    } finally {
+      spin(false);
+    }
     return;
   }
   const setTrackingStatus = async (status) => {
@@ -577,6 +593,46 @@ async function handleTrackingAction(action, jobKey) {
     await setTrackingStatus("ARCHIVED");
     return;
   }
+}
+
+async function ensureRrPdfForJob_(jobKey, { forceExport = false } = {}) {
+  const key = String(jobKey || "").trim();
+  if (!key) throw new Error("Missing job key");
+  const profileId = String(state.activeProfileId || "primary").trim() || "primary";
+
+  let pack = null;
+  try {
+    const q = `?profile_id=${encodeURIComponent(profileId)}`;
+    const res = await api(`/jobs/${encodeURIComponent(key)}/application-pack${q}`);
+    pack = res?.data || null;
+  } catch (e) {
+    if (e.httpStatus !== 404) throw e;
+  }
+
+  const existingPdfUrl = String(pack?.rr_pdf_url || "").trim();
+  if (existingPdfUrl && !forceExport) {
+    return { rr_pdf_url: existingPdfUrl, source: "existing" };
+  }
+
+  if (!pack) {
+    await api(`/jobs/${encodeURIComponent(key)}/generate-application-pack`, {
+      method: "POST",
+      body: {
+        profile_id: profileId,
+        force: false,
+        renderer: "reactive_resume",
+      },
+    });
+  }
+
+  const exportRes = await api(`/jobs/${encodeURIComponent(key)}/export-reactive-resume-pdf`, {
+    method: "POST",
+    body: {
+      profile_id: profileId,
+      force: Boolean(forceExport),
+    },
+  });
+  return exportRes?.data || {};
 }
 
 function renderTracking() {
