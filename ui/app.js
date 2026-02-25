@@ -1571,6 +1571,26 @@ async function rescorePending(status = "NEW") {
   }
 }
 
+async function backfillMissing(limit = 50) {
+  try {
+    spin(true);
+    const res = await api("/jobs/backfill-missing", {
+      method: "POST",
+      body: { limit },
+    });
+    const d = res?.data || {};
+    toast(
+      `Backfill done - picked ${d.picked ?? "-"} - processed ${d.processed ?? "-"} - updated ${d.updated_count ?? "-"} - link_only ${d.link_only ?? "-"}`
+    );
+    await loadJobs();
+    if (state.activeKey) await setActive(state.activeKey);
+  } catch (e) {
+    toast("Backfill failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
 function hydrateSettingsUI() {
   const cfg = getCfg();
   $("apiHost").textContent = cfg.apiBase.replace(/^https?:\/\//, "");
@@ -1633,6 +1653,7 @@ async function saveSettings() {
   $("btnBatchCancel").onclick = () => closeModal("modalBatch");
   $("btnBatchRescoreNew").onclick = async () => { closeModal("modalBatch"); await rescorePending("NEW"); };
   $("btnBatchRescoreScored").onclick = async () => { closeModal("modalBatch"); await rescorePending("SCORED"); };
+  $("btnBatchBackfillMissing").onclick = async () => { closeModal("modalBatch"); await backfillMissing(60); };
 
   $("btnTargetsRefresh").onclick = loadTargets;
   $("btnTargetNew").onclick = createNewTarget;

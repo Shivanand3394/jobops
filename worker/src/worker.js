@@ -275,6 +275,95 @@ export default {
       }
 
       // ============================
+      // UI: Backfill incomplete jobs
+      // ============================
+      if (path === "/jobs/backfill-missing" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const limit = clampInt_(body.limit || 30, 1, 200);
+
+        const pickedRes = await env.DB.prepare(`
+          SELECT job_key, job_url
+          FROM jobs
+          WHERE
+            status NOT IN ('APPLIED', 'REJECTED', 'ARCHIVED')
+            AND (
+              status = 'LINK_ONLY'
+              OR COALESCE(TRIM(role_title), '') = ''
+              OR COALESCE(TRIM(company), '') = ''
+              OR COALESCE(TRIM(system_status), '') IN ('AI_UNAVAILABLE', 'NEEDS_MANUAL_JD')
+            )
+          ORDER BY updated_at DESC
+          LIMIT ?;
+        `.trim()).bind(limit).all();
+
+        const picked = Array.isArray(pickedRes?.results) ? pickedRes.results : [];
+        const rawUrls = [];
+        const skippedNoUrl = [];
+        for (const row of picked) {
+          const u = String(row?.job_url || "").trim();
+          if (!u) {
+            skippedNoUrl.push(String(row?.job_key || "").trim());
+            continue;
+          }
+          rawUrls.push(u);
+        }
+
+        if (!rawUrls.length) {
+          return json_({
+            ok: true,
+            data: {
+              picked: picked.length,
+              processed: 0,
+              skipped_no_url: skippedNoUrl.length,
+              skipped_job_keys: skippedNoUrl,
+              inserted_or_updated: 0,
+              inserted_count: 0,
+              updated_count: 0,
+              ignored: 0,
+              link_only: 0,
+              results: [],
+            }
+          }, env, 200);
+        }
+
+        const ingestData = await ingestRawUrls_(env, {
+          rawUrls,
+          emailText: "",
+          emailHtml: "",
+          emailSubject: "",
+          emailFrom: "",
+        });
+
+        await logEvent_(env, "BACKFILL_MISSING", null, {
+          picked: picked.length,
+          processed: rawUrls.length,
+          skipped_no_url: skippedNoUrl.length,
+          inserted_or_updated: ingestData?.inserted_or_updated || 0,
+          inserted_count: ingestData?.inserted_count || 0,
+          updated_count: ingestData?.updated_count || 0,
+          ignored: ingestData?.ignored || 0,
+          link_only: ingestData?.link_only || 0,
+          ts: Date.now(),
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            picked: picked.length,
+            processed: rawUrls.length,
+            skipped_no_url: skippedNoUrl.length,
+            skipped_job_keys: skippedNoUrl,
+            inserted_or_updated: ingestData?.inserted_or_updated || 0,
+            inserted_count: ingestData?.inserted_count || 0,
+            updated_count: ingestData?.updated_count || 0,
+            ignored: ingestData?.ignored || 0,
+            link_only: ingestData?.link_only || 0,
+            results: Array.isArray(ingestData?.results) ? ingestData.results : [],
+          }
+        }, env, 200);
+      }
+
+      // ============================
       // UI: Manual JD submit + rescore
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/manual-jd") && request.method === "POST") {
