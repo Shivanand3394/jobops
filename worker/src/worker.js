@@ -1535,8 +1535,8 @@ async function loadUiMetrics_(env) {
 }
 
 function computeDisplayFields_(row) {
-  const roleTitle = String(row?.role_title || "").trim();
-  const company = String(row?.company || "").trim();
+  const roleTitle = cleanHumanLabel_(row?.role_title);
+  const company = cleanHumanLabel_(row?.company);
   const systemStatus = String(row?.system_status || "").trim().toUpperCase();
   const inferredTitle = inferDisplayTitleFromUrl_(row?.job_url, row?.source_domain);
 
@@ -1628,6 +1628,36 @@ function titleCaseMaybe_(s) {
   return out.length > 90 ? `${out.slice(0, 87)}...` : out;
 }
 
+function cleanHumanLabel_(value) {
+  const raw = String(value || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  const txt = raw
+    .replace(/[|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!txt) return "";
+
+  const letters = (txt.match(/[a-z]/gi) || []).length;
+  const digits = (txt.match(/\d/g) || []).length;
+  const words = txt.split(" ").filter(Boolean);
+  const maxWordLen = words.reduce((m, w) => Math.max(m, w.length), 0);
+
+  const hasUrlish = /https?:\/\//i.test(raw) || /www\./i.test(raw);
+  const hasNoiseChars = /[=;{}<>]/.test(raw);
+  const hasTrackingWords = /\b(utm|trk|token|session|redirect|clickid|fbclid|gclid)\b/i.test(raw);
+  const looksLikeSingleOpaqueToken =
+    words.length === 1 &&
+    /^[a-z0-9._-]+$/i.test(words[0]) &&
+    (maxWordLen >= 28 || (digits >= 6 && digits > letters));
+  const tooNumeric = (letters < 3 && digits >= 3) || (digits > letters && digits >= 8);
+
+  if (hasUrlish || hasNoiseChars || hasTrackingWords || looksLikeSingleOpaqueToken || tooNumeric) {
+    return "";
+  }
+
+  return txt.length > 140 ? `${txt.slice(0, 137)}...` : txt;
+}
+
 /* =========================================================
  * AI helpers
  * ========================================================= */
@@ -1688,8 +1718,8 @@ function sanitizeExtracted_(raw, jdText) {
   const badLabels = new Set(["startup", "company", "organization", "introduction", "role", "job"]);
   const normalize = (v) => String(v || "").replace(/\s+/g, " ").trim();
 
-  out.company = normalize(out.company);
-  out.role_title = normalize(out.role_title);
+  out.company = cleanHumanLabel_(normalize(out.company));
+  out.role_title = cleanHumanLabel_(normalize(out.role_title));
   out.location = normalize(out.location);
   out.seniority = normalize(out.seniority);
   out.work_mode = normalize(out.work_mode);
@@ -1701,7 +1731,7 @@ function sanitizeExtracted_(raw, jdText) {
     const m =
       txt.match(/as a\s+([^\n,]{3,140})[,.:]/i) ||
       txt.match(/role(?:\s+and\s+responsibilities)?\s*[:\-]\s*([^\n]{3,140})/i);
-    if (m && m[1]) out.role_title = normalize(m[1]);
+    if (m && m[1]) out.role_title = cleanHumanLabel_(normalize(m[1]));
   }
 
   if (!Array.isArray(out.skills)) out.skills = [];
