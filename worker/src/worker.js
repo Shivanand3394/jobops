@@ -1333,19 +1333,81 @@ function computeDisplayFields_(row) {
   const roleTitle = String(row?.role_title || "").trim();
   const company = String(row?.company || "").trim();
   const systemStatus = String(row?.system_status || "").trim().toUpperCase();
+  const inferredTitle = inferDisplayTitleFromUrl_(row?.job_url, row?.source_domain);
 
   const displayTitle = roleTitle
     ? roleTitle
     : (company
       ? company
+      : (inferredTitle
+        ? inferredTitle
       : (systemStatus === "AI_UNAVAILABLE"
         ? "(Needs AI)"
-        : (systemStatus === "NEEDS_MANUAL_JD" ? "(Needs JD)" : "(Untitled)")));
+        : (systemStatus === "NEEDS_MANUAL_JD" ? "(Needs JD)" : "(Untitled)"))));
 
   return {
     display_title: displayTitle,
     display_company: company || "",
   };
+}
+
+function inferDisplayTitleFromUrl_(jobUrl, sourceDomain) {
+  const source = String(sourceDomain || "").toLowerCase();
+  const urlStr = String(jobUrl || "").trim();
+  if (!urlStr) return "";
+  let u;
+  try {
+    u = new URL(urlStr);
+  } catch {
+    return "";
+  }
+
+  const segs = u.pathname.split("/").filter(Boolean);
+  const last = decodeURIComponent(String(segs[segs.length - 1] || "")).toLowerCase();
+  if (!last) return "";
+
+  // LinkedIn /jobs/view/<id>/ cannot provide role text, so keep explicit placeholder.
+  if (source === "linkedin") return "";
+
+  // IIMJobs: /j/<slug>-<digits>
+  if (source === "iimjobs") {
+    let slug = last.replace(/-\d+$/i, "");
+    slug = slug.replace(/^[a-z0-9]+com-/i, ""); // drop obvious company prefix (e.g., cardekhocom-)
+    slug = slug
+      .replace(/-\d+-\d+-yrs?$/i, "")
+      .replace(/-yrs?$/i, "")
+      .replace(/-/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return titleCaseMaybe_(slug);
+  }
+
+  // Naukri: often /job-listings-<slug>-<digits>
+  if (source === "naukri") {
+    let slug = last.replace(/-\d+$/i, "");
+    slug = slug.replace(/^job-listings-/i, "");
+    slug = slug
+      .replace(/-yrs?-experience.*$/i, "")
+      .replace(/-in-[a-z-]+$/i, "")
+      .replace(/-/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return titleCaseMaybe_(slug);
+  }
+
+  return "";
+}
+
+function titleCaseMaybe_(s) {
+  const txt = String(s || "").trim();
+  if (!txt) return "";
+  const out = txt
+    .split(" ")
+    .map((w) => (w ? (w[0].toUpperCase() + w.slice(1)) : ""))
+    .join(" ")
+    .trim();
+  if (!out) return "";
+  return out.length > 90 ? `${out.slice(0, 87)}...` : out;
 }
 
 /* =========================================================
