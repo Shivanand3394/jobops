@@ -1934,9 +1934,20 @@ function deriveRoleFromJobUrl_(jobUrl, sourceDomain = "") {
     }
     if (!slug) return "";
     slug = slug.replace(/-\d{4,}$/i, "");
-    slug = slug.replace(/\b\d+\s*-\s*\d+\s*yrs?\b/gi, "");
-    slug = slug.replace(/\b\d+\s*yrs?\b/gi, "");
     slug = slug.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    slug = slug
+      .replace(/\b\d+\s*[-to]+\s*\d+\s*(?:yrs?|years?)\b/gi, "")
+      .replace(/\b\d+\s*(?:yrs?|years?)\b/gi, "")
+      .replace(/\b(?:yrs?|years?)\b/gi, "")
+      .replace(/\b(?:experience|exp)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const words = slug.split(" ").filter(Boolean);
+    if (words.length >= 4 && /(?:com|in|net|org)$/i.test(words[0])) words.shift();
+    if (words.length && /^(iimjobs|naukri|linkedin)$/i.test(words[0])) words.shift();
+    slug = words.join(" ").trim();
+
     return cleanHumanLabel_(slug);
   } catch {
     return "";
@@ -3344,6 +3355,7 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
         continue;
       }
 
+      const fallbackRole = deriveRoleFromJobUrl_(String(j?.job_url || ""), String(j?.source_domain || ""));
       const extracted = await extractJdWithModel_(ai, jd)
         .then((x) => sanitizeExtracted_(x, jd, {
           job_url: j?.job_url,
@@ -3352,27 +3364,25 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
         }))
         .catch(() => null);
 
-      if (!extracted) {
-        skipped += 1;
-        results.push({ job_key: j?.job_key, ok: false, reason: "extract_failed" });
-        continue;
-      }
-
       const currentRole = String(j?.role_title || "").trim();
       const currentCompany = String(j?.company || "").trim();
       const currentLocation = String(j?.location || "").trim();
       const currentWorkMode = String(j?.work_mode || "").trim();
       const currentSeniority = String(j?.seniority || "").trim();
       const currentCompanyValid = isLikelyCompanyName_(currentCompany);
+      const extractedRole = String(extracted?.role_title || "").trim();
       const extractedCompany = String(extracted?.company || "").trim();
+      const extractedLocation = String(extracted?.location || "").trim();
+      const extractedWorkMode = String(extracted?.work_mode || "").trim();
+      const extractedSeniority = String(extracted?.seniority || "").trim();
 
-      const nextRole = currentRole || String(extracted?.role_title || "").trim();
+      const nextRole = currentRole || extractedRole || fallbackRole;
       const nextCompany = currentCompanyValid
         ? currentCompany
         : (isLikelyCompanyName_(extractedCompany) ? extractedCompany : "");
-      const nextLocation = currentLocation || String(extracted?.location || "").trim();
-      const nextWorkMode = currentWorkMode || String(extracted?.work_mode || "").trim();
-      const nextSeniority = currentSeniority || String(extracted?.seniority || "").trim();
+      const nextLocation = currentLocation || extractedLocation;
+      const nextWorkMode = currentWorkMode || extractedWorkMode;
+      const nextSeniority = currentSeniority || extractedSeniority;
       const clearInvalidCompany = !currentCompanyValid && !nextCompany;
 
       const changed =
@@ -3385,7 +3395,11 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
 
       if (!changed) {
         skipped += 1;
-        results.push({ job_key: j?.job_key, ok: false, reason: "no_changes" });
+        results.push({
+          job_key: j?.job_key,
+          ok: false,
+          reason: extracted ? "no_changes" : "extract_failed",
+        });
         continue;
       }
 
