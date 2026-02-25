@@ -1,4 +1,6 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
+const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
+const DEFAULT_TEMPLATE_ID = "balanced";
 
 function getCfg() {
   return {
@@ -25,6 +27,10 @@ const state = {
   resumeProfiles: [],
   activeProfileId: "primary",
   profileJsonDraftById: {},
+  resumeTemplates: [],
+  activeTemplateId: DEFAULT_TEMPLATE_ID,
+  selectedAtsKeywords: [],
+  activeJob: null,
 };
 
 const AI_NOTICE_SESSION_KEY = "jobops_ai_notice_seen_session";
@@ -394,6 +400,7 @@ function bindWorkspaceTabs_(defaultTab = "jd") {
 }
 
 function renderDetail(j) {
+  state.activeJob = j;
   $("detailBody").classList.remove("empty");
   const headerTitle = getDisplayTitle(j);
   const headerCompany = getDisplayCompany(j) || "-";
@@ -488,6 +495,15 @@ function renderDetail(j) {
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
           <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
+          <div class="k">Keyword selection</div><div class="v">
+            <div class="row" style="justify-content:flex-start; margin-top:0;">
+              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('all')">Select all</button>
+              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('must')">Must</button>
+              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('missing')">Missing</button>
+              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('none')">Clear</button>
+            </div>
+            <div id="appKeywordPicker" class="kw-grid"></div>
+          </div>
         </div>
       </div>
 
@@ -499,6 +515,29 @@ function renderDetail(j) {
               <option value="reactive_resume">reactive_resume</option>
               <option value="html_simple">html_simple</option>
             </select>
+          </div>
+          <div class="k">Template</div><div class="v">
+            <select id="appTemplateSelect"></select>
+            <input id="appTemplateName" placeholder="Template name" style="margin-top:8px;" />
+            <div class="row" style="justify-content:flex-start; margin-top:8px;">
+              <button class="btn btn-ghost" type="button" onclick="saveResumeTemplateFromUi()">Save Template</button>
+              <button class="btn btn-ghost" type="button" onclick="deleteResumeTemplateFromUi()">Delete Template</button>
+            </div>
+          </div>
+          <div class="k">ATS mode</div><div class="v">
+            <select id="appAtsTargetMode">
+              <option value="all">Use all target keywords</option>
+              <option value="selected_only">Use selected ATS keywords only</option>
+            </select>
+          </div>
+          <div class="k">Resume blocks</div><div class="v">
+            <div class="block-checks">
+              <label><input type="checkbox" id="blkSummary" checked /> Summary</label>
+              <label><input type="checkbox" id="blkExperience" checked /> Experience</label>
+              <label><input type="checkbox" id="blkSkills" checked /> Skills</label>
+              <label><input type="checkbox" id="blkHighlights" checked /> Highlights</label>
+              <label><input type="checkbox" id="blkBullets" checked /> Tailored bullets</label>
+            </div>
           </div>
           <div class="k">Profile ID</div><div class="v"><input id="appProfileId" placeholder="primary" /></div>
           <div class="k">Profile Name</div><div class="v"><input id="appProfileName" placeholder="Primary" /></div>
@@ -521,7 +560,7 @@ function renderDetail(j) {
     console.log("Rendering Application Pack", j.job_key);
   }
   bindWorkspaceTabs_("jd");
-  hydrateApplicationPack(j.job_key);
+  hydrateApplicationPack(j);
 }
 
 function getTargetDisplay(t) {
@@ -791,6 +830,221 @@ function defaultProfileTemplate_() {
   };
 }
 
+function defaultResumeTemplates_() {
+  return [
+    {
+      id: "balanced",
+      name: "Balanced",
+      description: "General-purpose template.",
+      ats_target_mode: "all",
+      enabled_blocks: ["summary", "experience", "skills", "highlights", "bullets"],
+    },
+    {
+      id: "compact",
+      name: "Compact",
+      description: "Short format for quick applications.",
+      ats_target_mode: "all",
+      enabled_blocks: ["summary", "experience", "skills", "bullets"],
+    },
+    {
+      id: "keyword-focus",
+      name: "Keyword Focus",
+      description: "Bias toward selected ATS keywords.",
+      ats_target_mode: "selected_only",
+      enabled_blocks: ["summary", "skills", "highlights", "bullets"],
+    },
+  ];
+}
+
+function normalizeTemplate_(tpl) {
+  const id = String(tpl?.id || "").trim().toLowerCase();
+  const name = String(tpl?.name || id || "Template").trim();
+  const description = String(tpl?.description || "").trim();
+  const atsTargetMode = String(tpl?.ats_target_mode || "all").trim().toLowerCase();
+  const allowed = new Set(["summary", "experience", "skills", "highlights", "bullets"]);
+  const enabled = Array.isArray(tpl?.enabled_blocks)
+    ? tpl.enabled_blocks.map((x) => String(x || "").trim().toLowerCase()).filter((x) => allowed.has(x))
+    : [];
+  return {
+    id: id || slugify_(name) || crypto.randomUUID().slice(0, 8),
+    name: name || "Template",
+    description,
+    ats_target_mode: (atsTargetMode === "selected_only") ? "selected_only" : "all",
+    enabled_blocks: enabled.length ? Array.from(new Set(enabled)) : ["summary", "experience", "skills", "highlights", "bullets"],
+  };
+}
+
+function loadResumeTemplates_() {
+  const defaults = defaultResumeTemplates_();
+  let parsed = [];
+  try {
+    const raw = localStorage.getItem(RESUME_TEMPLATES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    parsed = Array.isArray(arr) ? arr : [];
+  } catch {
+    parsed = [];
+  }
+  const normalized = parsed.map(normalizeTemplate_).filter((t) => t.id);
+  const merged = [...defaults];
+  for (const t of normalized) {
+    const idx = merged.findIndex((x) => x.id === t.id);
+    if (idx >= 0) merged[idx] = t;
+    else merged.push(t);
+  }
+  state.resumeTemplates = merged;
+  if (!state.resumeTemplates.some((t) => t.id === state.activeTemplateId)) {
+    state.activeTemplateId = (state.resumeTemplates[0] || {}).id || DEFAULT_TEMPLATE_ID;
+  }
+}
+
+function saveResumeTemplates_() {
+  localStorage.setItem(RESUME_TEMPLATES_KEY, JSON.stringify(state.resumeTemplates || []));
+}
+
+function getTemplateById_(id) {
+  const key = String(id || "").trim();
+  return state.resumeTemplates.find((t) => t.id === key) || null;
+}
+
+function templateOptionsHtml_() {
+  return (state.resumeTemplates || [])
+    .map((t) => `<option value="${escapeHtml(t.id)}"${t.id === state.activeTemplateId ? " selected" : ""}>${escapeHtml(t.name)}</option>`)
+    .join("");
+}
+
+function getEnabledBlocksFromUi_() {
+  const map = [
+    ["summary", "blkSummary"],
+    ["experience", "blkExperience"],
+    ["skills", "blkSkills"],
+    ["highlights", "blkHighlights"],
+    ["bullets", "blkBullets"],
+  ];
+  return map.filter((x) => Boolean($(x[1])?.checked)).map((x) => x[0]);
+}
+
+function setEnabledBlocksUi_(blocks) {
+  const set = new Set((Array.isArray(blocks) ? blocks : []).map((x) => String(x || "").trim().toLowerCase()));
+  const map = [
+    ["summary", "blkSummary"],
+    ["experience", "blkExperience"],
+    ["skills", "blkSkills"],
+    ["highlights", "blkHighlights"],
+    ["bullets", "blkBullets"],
+  ];
+  map.forEach(([k, id]) => {
+    const el = $(id);
+    if (el) el.checked = set.has(k);
+  });
+}
+
+function readSelectedKeywordsFromUi_() {
+  const host = $("appKeywordPicker");
+  if (!host) return [];
+  return Array.from(host.querySelectorAll("input[type='checkbox'][data-kw]:checked"))
+    .map((el) => String(el.dataset.kw || "").trim())
+    .filter(Boolean);
+}
+
+function renderKeywordPicker_(job, packData = null) {
+  const host = $("appKeywordPicker");
+  if (!host) return;
+  const must = Array.isArray(job?.must_have_keywords) ? job.must_have_keywords : [];
+  const nice = Array.isArray(job?.nice_to_have_keywords) ? job.nice_to_have_keywords : [];
+  const missing = Array.isArray(packData?.ats_json?.missing_keywords) ? packData.ats_json.missing_keywords : [];
+  const fromPack = Array.isArray(packData?.pack_json?.controls?.selected_keywords)
+    ? packData.pack_json.controls.selected_keywords
+    : [];
+  const merged = Array.from(new Set([...must, ...nice, ...missing].map((x) => String(x || "").trim()).filter(Boolean)));
+  if (!merged.length) {
+    host.innerHTML = `<div class="muted tiny">No extracted keywords yet. Generate or rescore first.</div>`;
+    state.selectedAtsKeywords = [];
+    return;
+  }
+  const selectedSet = new Set(
+    (state.selectedAtsKeywords.length ? state.selectedAtsKeywords : (fromPack.length ? fromPack : must))
+      .map((x) => String(x || "").trim().toLowerCase())
+  );
+  host.innerHTML = merged.map((kw) => {
+    const low = kw.toLowerCase();
+    const checked = selectedSet.has(low);
+    const isMissing = missing.map((x) => String(x || "").toLowerCase()).includes(low);
+    const cls = isMissing ? "kw-pill missing" : "kw-pill";
+    return `<label class="${cls}"><input type="checkbox" data-kw="${escapeHtml(kw)}" ${checked ? "checked" : ""}/> ${escapeHtml(kw)}</label>`;
+  }).join("");
+  host.querySelectorAll("input[type='checkbox'][data-kw]").forEach((el) => {
+    el.onchange = () => {
+      state.selectedAtsKeywords = readSelectedKeywordsFromUi_();
+    };
+  });
+  state.selectedAtsKeywords = readSelectedKeywordsFromUi_();
+}
+
+function applyTemplateToResumeUi_(templateId) {
+  const tpl = getTemplateById_(templateId);
+  if (!tpl) return;
+  state.activeTemplateId = tpl.id;
+  if ($("appTemplateSelect")) $("appTemplateSelect").value = tpl.id;
+  if ($("appTemplateName")) $("appTemplateName").value = tpl.name;
+  if ($("appAtsTargetMode")) $("appAtsTargetMode").value = tpl.ats_target_mode || "all";
+  setEnabledBlocksUi_(tpl.enabled_blocks || []);
+}
+
+function saveResumeTemplateFromUi() {
+  const selectedId = String($("appTemplateSelect")?.value || "").trim();
+  const nameInput = String($("appTemplateName")?.value || "").trim();
+  const id = selectedId || slugify_(nameInput) || `template-${Date.now()}`;
+  const template = normalizeTemplate_({
+    id,
+    name: nameInput || id,
+    ats_target_mode: String($("appAtsTargetMode")?.value || "all"),
+    enabled_blocks: getEnabledBlocksFromUi_(),
+  });
+  const idx = state.resumeTemplates.findIndex((t) => t.id === template.id);
+  if (idx >= 0) state.resumeTemplates[idx] = template;
+  else state.resumeTemplates.push(template);
+  state.activeTemplateId = template.id;
+  saveResumeTemplates_();
+  if ($("appTemplateSelect")) $("appTemplateSelect").innerHTML = templateOptionsHtml_();
+  if ($("appTemplateSelect")) $("appTemplateSelect").value = state.activeTemplateId;
+  toast("Template saved");
+}
+
+function deleteResumeTemplateFromUi() {
+  const id = String($("appTemplateSelect")?.value || "").trim();
+  if (!id) return;
+  if (!confirm(`Delete template ${id}?`)) return;
+  state.resumeTemplates = (state.resumeTemplates || []).filter((t) => t.id !== id);
+  if (!state.resumeTemplates.length) {
+    state.resumeTemplates = defaultResumeTemplates_();
+  }
+  state.activeTemplateId = (state.resumeTemplates[0] || {}).id || DEFAULT_TEMPLATE_ID;
+  saveResumeTemplates_();
+  if ($("appTemplateSelect")) {
+    $("appTemplateSelect").innerHTML = templateOptionsHtml_();
+    $("appTemplateSelect").value = state.activeTemplateId;
+  }
+  applyTemplateToResumeUi_(state.activeTemplateId);
+  toast("Template deleted");
+}
+
+function selectAtsKeywords(mode) {
+  const host = $("appKeywordPicker");
+  if (!host) return;
+  const currentJob = state.activeJob || null;
+  const mustSet = new Set(Array.isArray(currentJob?.must_have_keywords) ? currentJob.must_have_keywords.map((x) => String(x || "").toLowerCase()) : []);
+  host.querySelectorAll("input[type='checkbox'][data-kw]").forEach((el) => {
+    const kw = String(el.dataset.kw || "").toLowerCase();
+    const label = el.closest("label");
+    const isMissing = label?.classList.contains("missing");
+    if (mode === "all") el.checked = true;
+    else if (mode === "none") el.checked = false;
+    else if (mode === "must") el.checked = mustSet.has(kw);
+    else if (mode === "missing") el.checked = Boolean(isMissing);
+  });
+  state.selectedAtsKeywords = readSelectedKeywordsFromUi_();
+}
+
 function resumeProfilesOptionsHtml() {
   return state.resumeProfiles
     .map((p) => `<option value="${escapeHtml(p.id)}"${p.id === state.activeProfileId ? " selected" : ""}>${escapeHtml(p.name || p.id)}</option>`)
@@ -854,12 +1108,21 @@ async function generateApplicationPack(jobKey, force = false) {
     const renderer = String($("appRenderer")?.value || "reactive_resume");
     const profileId = String($("appProfileSelect")?.value || state.activeProfileId || "").trim();
     if (profileId) state.activeProfileId = profileId;
+    const templateId = String($("appTemplateSelect")?.value || state.activeTemplateId || DEFAULT_TEMPLATE_ID).trim() || DEFAULT_TEMPLATE_ID;
+    state.activeTemplateId = templateId;
+    const enabledBlocks = getEnabledBlocksFromUi_();
+    const selectedKeywords = readSelectedKeywordsFromUi_();
+    const atsTargetMode = String($("appAtsTargetMode")?.value || "all").trim().toLowerCase() || "all";
     const res = await api(`/jobs/${encodeURIComponent(jobKey)}/generate-application-pack`, {
       method: "POST",
       body: {
         profile_id: state.activeProfileId || "primary",
         force: Boolean(force),
         renderer,
+        template_id: templateId,
+        enabled_blocks: enabledBlocks,
+        selected_keywords: selectedKeywords,
+        ats_target_mode: atsTargetMode,
       },
     });
     toast(`Pack ${res?.data?.status || "generated"} (${res?.data?.ats_score ?? "-"})`);
@@ -871,9 +1134,14 @@ async function generateApplicationPack(jobKey, force = false) {
   }
 }
 
-async function hydrateApplicationPack(jobKey) {
+async function hydrateApplicationPack(jobOrKey) {
   const section = $("appPackSection");
   if (!section) return;
+  const currentJob = (typeof jobOrKey === "object" && jobOrKey)
+    ? jobOrKey
+    : (state.jobs.find((x) => x.job_key === jobOrKey) || state.activeJob || { job_key: String(jobOrKey || "") });
+  const jobKey = String(currentJob?.job_key || "").trim();
+  if (!jobKey) return;
 
   const profileSelect = $("appProfileSelect");
   if (profileSelect) {
@@ -882,6 +1150,17 @@ async function hydrateApplicationPack(jobKey) {
     profileSelect.onchange = async () => {
       state.activeProfileId = profileSelect.value || "primary";
       await loadResumeProfileDetail(state.activeProfileId, { silent: true });
+    };
+  }
+
+  if (!state.resumeTemplates.length) loadResumeTemplates_();
+  const templateSelect = $("appTemplateSelect");
+  if (templateSelect) {
+    templateSelect.innerHTML = templateOptionsHtml_();
+    templateSelect.value = state.activeTemplateId || DEFAULT_TEMPLATE_ID;
+    templateSelect.onchange = () => {
+      state.activeTemplateId = templateSelect.value || DEFAULT_TEMPLATE_ID;
+      applyTemplateToResumeUi_(state.activeTemplateId);
     };
   }
 
@@ -906,6 +1185,7 @@ async function hydrateApplicationPack(jobKey) {
     if (window.location.hostname.includes("workers.dev")) {
       console.log("Draft response", { status: d.status || null, hasAts: Boolean(d.ats_json) });
     }
+    const controls = d?.pack_json?.controls || {};
     const status = String(d.status || "-");
     const ats = d.ats_json || {};
     const missing = Array.isArray(ats.missing_keywords) ? ats.missing_keywords : [];
@@ -916,6 +1196,23 @@ async function hydrateApplicationPack(jobKey) {
     section.dataset.packSummary = String(d?.pack_json?.tailoring?.summary || "");
     section.dataset.packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
     section.dataset.rrJson = JSON.stringify(d?.rr_export_json || {}, null, 2);
+
+    const controlTemplateId = String(controls.template_id || "").trim();
+    if (controlTemplateId) state.activeTemplateId = controlTemplateId;
+    if ($("appTemplateSelect")) {
+      $("appTemplateSelect").innerHTML = templateOptionsHtml_();
+      $("appTemplateSelect").value = state.activeTemplateId || DEFAULT_TEMPLATE_ID;
+    }
+    if ($("appTemplateName")) {
+      const tpl = getTemplateById_(state.activeTemplateId);
+      $("appTemplateName").value = tpl?.name || state.activeTemplateId || "";
+    }
+    if ($("appAtsTargetMode")) {
+      $("appAtsTargetMode").value = String(controls.ats_target_mode || "all");
+    }
+    setEnabledBlocksUi_(Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks : getTemplateById_(state.activeTemplateId)?.enabled_blocks || []);
+    state.selectedAtsKeywords = Array.isArray(controls.selected_keywords) ? controls.selected_keywords : [];
+    renderKeywordPicker_(currentJob, d);
   } catch (e) {
     $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
     $("appAtsScore").textContent = "-";
@@ -924,6 +1221,8 @@ async function hydrateApplicationPack(jobKey) {
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
     section.dataset.rrJson = "{}";
+    applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
+    renderKeywordPicker_(currentJob, null);
   }
 }
 
@@ -1217,6 +1516,7 @@ async function saveSettings() {
   hydrateSettingsUI();
   syncAddModeUi();
   loadResumeProfiles();
+  loadResumeTemplates_();
   showView("jobs");
   loadJobs();
 })();
@@ -1228,6 +1528,9 @@ window.saveActiveTarget = saveActiveTarget;
 window.createNewTarget = createNewTarget;
 window.appendKeyword = appendKeyword;
 window.saveResumeProfileFromUi = saveResumeProfileFromUi;
+window.saveResumeTemplateFromUi = saveResumeTemplateFromUi;
+window.deleteResumeTemplateFromUi = deleteResumeTemplateFromUi;
+window.selectAtsKeywords = selectAtsKeywords;
 window.generateApplicationPack = generateApplicationPack;
 window.copyPackSummary = copyPackSummary;
 window.copyPackBullets = copyPackBullets;

@@ -266,6 +266,40 @@ body{
   margin-bottom:8px;
 }
 
+.kw-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
+}
+
+.kw-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 8px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background: rgba(17,28,51,.75);
+  font-size:12px;
+}
+
+.kw-pill.missing{
+  border-color: rgba(245,158,11,.7);
+  background: rgba(120,70,0,.25);
+}
+
+.block-checks{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:8px 10px;
+}
+
+.block-checks label{
+  font-size:12px;
+  color:var(--text);
+}
+
 .target-form{
   display:flex;
   flex-direction:column;
