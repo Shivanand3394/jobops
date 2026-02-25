@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   system_status TEXT,
 
   status TEXT,
+  applied_note TEXT,
+  follow_up_at INTEGER,
+  referral_status TEXT,
   applied_at INTEGER,
   archived_at INTEGER,
   rejected_at INTEGER,
