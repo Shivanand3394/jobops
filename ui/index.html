@@ -117,6 +117,22 @@
           <input id="trackingSearch" type="search" placeholder="Role, company, location..." />
         </div>
         <div class="field">
+          <label>Scope</label>
+          <select id="trackingScope">
+            <option value="active_only" selected>Active Only</option>
+            <option value="all">All Statuses</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Window</label>
+          <select id="trackingWindow">
+            <option value="7">Last 7 days</option>
+            <option value="14" selected>Last 14 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="0">All time</option>
+          </select>
+        </div>
+        <div class="field">
           <label>Sort</label>
           <select id="trackingSort">
             <option value="updated_desc">Updated (Newest)</option>
@@ -124,6 +140,15 @@
             <option value="score_desc">Score (High to Low)</option>
             <option value="score_asc">Score (Low to High)</option>
             <option value="title_asc">Title (A-Z)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Per Column</label>
+          <select id="trackingLimit">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
           </select>
         </div>
         <button class="btn btn-ghost" id="btnTrackingRefresh" title="Refresh">Refresh</button>
@@ -300,6 +325,12 @@
 
   <div id="toast" class="toast hidden"></div>
   <div id="spinner" class="spinner hidden"><div></div></div>
+  <nav id="mobileQuickActions" class="mobile-quick-actions" aria-label="Mobile quick actions">
+    <button class="btn btn-ghost" id="btnMobileJobs">Jobs</button>
+    <button class="btn btn-ghost" id="btnMobileTracking">Tracking</button>
+    <button class="btn" id="btnMobileAdd">Add</button>
+    <button class="btn btn-secondary" id="btnMobileRescore">Rescore</button>
+  </nav>
 
   <script src="app.js"></script>
 </body>

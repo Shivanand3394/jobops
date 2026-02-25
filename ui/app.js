@@ -185,6 +185,8 @@ function showView(view) {
   $("btnTabTracking").classList.toggle("active-tab", view === "tracking");
   $("btnTabTargets").classList.toggle("active-tab", view === "targets");
   $("btnTabMetrics").classList.toggle("active-tab", view === "metrics");
+  $("btnMobileJobs")?.classList.toggle("active-tab", view === "jobs");
+  $("btnMobileTracking")?.classList.toggle("active-tab", view === "tracking");
 
   const jobsActionsHidden = view !== "jobs";
   $("btnAdd").classList.toggle("hidden", jobsActionsHidden);
@@ -446,36 +448,66 @@ async function handleTrackingAction(action, jobKey) {
 function renderTracking() {
   const q = String($("trackingSearch")?.value || "").trim().toLowerCase();
   const sort = String($("trackingSort")?.value || "updated_desc").trim();
-  const filtered = sortJobs(filterJobs(state.jobs, "", q, ""), sort);
-  const needsAttention = filtered.filter(isNeedsAttentionJob);
-  const byStatus = new Map(TRACKING_COLUMNS.map((s) => [s, []]));
+  const scope = String($("trackingScope")?.value || "active_only").trim().toLowerCase();
+  const windowDays = Number($("trackingWindow")?.value || 14);
+  const perColumn = Math.max(1, Number($("trackingLimit")?.value || 20));
+  const activeOnlyStatuses = new Set(["NEW", "SCORED", "SHORTLISTED", "APPLIED", "LINK_ONLY"]);
+  const boardStatuses = scope === "active_only"
+    ? TRACKING_COLUMNS.filter((s) => activeOnlyStatuses.has(s))
+    : TRACKING_COLUMNS;
+
+  const now = Date.now();
+  const windowMs = Number.isFinite(windowDays) && windowDays > 0 ? windowDays * 24 * 60 * 60 * 1000 : 0;
+
+  const scoped = (Array.isArray(state.jobs) ? state.jobs : []).filter((j) => {
+    const status = String(j.status || "").toUpperCase();
+    if (scope === "active_only" && !activeOnlyStatuses.has(status)) return false;
+    if (!windowMs) return true;
+    const ts = Number(j.updated_at || j.created_at || 0);
+    return ts >= (now - windowMs);
+  });
+
+  const filtered = sortJobs(filterJobs(scoped, "", q, ""), sort);
+  const needsAttentionAll = filtered.filter(isNeedsAttentionJob);
+  const needsAttention = needsAttentionAll.slice(0, perColumn);
+  const byStatus = new Map(boardStatuses.map((s) => [s, []]));
   for (const j of filtered) {
     const s = String(j.status || "").toUpperCase();
     if (!byStatus.has(s)) continue;
     byStatus.get(s).push(j);
   }
 
-  $("trackingNeedsCount").textContent = String(needsAttention.length);
+  $("trackingNeedsCount").textContent = String(needsAttentionAll.length);
   $("trackingNeedsList").innerHTML = needsAttention.length
-    ? needsAttention.map(trackingCard).join("")
+    ? `
+      ${needsAttention.map(trackingCard).join("")}
+      ${needsAttentionAll.length > needsAttention.length
+        ? `<div class="muted tiny">+${needsAttentionAll.length - needsAttention.length} more (raise Per Column to view)</div>`
+        : ""}
+    `
     : `<div class="muted tiny">No jobs need attention right now.</div>`;
 
-  $("trackingBoard").innerHTML = TRACKING_COLUMNS.map((status) => {
-    const items = byStatus.get(status) || [];
+  $("trackingBoard").innerHTML = boardStatuses.map((status) => {
+    const allItems = byStatus.get(status) || [];
+    const items = allItems.slice(0, perColumn);
+    const hiddenCount = Math.max(0, allItems.length - items.length);
     return `
       <section class="tracking-col">
         <div class="tracking-col-head">
           <div class="h3">${escapeHtml(status)}</div>
-          <span class="chip">${escapeHtml(String(items.length))}</span>
+          <span class="chip">${escapeHtml(String(allItems.length))}</span>
         </div>
         <div class="tracking-col-body">
           ${items.length ? items.map(trackingCard).join("") : `<div class="muted tiny">No jobs</div>`}
+          ${hiddenCount ? `<div class="muted tiny">+${hiddenCount} more (raise Per Column)</div>` : ""}
         </div>
       </section>
     `;
   }).join("");
 
-  $("trackingHint").textContent = `${filtered.length} jobs on board`;
+  const scopeLabel = scope === "active_only" ? "active statuses" : "all statuses";
+  const windowLabel = windowMs ? `${windowDays}d` : "all time";
+  $("trackingHint").textContent = `${filtered.length} jobs on board (${scopeLabel}, window ${windowLabel}, cap ${perColumn}/column)`;
 
   document.querySelectorAll("[data-track-action][data-track-key]").forEach((el) => {
     el.addEventListener("click", async (ev) => {
@@ -1840,6 +1872,10 @@ async function saveSettings() {
   $("btnTabTracking").onclick = () => showView("tracking");
   $("btnTabTargets").onclick = () => showView("targets");
   $("btnTabMetrics").onclick = () => showView("metrics");
+  $("btnMobileJobs").onclick = () => showView("jobs");
+  $("btnMobileTracking").onclick = () => showView("tracking");
+  $("btnMobileAdd").onclick = () => openModal("modalAdd");
+  $("btnMobileRescore").onclick = () => rescorePending("NEW");
 
   $("btnAdd").onclick = () => openModal("modalAdd");
   $("btnCloseAdd").onclick = () => closeModal("modalAdd");
@@ -1874,6 +1910,9 @@ async function saveSettings() {
   $("queueFilter").onchange = () => { renderJobs(); renderListMeta(); };
   $("trackingSearch").oninput = () => renderTracking();
   $("trackingSort").onchange = () => renderTracking();
+  $("trackingScope").onchange = () => renderTracking();
+  $("trackingWindow").onchange = () => renderTracking();
+  $("trackingLimit").onchange = () => renderTracking();
 
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
