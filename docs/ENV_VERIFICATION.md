@@ -157,6 +157,20 @@ Expected:
 - `data.inserted_or_updated`
 - `data.source_summary`
 
+### 6) RSS diagnostics (API auth)
+```powershell
+$body = @{ max_per_run = 10; sample_limit = 5 } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/rss/diagnostics" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+```bash
+curl -i -X POST "$BASE_URL/rss/diagnostics" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" -d '{"max_per_run":10,"sample_limit":5}'
+```
+Expected:
+- `ok:true`
+- `data.reason_buckets` present with deterministic keys
+- `data.feed_summaries[]` present with URL-only samples
+- `data.inserted_or_updated` and `data.source_summary[]` present
+
 ## E) Troubleshooting table
 
 | Failure symptom | Likely cause | How to confirm | Fix |
@@ -168,6 +182,8 @@ Expected:
 | `/rss/poll` returns `skipped: no_feeds_configured` | `RSS_FEEDS` empty/missing | Call `/rss/poll` and inspect payload | Set `RSS_FEEDS` var to feed URLs (comma/newline separated), redeploy |
 | `/rss/poll` has high `items_filtered_allow` | `RSS_ALLOW_KEYWORDS` too strict | Inspect response counters | Relax/remove `RSS_ALLOW_KEYWORDS` |
 | `/rss/poll` still ingests promo/news items | `RSS_BLOCK_KEYWORDS` not set or too weak | Inspect `items_filtered_block` and item sources | Add stronger block keywords (e.g., `premium,newsletter,upgrade,sponsored`) |
+| `/rss/diagnostics` shows high `unresolved_wrapper` | Wrapped links (e.g., Google News RSS) not resolving to canonical job URLs | Call `/rss/diagnostics` and inspect `data.reason_buckets` + `feed_summaries.sample_candidates` | Use cleaner feeds where possible, keep query-param redirects, and verify resolver behavior with small `max_per_run` test |
+| `/rss/diagnostics` shows high `normalize_ignored` or `unsupported_domain` | URLs are non-job pages or unsupported domains after normalization | Inspect `reason_buckets` and sample candidates | Tighten `RSS_ALLOW_KEYWORDS`, extend source feeds, or add domain support in normalization logic |
 | `/gmail/poll` returns `ok:true` but `scanned=0` | Query too narrow (label mismatch / mailbox visibility) | Inspect `data.query_used` in poll response | Temporarily set `GMAIL_QUERY` to `in:anywhere newer_than:7d`, or call `/gmail/poll` with body override `{ "query":"in:anywhere newer_than:7d","max_per_run":50 }` |
 | D1 errors / missing migrations | DB binding wrong or migrations not applied | Endpoint errors and `wrangler d1 list` | Bind D1 as `DB` and apply `001_init.sql` + `002_gmail.sql` |
 | CORS/origin failures | `ALLOW_ORIGIN` not set for UI origin | Check response headers and browser console | Set `ALLOW_ORIGIN` to Pages URL in prod (`https://getjobs.shivanand-shah94.workers.dev`) |

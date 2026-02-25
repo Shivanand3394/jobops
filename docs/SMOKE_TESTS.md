@@ -484,7 +484,62 @@ curl -sS "$BASE_URL/rss/poll" \
   -d '{"feed_urls":["https://example.com/jobs-feed.xml"],"max_per_run":10,"allow_keywords":["strategy","consulting"],"block_keywords":["newsletter","premium","upgrade"]}'
 ```
 
-## 22) Verify fallback reason logging (blocked/low_quality/manual_required)
+## 22) RSS diagnostics (API key only)
+Purpose: debug why RSS items are not turning into ingest candidates, without exposing feed message content.
+
+### curl (diagnostics run)
+```bash
+curl -sS "$BASE_URL/rss/diagnostics" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"max_per_run":10,"sample_limit":5}'
+```
+
+### PowerShell (diagnostics run)
+```powershell
+$body = @{ max_per_run = 10; sample_limit = 5 } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/rss/diagnostics" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Expected keys under `data`:
+- `run_id`, `ts`
+- `feeds_total`, `feeds_processed`, `feeds_failed`
+- `items_listed`, `items_filtered_allow`, `items_filtered_block`, `processed`
+- `urls_found_total`, `urls_unique_total`, `urls_job_domains_total`, `ignored_domains_count`
+- `inserted_or_updated`, `inserted_count`, `updated_count`, `ignored`, `link_only`
+- `reason_buckets` with:
+  - `unsupported_domain`
+  - `normalize_ignored`
+  - `unresolved_wrapper`
+  - `duplicate_candidate`
+  - `no_url_in_item`
+  - `ingested`
+- `feed_summaries[]` with `sample_candidates[]` (URL-only)
+- `source_summary[]`
+
+### Negative auth check (must fail without API key)
+```bash
+curl -i "$BASE_URL/rss/diagnostics" -X POST -H "Content-Type: application/json" -d '{}'
+```
+Expected: `401 Unauthorized`.
+
+### Override feeds and keyword filters for one run
+```powershell
+$body = @{
+  feed_urls = @(
+    "https://example.com/feed-1.xml",
+    "https://example.com/feed-2.xml"
+  )
+  max_per_run = 10
+  sample_limit = 5
+  allow_keywords = @("strategy","consulting")
+  block_keywords = @("newsletter","premium","upgrade")
+} | ConvertTo-Json -Depth 6
+Invoke-WebRequest -Uri "$BASE_URL/rss/diagnostics" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+## 23) Verify fallback reason logging (blocked/low_quality/manual_required)
 Trigger ingest with a known difficult URL (e.g., LinkedIn) and inspect result rows:
 
 ### curl

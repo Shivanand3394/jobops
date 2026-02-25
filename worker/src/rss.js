@@ -1,17 +1,37 @@
-export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, normalizeFn, allowKeywords, blockKeywords }) {
+export async function pollRssFeedsAndIngest_(env, opts = {}) {
+  return runRssFeedsAndIngest_(env, { ...opts, mode: "poll" });
+}
+
+export async function diagnoseRssFeedsAndIngest_(env, opts = {}) {
+  return runRssFeedsAndIngest_(env, { ...opts, mode: "diagnostics" });
+}
+
+async function runRssFeedsAndIngest_(env, opts = {}) {
+  const ingestFn = opts.ingestFn;
+  const normalizeFn = opts.normalizeFn;
   if (typeof ingestFn !== "function") throw new Error("ingestFn is required");
   if (typeof normalizeFn !== "function") throw new Error("normalizeFn is required");
 
+  const mode = String(opts.mode || "poll").toLowerCase();
   const runId = crypto.randomUUID();
   const ts = Date.now();
+
   const feedList = unique_(
-    (Array.isArray(feeds) ? feeds : [])
+    (Array.isArray(opts.feeds) ? opts.feeds : [])
       .map((x) => String(x || "").trim())
       .filter((x) => /^https?:\/\//i.test(x))
   );
-  const maxItems = clampInt_(maxPerRun || env.RSS_MAX_PER_RUN || 25, 1, 200);
-  const allow = parseKeywordList_(allowKeywords ?? env.RSS_ALLOW_KEYWORDS);
-  const block = parseKeywordList_(blockKeywords ?? env.RSS_BLOCK_KEYWORDS);
+  const maxItems = clampInt_(opts.maxPerRun || env.RSS_MAX_PER_RUN || 25, 1, 200);
+  const allow = parseKeywordList_(opts.allowKeywords ?? env.RSS_ALLOW_KEYWORDS);
+  const block = parseKeywordList_(opts.blockKeywords ?? env.RSS_BLOCK_KEYWORDS);
+  const sampleLimit = clampInt_(opts.sampleLimit || 5, 1, 20);
+  const maxCandidateAttempts = clampInt_(opts.maxCandidateAttempts || 12, 1, 50);
+  const ingestEnabled = opts.ingestEnabled !== false;
+
+  const resolverBudget = {
+    remaining: clampInt_(opts.maxResolveRequests || 120, 0, 500),
+    timeoutMs: clampInt_(opts.resolveTimeoutMs || 3500, 500, 10000),
+  };
 
   let feedsTotal = feedList.length;
   let feedsProcessed = 0;
@@ -22,6 +42,7 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
   let itemsFilteredBlock = 0;
   let skippedEmpty = 0;
   let blockedOrFailedFetch = 0;
+  let ingestedCount = 0;
   let insertedOrUpdated = 0;
   let insertedCount = 0;
   let updatedCount = 0;
@@ -30,13 +51,60 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
   let urlsFoundTotal = 0;
   let urlsJobDomainsTotal = 0;
   let ignoredDomainsCount = 0;
+  const reasonBuckets = createReasonBuckets_();
   const urlsUnique = new Set();
   const resultsSample = [];
   const sourceSummary = new Map();
+  const feedSummaries = [];
+
+  if (!feedList.length) {
+    return {
+      run_id: runId,
+      ts,
+      skipped: true,
+      reason: "no_feeds_configured",
+      feeds_total: 0,
+      feeds_processed: 0,
+      feeds_failed: 0,
+      max_per_run: maxItems,
+      items_listed: 0,
+      processed: 0,
+      skipped_empty: 0,
+      blocked_or_failed_fetch: 0,
+      allow_keywords_count: allow.length,
+      block_keywords_count: block.length,
+      items_filtered_allow: 0,
+      items_filtered_block: 0,
+      urls_found_total: 0,
+      urls_unique_total: 0,
+      urls_job_domains_total: 0,
+      ignored_domains_count: 0,
+      ingested_count: 0,
+      inserted_or_updated: 0,
+      inserted_count: 0,
+      updated_count: 0,
+      ignored: 0,
+      link_only: 0,
+      reason_buckets: reasonBuckets,
+      feed_summaries: [],
+      source_summary: [],
+      results_sample: [],
+      mode,
+    };
+  }
 
   for (const feedUrl of feedList) {
     if (processed >= maxItems) break;
     feedsProcessed += 1;
+
+    const feedBucket = createReasonBuckets_();
+    const feedSummary = {
+      feed_url: feedUrl,
+      items_listed: 0,
+      processed: 0,
+      reason_buckets: feedBucket,
+      sample_candidates: [],
+    };
 
     let xml = "";
     try {
@@ -49,34 +117,38 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
       if (!res.ok) {
         feedsFailed += 1;
         blockedOrFailedFetch += 1;
+        feedSummaries.push(feedSummary);
         continue;
       }
       xml = String(await res.text());
       if (!xml.trim()) {
         feedsFailed += 1;
+        feedSummaries.push(feedSummary);
         continue;
       }
     } catch {
       feedsFailed += 1;
       blockedOrFailedFetch += 1;
+      feedSummaries.push(feedSummary);
       continue;
     }
 
     const items = parseFeedItems_(xml);
     itemsListed += items.length;
+    feedSummary.items_listed = items.length;
     const feedHost = hostFromUrl_(feedUrl) || "unknown";
 
     for (const item of items) {
       if (processed >= maxItems) break;
+      processed += 1;
+      feedSummary.processed += 1;
 
       const textForFilter = `${String(item?.title || "")}\n${String(item?.summary || "")}`.toLowerCase();
       if (block.length && containsAnyKeyword_(textForFilter, block)) {
-        processed += 1;
         itemsFilteredBlock += 1;
         continue;
       }
       if (allow.length && !containsAnyKeyword_(textForFilter, allow)) {
-        processed += 1;
         itemsFilteredAllow += 1;
         continue;
       }
@@ -85,42 +157,72 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
       urlsFoundTotal += rawUrls.length;
       for (const u of unique_(rawUrls)) urlsUnique.add(u);
 
-      const classified = await classifyRssJobUrls_(rawUrls, normalizeFn);
+      if (!rawUrls.length) {
+        skippedEmpty += 1;
+        ignored += 1;
+        reasonBuckets.no_url_in_item += 1;
+        feedBucket.no_url_in_item += 1;
+        continue;
+      }
+
+      const classified = await classifyRssJobUrlsDetailed_(rawUrls, normalizeFn, {
+        maxCandidateAttempts,
+        resolverBudget,
+        sampleLimit,
+      });
       const supported = Array.isArray(classified.supported) ? classified.supported : [];
       urlsJobDomainsTotal += supported.length;
       ignoredDomainsCount += numOr0_(classified.ignored_domains_count);
+      mergeReasonBuckets_(reasonBuckets, classified.reason_buckets);
+      mergeReasonBuckets_(feedBucket, classified.reason_buckets);
+      pushUniqueLimited_(feedSummary.sample_candidates, classified.sample_candidates, sampleLimit);
 
-      const emailText = `${String(item.title || "").trim()}\n\n${String(item.summary || "").trim()}`.slice(0, 6000);
-      const ingestData = supported.length
-        ? await ingestFn({
-          raw_urls: supported.map((x) => x.job_url),
-          email_text: emailText,
-          email_html: "",
-          email_subject: String(item.title || "").slice(0, 300),
-          email_from: `rss:${feedHost}`,
-        })
-        : { inserted_or_updated: 0, inserted_count: 0, updated_count: 0, ignored: 1, link_only: 0, results: [] };
+      let ingestData = null;
+      if (!supported.length) {
+        skippedEmpty += 1;
+        ignored += 1;
+      } else if (!ingestEnabled) {
+        // Diagnostics can disable ingest to run pure classification checks.
+      } else {
+        try {
+          const emailText = `${String(item.title || "").trim()}\n\n${String(item.summary || "").trim()}`.slice(0, 6000);
+          ingestData = await ingestFn({
+            raw_urls: supported.map((x) => x.job_url),
+            email_text: emailText,
+            email_html: "",
+            email_subject: String(item.title || "").slice(0, 300),
+            email_from: `rss:${feedHost}`,
+          });
+          ingestedCount += 1;
+          reasonBuckets.ingested += 1;
+          feedBucket.ingested += 1;
+        } catch {
+          blockedOrFailedFetch += 1;
+          ignored += 1;
+        }
+      }
 
-      processed += 1;
-      if (!supported.length) skippedEmpty += 1;
+      if (ingestData) {
+        insertedOrUpdated += numOr0_(ingestData.inserted_or_updated);
+        insertedCount += numOr0_(ingestData.inserted_count);
+        updatedCount += numOr0_(ingestData.updated_count);
+        ignored += numOr0_(ingestData.ignored);
+        linkOnly += numOr0_(ingestData.link_only);
 
-      insertedOrUpdated += numOr0_(ingestData.inserted_or_updated);
-      insertedCount += numOr0_(ingestData.inserted_count);
-      updatedCount += numOr0_(ingestData.updated_count);
-      ignored += numOr0_(ingestData.ignored);
-      linkOnly += numOr0_(ingestData.link_only);
+        mergeSourceSummary_(sourceSummary, ingestData?.source_summary, ingestData?.results, supported);
 
-      mergeSourceSummary_(sourceSummary, ingestData?.source_summary, ingestData?.results, supported);
-
-      const keys = Array.isArray(ingestData?.results)
-        ? ingestData.results.map((r) => String(r?.job_key || "").trim()).filter(Boolean)
-        : [];
-      for (const k of keys) {
-        if (resultsSample.length >= 5) break;
-        if (resultsSample.includes(k)) continue;
-        resultsSample.push(k);
+        const keys = Array.isArray(ingestData?.results)
+          ? ingestData.results.map((r) => String(r?.job_key || "").trim()).filter(Boolean)
+          : [];
+        for (const k of keys) {
+          if (resultsSample.length >= 5) break;
+          if (resultsSample.includes(k)) continue;
+          resultsSample.push(k);
+        }
       }
     }
+
+    feedSummaries.push(feedSummary);
   }
 
   return {
@@ -142,31 +244,34 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
     urls_unique_total: urlsUnique.size,
     urls_job_domains_total: urlsJobDomainsTotal,
     ignored_domains_count: ignoredDomainsCount,
+    ingested_count: ingestedCount,
     inserted_or_updated: insertedOrUpdated,
     inserted_count: insertedCount,
     updated_count: updatedCount,
     ignored,
     link_only: linkOnly,
+    reason_buckets: reasonBuckets,
+    feed_summaries: feedSummaries,
     source_summary: Array.from(sourceSummary.values()).sort((a, b) => (b.total || 0) - (a.total || 0)),
     results_sample: resultsSample,
+    mode,
   };
 }
 
-async function classifyRssJobUrls_(urls, normalizeFn) {
+async function classifyRssJobUrlsDetailed_(urls, normalizeFn, opts = {}) {
   const supported = [];
   const seenByKey = new Set();
   const seenByUrl = new Set();
+  const sampleCandidates = [];
   const allowedDomains = new Set(["linkedin", "iimjobs", "naukri"]);
+  const sampleLimit = clampInt_(opts.sampleLimit || 5, 1, 20);
+  const reasonBuckets = createReasonBuckets_();
   let ignoredDomains = 0;
 
   for (const raw of unique_(urls)) {
-    const candidates = expandTrackingUrlCandidates_(raw);
-    if (looksLikeGoogleNewsRssLink_(raw)) {
-      const resolved = await resolveGoogleNewsRssLink_(raw);
-      if (resolved) {
-        for (const c of expandTrackingUrlCandidates_(resolved)) candidates.push(c);
-      }
-    }
+    const resolved = await buildResolvedCandidates_(raw, opts);
+    const candidates = Array.isArray(resolved.candidates) ? resolved.candidates : [];
+
     let accepted = null;
     for (const candidate of candidates) {
       let norm = null;
@@ -175,9 +280,18 @@ async function classifyRssJobUrls_(urls, normalizeFn) {
       } catch {
         norm = null;
       }
-      if (!norm || norm.ignored || !norm.job_url) continue;
+
+      if (!norm || norm.ignored || !norm.job_url) {
+        reasonBuckets.normalize_ignored += 1;
+        continue;
+      }
+
       const sourceDomain = normalizeSourceDomain_(norm.source_domain);
-      if (!allowedDomains.has(sourceDomain)) continue;
+      if (!allowedDomains.has(sourceDomain)) {
+        reasonBuckets.unsupported_domain += 1;
+        continue;
+      }
+
       accepted = {
         job_key: String(norm.job_key || "").trim() || null,
         job_url: String(norm.job_url || "").trim(),
@@ -187,21 +301,111 @@ async function classifyRssJobUrls_(urls, normalizeFn) {
     }
 
     if (!accepted || !accepted.job_url) {
+      if (resolved.wrapper_detected && !resolved.wrapper_resolved) {
+        reasonBuckets.unresolved_wrapper += 1;
+      }
       ignoredDomains += 1;
       continue;
     }
 
     if (accepted.job_key) {
-      if (seenByKey.has(accepted.job_key)) continue;
+      if (seenByKey.has(accepted.job_key)) {
+        reasonBuckets.duplicate_candidate += 1;
+        continue;
+      }
       seenByKey.add(accepted.job_key);
     } else {
-      if (seenByUrl.has(accepted.job_url)) continue;
+      if (seenByUrl.has(accepted.job_url)) {
+        reasonBuckets.duplicate_candidate += 1;
+        continue;
+      }
       seenByUrl.add(accepted.job_url);
     }
+
     supported.push(accepted);
+    if (sampleCandidates.length < sampleLimit && !sampleCandidates.includes(accepted.job_url)) {
+      sampleCandidates.push(accepted.job_url);
+    }
   }
 
-  return { supported, ignored_domains_count: ignoredDomains };
+  return {
+    supported,
+    ignored_domains_count: ignoredDomains,
+    reason_buckets: reasonBuckets,
+    sample_candidates: sampleCandidates,
+  };
+}
+
+async function buildResolvedCandidates_(raw, opts = {}) {
+  const maxCandidateAttempts = clampInt_(opts.maxCandidateAttempts || 12, 1, 50);
+  const out = [];
+  const seen = new Set();
+  const add = (value) => {
+    const s = String(value || "").trim();
+    if (!/^https?:\/\//i.test(s)) return;
+    if (seen.has(s)) return;
+    seen.add(s);
+    out.push(s);
+  };
+
+  const expanded = expandTrackingUrlCandidates_(raw);
+  for (const c of expanded) add(c);
+
+  const wrapperDetected = looksLikeGoogleNewsRssLink_(raw);
+  let wrapperResolved = false;
+
+  if (wrapperDetected) {
+    const fromPath = extractUrlFromGoogleNewsWrapperPath_(raw);
+    if (fromPath) {
+      wrapperResolved = true;
+      for (const c of expandTrackingUrlCandidates_(fromPath)) add(c);
+    }
+
+    const viaFetch = await resolveGoogleNewsRssLink_(raw, opts.resolverBudget);
+    if (viaFetch) {
+      wrapperResolved = true;
+      for (const c of expandTrackingUrlCandidates_(viaFetch)) add(c);
+    }
+  }
+
+  return {
+    candidates: out.slice(0, maxCandidateAttempts),
+    wrapper_detected: wrapperDetected,
+    wrapper_resolved: wrapperResolved,
+  };
+}
+
+function createReasonBuckets_() {
+  return {
+    unsupported_domain: 0,
+    normalize_ignored: 0,
+    unresolved_wrapper: 0,
+    duplicate_candidate: 0,
+    no_url_in_item: 0,
+    ingested: 0,
+  };
+}
+
+function mergeReasonBuckets_(target, source) {
+  if (!target || !source) return;
+  target.unsupported_domain += numOr0_(source.unsupported_domain);
+  target.normalize_ignored += numOr0_(source.normalize_ignored);
+  target.unresolved_wrapper += numOr0_(source.unresolved_wrapper);
+  target.duplicate_candidate += numOr0_(source.duplicate_candidate);
+  target.no_url_in_item += numOr0_(source.no_url_in_item);
+  target.ingested += numOr0_(source.ingested);
+}
+
+function pushUniqueLimited_(target, values, limit) {
+  const max = clampInt_(limit || 5, 1, 20);
+  const arr = Array.isArray(values) ? values : [];
+  for (const v of arr) {
+    const s = String(v || "").trim();
+    if (!s) continue;
+    if (target.includes(s)) continue;
+    if (target.length >= max) break;
+    target.push(s);
+  }
 }
 
 function parseFeedItems_(xml) {
@@ -224,9 +428,7 @@ function parseFeedItems_(xml) {
   for (const block of atomBlocks) {
     const title = decodeHtmlEntities_(extractTag_(block, "title"));
     const link = decodeHtmlEntities_(extractAtomLink_(block));
-    const desc = decodeHtmlEntities_(
-      extractTag_(block, "summary") || extractTag_(block, "content")
-    );
+    const desc = decodeHtmlEntities_(extractTag_(block, "summary") || extractTag_(block, "content"));
     items.push({
       title: String(title || "").trim(),
       link: String(link || "").trim(),
@@ -305,8 +507,10 @@ function expandTrackingUrlCandidates_(raw) {
   for (const k of candidateParams) {
     const val = u.searchParams.get(k);
     if (!val) continue;
-    add(decodeUrlSafely_(val));
-    add(decodeUrlSafely_(decodeUrlSafely_(val)));
+    const decoded1 = decodeUrlSafely_(val);
+    const decoded2 = decodeUrlSafely_(decoded1);
+    add(decoded1);
+    add(decoded2);
   }
   return out;
 }
@@ -330,21 +534,53 @@ function looksLikeGoogleNewsRssLink_(url) {
   }
 }
 
-async function resolveGoogleNewsRssLink_(url) {
+function extractUrlFromGoogleNewsWrapperPath_(url) {
   try {
-    const res = await fetch(String(url), {
+    const decoded = decodeURIComponent(String(url || ""));
+    const match = decoded.match(/https?:\/\/[^\s"'<>]+/i);
+    if (!match || !match[0]) return "";
+    return String(match[0]).replace(/[),.;]+$/g, "");
+  } catch {
+    return "";
+  }
+}
+
+async function resolveGoogleNewsRssLink_(url, resolverBudget) {
+  if (!resolverBudget || numOr0_(resolverBudget.remaining) <= 0) return "";
+  resolverBudget.remaining = Math.max(0, numOr0_(resolverBudget.remaining) - 1);
+  const timeoutMs = clampInt_(resolverBudget.timeoutMs || 3500, 500, 10000);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
+  try {
+    const res = await fetch(String(url || ""), {
       method: "GET",
       redirect: "follow",
+      signal: controller.signal,
       headers: {
         "User-Agent": "JobOpsRSS/1.0 (+https://get-job.shivanand-shah94.workers.dev)",
       },
     });
+
     const finalUrl = String(res?.url || "").trim();
-    if (!/^https?:\/\//i.test(finalUrl)) return "";
-    return finalUrl;
+    if (/^https?:\/\//i.test(finalUrl) && !looksLikeGoogleNewsRssLink_(finalUrl)) return finalUrl;
+
+    const body = String(await res.text());
+    const extracted = extractFirstHttpUrl_(body);
+    if (/^https?:\/\//i.test(extracted) && !looksLikeGoogleNewsRssLink_(extracted)) return extracted;
+    return "";
   } catch {
     return "";
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+function extractFirstHttpUrl_(text) {
+  const s = String(text || "");
+  const m = s.match(/https?:\/\/[^\s"'<>]+/i);
+  if (!m || !m[0]) return "";
+  return String(m[0]).replace(/[),.;]+$/g, "");
 }
 
 function decodeHtmlEntities_(s) {

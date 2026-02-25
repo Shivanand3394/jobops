@@ -1,7 +1,7 @@
 ﻿// worker_jobops_v2_ui_plus_clean.js
 import { buildGmailAuthUrl_, handleGmailOAuthCallback_, pollGmailAndIngest_ } from "./gmail.js";
 import { ensurePrimaryProfile_, generateApplicationPack_, persistResumeDraft_ } from "./resume_pack.js";
-import { pollRssFeedsAndIngest_ } from "./rss.js";
+import { diagnoseRssFeedsAndIngest_, pollRssFeedsAndIngest_ } from "./rss.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -195,6 +195,64 @@ export default {
         const maxPerRun = Number.isFinite(Number(maxPerRunRaw)) ? Number(maxPerRunRaw) : undefined;
         const data = await runRssPoll_(env, { maxPerRun, feeds, allowKeywords, blockKeywords });
         await logEvent_(env, "RSS_POLL", null, { source: isCron ? "cron" : "api", ...data, ts: Date.now() });
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      // ============================
+      // ADMIN: RSS diagnostics
+      // ============================
+      if (path === "/rss/diagnostics" && request.method === "POST") {
+        const apiAuthorized = isApiAuth_(request, env);
+        if (!apiAuthorized) {
+          return json_({ ok: false, error: "Unauthorized" }, env, 401);
+        }
+
+        const body = await request.json().catch(() => ({}));
+        const maxPerRunRaw = body.max_per_run ?? body.maxPerRun;
+        const sampleLimitRaw = body.sample_limit ?? body.sampleLimit;
+        const feeds = Array.isArray(body.feed_urls)
+          ? body.feed_urls.map((x) => String(x || "").trim()).filter(Boolean)
+          : [];
+        const allowKeywords = Array.isArray(body.allow_keywords)
+          ? body.allow_keywords
+          : (typeof body.allow_keywords === "string" ? body.allow_keywords : undefined);
+        const blockKeywords = Array.isArray(body.block_keywords)
+          ? body.block_keywords
+          : (typeof body.block_keywords === "string" ? body.block_keywords : undefined);
+        const maxPerRun = Number.isFinite(Number(maxPerRunRaw)) ? Number(maxPerRunRaw) : undefined;
+        const sampleLimit = Number.isFinite(Number(sampleLimitRaw)) ? Number(sampleLimitRaw) : undefined;
+        const data = await runRssDiagnostics_(env, {
+          maxPerRun,
+          sampleLimit,
+          feeds,
+          allowKeywords,
+          blockKeywords,
+        });
+
+        await logEvent_(env, "RSS_DIAGNOSTICS", null, {
+          source: "api",
+          run_id: data?.run_id || null,
+          ts: Date.now(),
+          feeds_total: numOr_(data?.feeds_total, 0),
+          feeds_processed: numOr_(data?.feeds_processed, 0),
+          feeds_failed: numOr_(data?.feeds_failed, 0),
+          items_listed: numOr_(data?.items_listed, 0),
+          items_filtered_allow: numOr_(data?.items_filtered_allow, 0),
+          items_filtered_block: numOr_(data?.items_filtered_block, 0),
+          processed: numOr_(data?.processed, 0),
+          urls_found_total: numOr_(data?.urls_found_total, 0),
+          urls_unique_total: numOr_(data?.urls_unique_total, 0),
+          urls_job_domains_total: numOr_(data?.urls_job_domains_total, 0),
+          ignored_domains_count: numOr_(data?.ignored_domains_count, 0),
+          inserted_or_updated: numOr_(data?.inserted_or_updated, 0),
+          inserted_count: numOr_(data?.inserted_count, 0),
+          updated_count: numOr_(data?.updated_count, 0),
+          ignored: numOr_(data?.ignored, 0),
+          link_only: numOr_(data?.link_only, 0),
+          reason_buckets: data?.reason_buckets || {},
+          source_summary: Array.isArray(data?.source_summary) ? data.source_summary : [],
+        });
+
         return json_({ ok: true, data }, env, 200);
       }
 
@@ -2894,6 +2952,41 @@ async function runRssPoll_(env, opts = {}) {
   return pollRssFeedsAndIngest_(env, {
     feeds,
     maxPerRun,
+    allowKeywords: opts.allowKeywords,
+    blockKeywords: opts.blockKeywords,
+    normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
+    ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
+      return ingestRawUrls_(env, {
+        rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
+        emailText: typeof email_text === "string" ? email_text : "",
+        emailHtml: typeof email_html === "string" ? email_html : "",
+        emailSubject: typeof email_subject === "string" ? email_subject : "",
+        emailFrom: typeof email_from === "string" ? email_from : "",
+        ingestChannel: "rss",
+      });
+    },
+  });
+}
+
+async function runRssDiagnostics_(env, opts = {}) {
+  const feeds = Array.isArray(opts.feeds) && opts.feeds.length
+    ? opts.feeds.map((x) => String(x || "").trim()).filter(Boolean)
+    : String(env.RSS_FEEDS || "")
+      .split(/\r?\n|,/g)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+
+  const maxPerRun = Number.isFinite(Number(opts.maxPerRun))
+    ? clampInt_(Number(opts.maxPerRun), 1, 200)
+    : clampInt_(env.RSS_MAX_PER_RUN || 25, 1, 200);
+  const sampleLimit = Number.isFinite(Number(opts.sampleLimit))
+    ? clampInt_(Number(opts.sampleLimit), 1, 20)
+    : 5;
+
+  return diagnoseRssFeedsAndIngest_(env, {
+    feeds,
+    maxPerRun,
+    sampleLimit,
     allowKeywords: opts.allowKeywords,
     blockKeywords: opts.blockKeywords,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
