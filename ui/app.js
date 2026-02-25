@@ -1916,8 +1916,21 @@ async function recoverMissingDetailsFromTracking(limit = 60) {
 
     const b = backfillRes?.data || {};
     const r = rescoreRes?.data || {};
+    const sourceSummary = Array.isArray(b.source_summary) ? b.source_summary : [];
+    const sourceText = sourceSummary.length
+      ? sourceSummary
+        .slice(0, 4)
+        .map((s) => {
+          const src = String(s.source_domain || "unknown");
+          const recovered = Number(s.recovered || 0);
+          const manual = Number(s.manual_needed || 0);
+          const needsAi = Number(s.needs_ai || 0);
+          return `${src}: rec ${recovered}, manual ${manual}, ai ${needsAi}`;
+        })
+        .join(" | ")
+      : "";
     toast(
-      `Recovery complete - fetch processed ${b.processed ?? 0}, updated ${b.updated_count ?? 0}; rescore updated ${r.updated ?? 0}/${r.picked ?? 0}`
+      `Recovery complete - fetch processed ${b.processed ?? 0}, updated ${b.updated_count ?? 0}; rescore updated ${r.updated ?? 0}/${r.picked ?? 0}${sourceText ? ` | ${sourceText}` : ""}`
     );
 
     await loadJobs({ ignoreStatus: true });

@@ -1950,6 +1950,57 @@ function sourceDomainFromUrl_(rawUrl) {
   }
 }
 
+function normalizeSourceDomainName_(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "unknown";
+  if (raw.includes("linkedin")) return "linkedin";
+  if (raw.includes("iimjobs")) return "iimjobs";
+  if (raw.includes("naukri")) return "naukri";
+  return raw.replace(/^www\./, "");
+}
+
+function summarizeRecoveryResultsBySource_(rows) {
+  const summary = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const source = normalizeSourceDomainName_(
+      row?.source_domain || sourceDomainFromUrl_(row?.job_url || row?.raw_url || "")
+    );
+    const item = summary.get(source) || {
+      source_domain: source,
+      total: 0,
+      recovered: 0,
+      manual_needed: 0,
+      needs_ai: 0,
+      blocked: 0,
+      link_only: 0,
+      ignored: 0,
+      inserted: 0,
+      updated: 0,
+    };
+    item.total += 1;
+
+    const action = String(row?.action || "").toLowerCase();
+    const status = String(row?.status || "").toUpperCase();
+    const systemStatus = String(row?.system_status || "").toUpperCase();
+    const fetchStatus = String(row?.fetch_status || "").toLowerCase();
+
+    if (action === "inserted") item.inserted += 1;
+    if (action === "updated") item.updated += 1;
+    if (action === "ignored") item.ignored += 1;
+    if (status === "LINK_ONLY" || action === "link_only") item.link_only += 1;
+    if (systemStatus === "NEEDS_MANUAL_JD" || status === "LINK_ONLY") item.manual_needed += 1;
+    if (systemStatus === "AI_UNAVAILABLE" || fetchStatus === "ai_unavailable") item.needs_ai += 1;
+    if (fetchStatus === "blocked" || fetchStatus === "low_quality") item.blocked += 1;
+    if (action !== "ignored" && status !== "LINK_ONLY") item.recovered += 1;
+
+    summary.set(source, item);
+  }
+  return Array.from(summary.values()).sort((a, b) => {
+    if (b.recovered !== a.recovered) return b.recovered - a.recovered;
+    return b.total - a.total;
+  });
+}
+
 function isLowQualityJd_(text, sourceDomain) {
   const cleaned = cleanJdText_(text);
   const low = cleaned.toLowerCase();
@@ -2211,6 +2262,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       ignored += 1;
       results.push({
         raw_url: rawUrl,
+        source_domain: normalizeSourceDomainName_(sourceDomainFromUrl_(rawUrl)),
         was_existing: false,
         action: "ignored",
       });
@@ -2415,6 +2467,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       raw_url: rawUrl,
       job_key: norm.job_key,
       job_url: norm.job_url,
+      source_domain: normalizeSourceDomainName_(norm.source_domain),
       was_existing: wasExisting,
       action,
       status: transition.status,
@@ -2433,6 +2486,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     updated_count: updatedCount,
     ignored,
     link_only: linkOnly,
+    source_summary: summarizeRecoveryResultsBySource_(results),
     results,
   };
 }
