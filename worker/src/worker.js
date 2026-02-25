@@ -1563,9 +1563,10 @@ export default {
       if (path === "/targets" && request.method === "GET") {
         const targetSchema = await getTargetsSchema_(env);
         const rejectSelect = targetSchema.hasRejectKeywords ? "reject_keywords_json" : "'[]' AS reject_keywords_json";
+        const rubricSelect = targetSchema.hasRubricProfile ? "rubric_profile" : "'auto' AS rubric_profile";
         const res = await env.DB.prepare(`
           SELECT id, name, primary_role, seniority_pref, location_pref,
-                 must_keywords_json, nice_keywords_json, ${rejectSelect},
+                 must_keywords_json, nice_keywords_json, ${rejectSelect}, ${rubricSelect},
                  updated_at, created_at
           FROM targets
           ORDER BY updated_at DESC;
@@ -1576,9 +1577,17 @@ export default {
           must_keywords: safeJsonParseArray_(r.must_keywords_json),
           nice_keywords: safeJsonParseArray_(r.nice_keywords_json),
           reject_keywords: safeJsonParseArray_(r.reject_keywords_json),
+          rubric_profile: normalizeRubricProfile_(r.rubric_profile || "auto"),
         }));
 
-        return json_({ ok: true, data: rows, meta: { reject_keywords_enabled: targetSchema.hasRejectKeywords } }, env, 200);
+        return json_({
+          ok: true,
+          data: rows,
+          meta: {
+            reject_keywords_enabled: targetSchema.hasRejectKeywords,
+            rubric_profile_enabled: targetSchema.hasRubricProfile,
+          }
+        }, env, 200);
       }
 
       // ============================
@@ -1589,10 +1598,11 @@ export default {
         if (!targetId) return json_({ ok: false, error: "Missing target id" }, env, 400);
         const targetSchema = await getTargetsSchema_(env);
         const rejectSelect = targetSchema.hasRejectKeywords ? "reject_keywords_json" : "'[]' AS reject_keywords_json";
+        const rubricSelect = targetSchema.hasRubricProfile ? "rubric_profile" : "'auto' AS rubric_profile";
 
         const row = await env.DB.prepare(`
           SELECT id, name, primary_role, seniority_pref, location_pref,
-                 must_keywords_json, nice_keywords_json, ${rejectSelect},
+                 must_keywords_json, nice_keywords_json, ${rejectSelect}, ${rubricSelect},
                  updated_at, created_at
           FROM targets WHERE id = ? LIMIT 1;
         `.trim()).bind(targetId).first();
@@ -1602,8 +1612,16 @@ export default {
         row.must_keywords = safeJsonParseArray_(row.must_keywords_json);
         row.nice_keywords = safeJsonParseArray_(row.nice_keywords_json);
         row.reject_keywords = safeJsonParseArray_(row.reject_keywords_json);
+        row.rubric_profile = normalizeRubricProfile_(row.rubric_profile || "auto");
 
-        return json_({ ok: true, data: row, meta: { reject_keywords_enabled: targetSchema.hasRejectKeywords } }, env, 200);
+        return json_({
+          ok: true,
+          data: row,
+          meta: {
+            reject_keywords_enabled: targetSchema.hasRejectKeywords,
+            rubric_profile_enabled: targetSchema.hasRubricProfile,
+          }
+        }, env, 200);
       }
 
       // ============================
@@ -1619,6 +1637,9 @@ export default {
         const primaryRole = String(body.primary_role || body.primaryRole || "").trim().slice(0, 200);
         const seniorityPref = String(body.seniority_pref || body.seniorityPref || "").trim().slice(0, 120);
         const locationPref = String(body.location_pref || body.locationPref || "").trim().slice(0, 200);
+        const rubricProfile = normalizeRubricProfile_(
+          body.rubric_profile ?? body.rubricProfile ?? "auto"
+        );
 
         // Keywords: accept array OR string with commas/newlines
         const must = normalizeKeywords_(body.must_keywords ?? body.must_keywords_json ?? []);
@@ -1627,8 +1648,38 @@ export default {
         const targetSchema = await getTargetsSchema_(env);
 
         const now = Date.now();
-        const r = targetSchema.hasRejectKeywords
+        const r = (targetSchema.hasRejectKeywords && targetSchema.hasRubricProfile)
           ? await env.DB.prepare(`
+              INSERT INTO targets (
+                id, name, primary_role, seniority_pref, location_pref, rubric_profile,
+                must_keywords_json, nice_keywords_json, reject_keywords_json,
+                created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                name = COALESCE(NULLIF(excluded.name, ''), targets.name),
+                primary_role = COALESCE(NULLIF(excluded.primary_role, ''), targets.primary_role),
+                seniority_pref = COALESCE(NULLIF(excluded.seniority_pref, ''), targets.seniority_pref),
+                location_pref = COALESCE(NULLIF(excluded.location_pref, ''), targets.location_pref),
+                rubric_profile = excluded.rubric_profile,
+                must_keywords_json = excluded.must_keywords_json,
+                nice_keywords_json = excluded.nice_keywords_json,
+                reject_keywords_json = excluded.reject_keywords_json,
+                updated_at = excluded.updated_at;
+            `.trim()).bind(
+            targetId,
+            name || targetId,
+            primaryRole,
+            seniorityPref,
+            locationPref,
+            rubricProfile,
+            JSON.stringify(must),
+            JSON.stringify(nice),
+            JSON.stringify(reject),
+            now,
+            now
+          ).run()
+          : (targetSchema.hasRejectKeywords
+            ? await env.DB.prepare(`
               INSERT INTO targets (
                 id, name, primary_role, seniority_pref, location_pref,
                 must_keywords_json, nice_keywords_json, reject_keywords_json,
@@ -1655,7 +1706,35 @@ export default {
             now,
             now
           ).run()
-          : await env.DB.prepare(`
+          : (targetSchema.hasRubricProfile
+            ? await env.DB.prepare(`
+              INSERT INTO targets (
+                id, name, primary_role, seniority_pref, location_pref, rubric_profile,
+                must_keywords_json, nice_keywords_json,
+                created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                name = COALESCE(NULLIF(excluded.name, ''), targets.name),
+                primary_role = COALESCE(NULLIF(excluded.primary_role, ''), targets.primary_role),
+                seniority_pref = COALESCE(NULLIF(excluded.seniority_pref, ''), targets.seniority_pref),
+                location_pref = COALESCE(NULLIF(excluded.location_pref, ''), targets.location_pref),
+                rubric_profile = excluded.rubric_profile,
+                must_keywords_json = excluded.must_keywords_json,
+                nice_keywords_json = excluded.nice_keywords_json,
+                updated_at = excluded.updated_at;
+            `.trim()).bind(
+            targetId,
+            name || targetId,
+            primaryRole,
+            seniorityPref,
+            locationPref,
+            rubricProfile,
+            JSON.stringify(must),
+            JSON.stringify(nice),
+            now,
+            now
+          ).run()
+            : await env.DB.prepare(`
               INSERT INTO targets (
                 id, name, primary_role, seniority_pref, location_pref,
                 must_keywords_json, nice_keywords_json,
@@ -1679,7 +1758,7 @@ export default {
             JSON.stringify(nice),
             now,
             now
-          ).run();
+          ).run()));
 
         if (!r.success) return json_({ ok: false, error: "Failed to save target" }, env, 500);
 
@@ -1982,9 +2061,10 @@ async function getTargetsSchema_(env) {
     const names = new Set((rows.results || []).map((r) => String(r.name || "").trim()));
     return {
       hasRejectKeywords: names.has("reject_keywords_json"),
+      hasRubricProfile: names.has("rubric_profile"),
     };
   } catch {
-    return { hasRejectKeywords: false };
+    return { hasRejectKeywords: false, hasRubricProfile: false };
   }
 }
 
@@ -2027,9 +2107,10 @@ async function getResumeDraftSchema_(env) {
 async function loadTargets_(env) {
   const targetSchema = await getTargetsSchema_(env);
   const rejectSelect = targetSchema.hasRejectKeywords ? "reject_keywords_json" : "'[]' AS reject_keywords_json";
+  const rubricSelect = targetSchema.hasRubricProfile ? "rubric_profile" : "'auto' AS rubric_profile";
   const res = await env.DB.prepare(`
     SELECT id, name, primary_role, seniority_pref, location_pref,
-           must_keywords_json, nice_keywords_json, ${rejectSelect}
+           must_keywords_json, nice_keywords_json, ${rejectSelect}, ${rubricSelect}
     FROM targets
     ORDER BY updated_at DESC;
   `.trim()).all();
@@ -2041,6 +2122,8 @@ async function loadTargets_(env) {
     primaryRole: String(t.primary_role || "").trim(),
     seniorityPref: String(t.seniority_pref || "").trim(),
     locationPref: String(t.location_pref || "").trim(),
+    rubricProfile: normalizeRubricProfile_(t.rubric_profile || "auto"),
+    rubric_profile: normalizeRubricProfile_(t.rubric_profile || "auto"),
     must: safeJsonParseArray_(t.must_keywords_json),
     nice: safeJsonParseArray_(t.nice_keywords_json),
     reject: safeJsonParseArray_(t.reject_keywords_json),
@@ -5243,6 +5326,14 @@ function normalizeKeywords_(input) {
   // Split commas/newlines
   const parts = s.split(/[\n,]+/g).map((x) => x.trim()).filter(Boolean);
   return unique_(parts).slice(0, 200);
+}
+
+function normalizeRubricProfile_(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (raw === "pm_v1" || raw === "target_generic_v1" || raw === "auto") return raw;
+  if (raw === "pm" || raw === "product" || raw === "product_manager") return "pm_v1";
+  if (raw === "generic" || raw === "target" || raw === "default") return "target_generic_v1";
+  return "auto";
 }
 
 function unique_(arr) {

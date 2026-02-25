@@ -255,15 +255,18 @@ function computeTargetRubric_({
   const targetId = str_(targetObj.id);
   const targetName = str_(targetObj.name);
   const targetRole = str_(targetObj.primaryRole || targetObj.primary_role);
+  const rubricProfile = normalizeRubricProfile_(targetObj.rubricProfile || targetObj.rubric_profile || "auto");
   const roleCombined = `${str_(roleTitle)} ${targetRole}`.toLowerCase();
   const isPmTarget =
     /product manager|product management|product owner|group product manager|senior product manager|technical product manager|\bpm\b/.test(roleCombined);
+  const usePmTemplate = rubricProfile === "pm_v1" || (rubricProfile === "auto" && isPmTarget);
 
-  if (isPmTarget) {
+  if (usePmTemplate) {
     const pm = computePmRubric_({ roleTitle, targetRole, text });
     return {
       ...pm,
       template_id: "pm_v1",
+      rubric_profile: rubricProfile,
       target_id: targetId || null,
       target_name: targetName || null,
       target_role: targetRole || null,
@@ -349,6 +352,7 @@ function computeTargetRubric_({
 
   return {
     template_id: "target_generic_v1",
+    rubric_profile: rubricProfile,
     target_id: targetId || null,
     target_name: targetName || null,
     target_role: targetRole || null,
@@ -646,6 +650,15 @@ function unique_(arr) {
 
 function str_(v) {
   return String(v || "").trim();
+}
+
+function normalizeRubricProfile_(input) {
+  const raw = str_(input).toLowerCase();
+  if (!raw) return "auto";
+  if (raw === "pm_v1" || raw === "target_generic_v1" || raw === "auto") return raw;
+  if (raw === "pm" || raw === "product" || raw === "product_manager") return "pm_v1";
+  if (raw === "generic" || raw === "target" || raw === "default") return "target_generic_v1";
+  return "auto";
 }
 
 function num_(v) {

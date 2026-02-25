@@ -44,6 +44,7 @@ const state = {
   activeTargetId: null,
   metrics: null,
   rejectKeywordsEnabled: true,
+  rubricProfileEnabled: true,
   resumeProfiles: [],
   activeProfileId: "primary",
   profileJsonDraftById: {},
@@ -1126,10 +1127,12 @@ function filterTargets(targets, q) {
 
 function targetCard(t) {
   const isActive = state.activeTargetId === t.id;
+  const rubricProfile = normalizeRubricProfileUi_(t.rubric_profile ?? t.rubricProfile ?? "auto");
+  const rubricLabel = rubricProfile === "pm_v1" ? "PM" : (rubricProfile === "target_generic_v1" ? "Generic" : "Auto");
   return `
     <div class="job-card ${isActive ? "active" : ""}" data-target-id="${escapeHtml(t.id || "")}" tabindex="0">
       <div class="title">${escapeHtml(getTargetDisplay(t))}</div>
-      <div class="sub">${escapeHtml(t.primary_role || "-")} | ${escapeHtml(t.seniority_pref || "-")} | ${escapeHtml(t.location_pref || "-")}</div>
+      <div class="sub">${escapeHtml(t.primary_role || "-")} | ${escapeHtml(t.seniority_pref || "-")} | ${escapeHtml(t.location_pref || "-")} | rubric: ${escapeHtml(rubricLabel)}</div>
     </div>
   `;
 }
@@ -1168,6 +1171,15 @@ function textToKeywords(text) {
     .filter(Boolean);
 }
 
+function normalizeRubricProfileUi_(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (!raw) return "auto";
+  if (raw === "pm_v1" || raw === "target_generic_v1" || raw === "auto") return raw;
+  if (raw === "pm" || raw === "product" || raw === "product_manager") return "pm_v1";
+  if (raw === "generic" || raw === "target" || raw === "default") return "target_generic_v1";
+  return "auto";
+}
+
 function appendKeyword(textareaId, inputId) {
   const box = $(textareaId);
   const input = $(inputId);
@@ -1186,6 +1198,7 @@ function renderTargetEditor(t) {
   $("targetEditor").classList.remove("empty");
   $("tTitle").textContent = t.id || "Target";
   $("tSub").textContent = t.name || "";
+  const rubricProfile = normalizeRubricProfileUi_(t.rubric_profile ?? t.rubricProfile ?? "auto");
 
   const rejectBlock = state.rejectKeywordsEnabled
     ? `
@@ -1199,6 +1212,19 @@ function renderTargetEditor(t) {
       </div>
     `
     : `<div class="muted tiny">Reject keywords not enabled in DB schema.</div>`;
+
+  const rubricBlock = state.rubricProfileEnabled
+    ? `
+      <div class="field">
+        <label>rubric_profile</label>
+        <select id="tRubricProfile">
+          <option value="auto"${rubricProfile === "auto" ? " selected" : ""}>auto</option>
+          <option value="pm_v1"${rubricProfile === "pm_v1" ? " selected" : ""}>pm_v1</option>
+          <option value="target_generic_v1"${rubricProfile === "target_generic_v1" ? " selected" : ""}>target_generic_v1</option>
+        </select>
+      </div>
+    `
+    : `<div class="muted tiny">Rubric profile not enabled in DB schema.</div>`;
 
   $("targetEditor").innerHTML = `
     <div class="target-form">
@@ -1222,6 +1248,7 @@ function renderTargetEditor(t) {
         <label>location_pref</label>
         <input id="tLocation" value="${escapeHtml(t.location_pref || "")}" />
       </div>
+      ${rubricBlock}
       <div class="field">
         <label>must_keywords_json</label>
         <textarea id="tMust" rows="3" placeholder="keyword1, keyword2">${escapeHtml(keywordsToText(t.must_keywords_json ?? t.must_keywords))}</textarea>
@@ -1257,6 +1284,12 @@ async function loadTargets() {
       const sample = state.targets[0];
       state.rejectKeywordsEnabled = !sample || Object.prototype.hasOwnProperty.call(sample, "reject_keywords_json");
     }
+    if (typeof res?.meta?.rubric_profile_enabled === "boolean") {
+      state.rubricProfileEnabled = res.meta.rubric_profile_enabled;
+    } else {
+      const sample = state.targets[0];
+      state.rubricProfileEnabled = !sample || Object.prototype.hasOwnProperty.call(sample, "rubric_profile");
+    }
     renderTargets();
     if (state.activeTargetId && !state.targets.some((t) => t.id === state.activeTargetId)) {
       state.activeTargetId = null;
@@ -1283,6 +1316,11 @@ async function setActiveTarget(targetId) {
     } else {
       state.rejectKeywordsEnabled = Object.prototype.hasOwnProperty.call(target, "reject_keywords_json");
     }
+    if (typeof res?.meta?.rubric_profile_enabled === "boolean") {
+      state.rubricProfileEnabled = res.meta.rubric_profile_enabled;
+    } else {
+      state.rubricProfileEnabled = Object.prototype.hasOwnProperty.call(target, "rubric_profile");
+    }
     renderTargetEditor(target);
   } catch (e) {
     toast("Target open failed: " + e.message);
@@ -1306,6 +1344,7 @@ async function createNewTarget() {
     nice_keywords_json: [],
   };
   if (state.rejectKeywordsEnabled) body.reject_keywords_json = [];
+  if (state.rubricProfileEnabled) body.rubric_profile = "auto";
 
   try {
     spin(true);
@@ -1338,6 +1377,9 @@ async function saveActiveTarget() {
 
   if (state.rejectKeywordsEnabled) {
     body.reject_keywords_json = textToKeywords($("tReject")?.value || "");
+  }
+  if (state.rubricProfileEnabled) {
+    body.rubric_profile = normalizeRubricProfileUi_($("tRubricProfile")?.value || "auto");
   }
 
   try {
