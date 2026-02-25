@@ -447,23 +447,33 @@ async function classifyJobUrls_(urls, normalizeFn) {
     const supported = [];
     const seenByKey = new Set();
     const seenByUrl = new Set();
+    const allowedDomains = new Set(["linkedin", "iimjobs", "naukri"]);
     let ignoredDomains = 0;
 
     for (const raw of urls || []) {
-      let norm = null;
-      try {
-        norm = await normalizeFn(String(raw || ""));
-      } catch {
-        norm = null;
+      const candidates = expandTrackingUrlCandidates_(String(raw || ""));
+      let accepted = null;
+      for (const candidate of candidates) {
+        let norm = null;
+        try {
+          norm = await normalizeFn(candidate);
+        } catch {
+          norm = null;
+        }
+        if (!norm || norm.ignored || !norm.job_url) continue;
+        const sourceDomain = String(norm.source_domain || "").trim().toLowerCase();
+        if (!allowedDomains.has(sourceDomain)) continue;
+        accepted = norm;
+        break;
       }
 
-      if (!norm || norm.ignored || !norm.job_url) {
+      if (!accepted) {
         ignoredDomains += 1;
         continue;
       }
 
-      const key = String(norm.job_key || "").trim();
-      const canonicalUrl = String(norm.job_url || "").trim();
+      const key = String(accepted.job_key || "").trim();
+      const canonicalUrl = String(accepted.job_url || "").trim();
       if (!canonicalUrl) {
         ignoredDomains += 1;
         continue;
@@ -480,8 +490,8 @@ async function classifyJobUrls_(urls, normalizeFn) {
       supported.push({
         job_key: key || null,
         job_url: canonicalUrl,
-        job_id: String(norm.job_id || "").trim() || null,
-        source_domain: String(norm.source_domain || "").trim() || null,
+        job_id: String(accepted.job_id || "").trim() || null,
+        source_domain: String(accepted.source_domain || "").trim() || null,
       });
     }
 
@@ -525,6 +535,60 @@ function scoreCandidate_(c) {
   if (sourceDomain === "naukri" && /naukri\.com\/job-listings-.+-\d+\/?$/i.test(jobUrl)) strict = 1;
 
   return (strict * 10) + (hasJobId * 5);
+}
+
+function expandTrackingUrlCandidates_(raw) {
+  const out = [];
+  const seen = new Set();
+  const add = (v) => {
+    const s = String(v || "").trim();
+    if (!/^https?:\/\//i.test(s)) return;
+    if (seen.has(s)) return;
+    seen.add(s);
+    out.push(s);
+  };
+  add(raw);
+
+  let u;
+  try {
+    u = new URL(String(raw || ""));
+  } catch {
+    return out;
+  }
+
+  const candidateParams = [
+    "url",
+    "u",
+    "q",
+    "redirect",
+    "redirect_url",
+    "redirectUrl",
+    "target",
+    "dest",
+    "destination",
+    "to",
+    "r",
+    "href",
+    "next",
+  ];
+
+  for (const k of candidateParams) {
+    const val = u.searchParams.get(k);
+    if (!val) continue;
+    add(decodeUrlSafely_(val));
+    add(decodeUrlSafely_(decodeUrlSafely_(val)));
+  }
+  return out;
+}
+
+function decodeUrlSafely_(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  try {
+    return decodeURIComponent(s.replace(/\+/g, "%20"));
+  } catch {
+    return s;
+  }
 }
 
 function filterJobUrls_(urls) {
