@@ -4457,7 +4457,7 @@ function getReactiveResumeBaseUrl_(env) {
 async function exportReactiveResumePdf_(env, { resumeId } = {}) {
   const rrBase = getReactiveResumeBaseUrl_(env);
   const rrKey = String(env?.RR_KEY || "").trim();
-  const timeoutMs = clampInt_(env?.RR_TIMEOUT_MS || 6000, 1000, 20000);
+  const timeoutMs = clampInt_(env?.RR_PDF_TIMEOUT_MS || env?.RR_TIMEOUT_MS || 12000, 3000, 60000);
   const rid = String(resumeId || "").trim();
   if (!rrBase || !rrKey) {
     return { ok: false, error: "Reactive Resume is not configured (missing RR_BASE_URL or RR_KEY)." };
