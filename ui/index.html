@@ -54,6 +54,19 @@
           <input id="search" type="search" placeholder="Role, company, location..." />
         </div>
 
+        <div class="field">
+          <label>Sort</label>
+          <select id="sortBy">
+            <option value="updated_desc">Updated (Newest)</option>
+            <option value="updated_asc">Updated (Oldest)</option>
+            <option value="created_desc">Created (Newest)</option>
+            <option value="created_asc">Created (Oldest)</option>
+            <option value="score_desc">Score (High to Low)</option>
+            <option value="score_asc">Score (Low to High)</option>
+            <option value="title_asc">Title (A-Z)</option>
+          </select>
+        </div>
+
         <button class="btn btn-ghost" id="btnRefresh" title="Refresh">Refresh</button>
         <button class="btn btn-ghost" id="btnBatchOps" title="Batch operations">Batch Ops</button>
       </div>

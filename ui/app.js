@@ -275,10 +275,33 @@ function filterJobs(jobs, status, q) {
   return out;
 }
 
+function sortJobs(jobs, sortBy) {
+  const list = Array.isArray(jobs) ? [...jobs] : [];
+  const mode = String(sortBy || "updated_desc").toLowerCase();
+  const num = (v) => {
+    const n = Number(v || 0);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const byTitle = (a, b) => {
+    const ta = getDisplayTitle(a).toLowerCase();
+    const tb = getDisplayTitle(b).toLowerCase();
+    return ta.localeCompare(tb);
+  };
+
+  if (mode === "updated_asc") return list.sort((a, b) => num(a.updated_at) - num(b.updated_at));
+  if (mode === "created_desc") return list.sort((a, b) => num(b.created_at) - num(a.created_at));
+  if (mode === "created_asc") return list.sort((a, b) => num(a.created_at) - num(b.created_at));
+  if (mode === "score_desc") return list.sort((a, b) => num(b.final_score) - num(a.final_score));
+  if (mode === "score_asc") return list.sort((a, b) => num(a.final_score) - num(b.final_score));
+  if (mode === "title_asc") return list.sort(byTitle);
+  return list.sort((a, b) => num(b.updated_at) - num(a.updated_at)); // updated_desc default
+}
+
 function renderListMeta() {
   const status = $("statusFilter").value;
   const q = $("search").value.trim().toLowerCase();
-  const filtered = filterJobs(state.jobs, status, q);
+  const filtered = sortJobs(filterJobs(state.jobs, status, q), $("sortBy")?.value || "updated_desc");
   $("listHint").textContent = `${filtered.length} job(s)` + (status ? ` - ${status}` : "");
 }
 
@@ -317,8 +340,9 @@ function jobCard(j) {
 }
 
 function renderJobs() {
+  const status = $("statusFilter").value;
   const q = $("search").value.trim().toLowerCase();
-  const filtered = filterJobs(state.jobs, "", q);
+  const filtered = sortJobs(filterJobs(state.jobs, status, q), $("sortBy")?.value || "updated_desc");
   const container = $("jobList");
   container.innerHTML = filtered.map(jobCard).join("") || `<div class="muted">No jobs found.</div>`;
 
@@ -1670,6 +1694,7 @@ async function saveSettings() {
 
   $("statusFilter").onchange = loadJobs;
   $("search").oninput = () => { renderJobs(); renderListMeta(); };
+  $("sortBy").onchange = () => { renderJobs(); renderListMeta(); };
 
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
