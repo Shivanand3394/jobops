@@ -39,17 +39,32 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
 
   const atsText = `${tailoredSummary}\n${tailoredBullets.join("\n")}`.trim() || `${role}\n${company}\n${location}`.trim();
   const keywordCoverage = computeKeywordCoverage_(atsMust, atsNice, atsText);
-  const pmRubric = computePmRubric_({
+  const targetRubric = computeTargetRubric_({
+    target,
     roleTitle: role,
-    targetRole: str_(target?.primaryRole || target?.primary_role),
+    location,
+    seniority: str_(job.seniority),
+    must: atsMust,
+    nice: atsNice,
     text: atsText,
+    keywordCoverage,
   });
   const atsJson = {
     score: keywordCoverage.score,
     missing_keywords: keywordCoverage.missing,
     coverage: keywordCoverage.coverage,
     notes: keywordCoverage.notes,
-    pm_rubric: pmRubric,
+    target_rubric: targetRubric,
+    // Backward-compat: keep pm_rubric for existing UI/clients when PM template applies.
+    pm_rubric: targetRubric?.template_id === "pm_v1"
+      ? targetRubric
+      : {
+        applicable: false,
+        score: null,
+        dimensions: [],
+        missing_evidence: [],
+        notes: "Non-PM target rubric in use.",
+      },
   };
 
   const extracted = {
@@ -223,6 +238,127 @@ function computeKeywordCoverage_(must, nice, text) {
       nice_hit: niceHit.length,
     },
     notes: missing.length ? `Add evidence for: ${missing.slice(0, 8).join(", ")}` : "Good keyword coverage",
+  };
+}
+
+function computeTargetRubric_({
+  target = null,
+  roleTitle = "",
+  location = "",
+  seniority = "",
+  must = [],
+  nice = [],
+  text = "",
+  keywordCoverage = null,
+} = {}) {
+  const targetObj = target && typeof target === "object" ? target : {};
+  const targetId = str_(targetObj.id);
+  const targetName = str_(targetObj.name);
+  const targetRole = str_(targetObj.primaryRole || targetObj.primary_role);
+  const roleCombined = `${str_(roleTitle)} ${targetRole}`.toLowerCase();
+  const isPmTarget =
+    /product manager|product management|product owner|group product manager|senior product manager|technical product manager|\bpm\b/.test(roleCombined);
+
+  if (isPmTarget) {
+    const pm = computePmRubric_({ roleTitle, targetRole, text });
+    return {
+      ...pm,
+      template_id: "pm_v1",
+      target_id: targetId || null,
+      target_name: targetName || null,
+      target_role: targetRole || null,
+    };
+  }
+
+  const low = str_(text).toLowerCase();
+  const mustClean = unique_(must.map((x) => str_(x).toLowerCase()).filter(Boolean));
+  const niceClean = unique_(nice.map((x) => str_(x).toLowerCase()).filter(Boolean));
+  const mustHit = mustClean.filter((k) => low.includes(k));
+  const niceHit = niceClean.filter((k) => low.includes(k));
+  const roleKeywords = unique_(
+    targetRole
+      .toLowerCase()
+      .split(/[^a-z0-9]+/g)
+      .map((x) => x.trim())
+      .filter((x) => x.length >= 3 && !["and", "the", "for", "with", "role", "lead", "senior"].includes(x))
+  ).slice(0, 8);
+  const roleHits = roleKeywords.filter((k) => low.includes(k));
+
+  const cov = keywordCoverage && typeof keywordCoverage === "object" ? keywordCoverage : {};
+  const mustCovPct = Number.isFinite(Number(cov?.coverage?.must_total)) && Number(cov.coverage.must_total) > 0
+    ? Math.round((Number(cov.coverage.must_hit || 0) / Number(cov.coverage.must_total || 1)) * 100)
+    : (mustClean.length ? Math.round((mustHit.length / mustClean.length) * 100) : 100);
+  const niceCovPct = Number.isFinite(Number(cov?.coverage?.nice_total)) && Number(cov.coverage.nice_total) > 0
+    ? Math.round((Number(cov.coverage.nice_hit || 0) / Number(cov.coverage.nice_total || 1)) * 100)
+    : (niceClean.length ? Math.round((niceHit.length / niceClean.length) * 100) : 60);
+  const roleFitPct = roleKeywords.length ? Math.round((roleHits.length / Math.max(1, Math.min(roleKeywords.length, 4))) * 100) : 60;
+
+  const targetSeniority = str_(targetObj.seniorityPref || targetObj.seniority_pref).toLowerCase();
+  const jobSeniority = str_(seniority).toLowerCase();
+  const seniorityOk = !targetSeniority || !jobSeniority || jobSeniority.includes(targetSeniority) || targetSeniority.includes(jobSeniority);
+  const targetLocation = str_(targetObj.locationPref || targetObj.location_pref).toLowerCase();
+  const jobLocation = str_(location).toLowerCase();
+  const locationOk = !targetLocation || !jobLocation || jobLocation.includes(targetLocation) || targetLocation.includes(jobLocation);
+  const fitScore = seniorityOk && locationOk ? 100 : ((seniorityOk || locationOk) ? 70 : 40);
+
+  const dimensions = [
+    {
+      id: "must_coverage",
+      label: "Must-have coverage",
+      score: Math.max(0, Math.min(100, mustCovPct)),
+      hit_count: mustHit.length,
+      total: mustClean.length,
+      evidence: mustHit.slice(0, 8),
+      missing_evidence: mustClean.filter((k) => !mustHit.includes(k)).slice(0, 6),
+    },
+    {
+      id: "nice_coverage",
+      label: "Nice-to-have coverage",
+      score: Math.max(0, Math.min(100, niceCovPct)),
+      hit_count: niceHit.length,
+      total: niceClean.length,
+      evidence: niceHit.slice(0, 8),
+      missing_evidence: niceClean.filter((k) => !niceHit.includes(k)).slice(0, 6),
+    },
+    {
+      id: "role_language",
+      label: "Role language fit",
+      score: Math.max(0, Math.min(100, roleFitPct)),
+      hit_count: roleHits.length,
+      total: roleKeywords.length,
+      evidence: roleHits.slice(0, 8),
+      missing_evidence: roleKeywords.filter((k) => !roleHits.includes(k)).slice(0, 6),
+    },
+    {
+      id: "profile_fit",
+      label: "Target profile fit (seniority/location)",
+      score: fitScore,
+      hit_count: Number(seniorityOk) + Number(locationOk),
+      total: 2,
+      evidence: [seniorityOk ? "seniority_fit" : "", locationOk ? "location_fit" : ""].filter(Boolean),
+      missing_evidence: [seniorityOk ? "" : "seniority_fit", locationOk ? "" : "location_fit"].filter(Boolean),
+    },
+  ];
+
+  const score = dimensions.length
+    ? Math.round(dimensions.reduce((acc, d) => acc + Number(d.score || 0), 0) / dimensions.length)
+    : null;
+  const missingEvidence = dimensions
+    .flatMap((d) => (d.missing_evidence || []).map((m) => `${d.label}: ${m}`))
+    .slice(0, 12);
+
+  return {
+    template_id: "target_generic_v1",
+    target_id: targetId || null,
+    target_name: targetName || null,
+    target_role: targetRole || null,
+    applicable: true,
+    score,
+    dimensions,
+    missing_evidence: missingEvidence,
+    notes: score >= 70
+      ? "Target rubric coverage looks strong."
+      : "Improve missing evidence against selected target rubric.",
   };
 }
 

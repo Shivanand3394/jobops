@@ -1050,6 +1050,17 @@ export default {
               missing_keywords: safeJsonParseArray_(job.must_have_keywords_json).slice(0, 20),
               coverage: {},
               notes: "Pack generation failed. Retry later.",
+              target_rubric: {
+                template_id: "target_generic_v1",
+                target_id: String(target?.id || "").trim() || null,
+                target_name: String(target?.name || "").trim() || null,
+                target_role: String(target?.primaryRole || target?.primary_role || "").trim() || null,
+                applicable: true,
+                score: null,
+                dimensions: [],
+                missing_evidence: [],
+                notes: "Target rubric unavailable due to pack generation failure.",
+              },
               pm_rubric: {
                 applicable: /product manager|product management|product owner|\bpm\b/i.test(String(job.role_title || "")),
                 score: null,
