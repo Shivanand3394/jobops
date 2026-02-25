@@ -168,10 +168,28 @@
         <button class="btn btn-ghost" id="btnCloseAdd">Close</button>
       </div>
       <div class="modal-body">
-        <label class="muted">Paste any LinkedIn / IIMJobs / Naukri job link</label>
-        <textarea id="addUrlText" rows="3" placeholder="https://..."></textarea>
+        <div class="field">
+          <label class="muted">Add mode</label>
+          <select id="addMode">
+            <option value="url">Job-board URL</option>
+            <option value="manual">Manual (No URL)</option>
+          </select>
+        </div>
+
+        <div id="addUrlBlock">
+          <label class="muted">Paste LinkedIn / IIMJobs / Naukri job link(s)</label>
+          <textarea id="addUrlText" rows="3" placeholder="https://..."></textarea>
+        </div>
+
+        <div id="addManualBlock" class="hidden">
+          <label class="muted">Reference title (optional)</label>
+          <input id="manualRef" placeholder="e.g., Strategy Consultant - EY" />
+          <label class="muted" style="margin-top:8px;">JD text (optional, 200+ chars for auto score)</label>
+          <textarea id="manualJdText" rows="6" placeholder="Paste JD text to score immediately, or leave empty to create a track-only record."></textarea>
+        </div>
+
         <div class="row">
-          <button class="btn" id="btnAddSubmit">Ingest</button>
+          <button class="btn" id="btnAddSubmit">Create</button>
           <button class="btn btn-ghost" id="btnAddCancel">Cancel</button>
         </div>
         <div id="addResult" class="result-box hidden"></div>

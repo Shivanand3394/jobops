@@ -978,16 +978,76 @@ async function ingestUrls(text) {
   return api("/ingest", { method: "POST", body: { raw_urls: urls } });
 }
 
+function slugify_(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+function buildManualSyntheticUrl_(refText) {
+  const slug = slugify_(refText) || "manual-entry";
+  return `https://manual.jobops.local/job/${slug}-${Date.now()}`;
+}
+
+function syncAddModeUi() {
+  const mode = $("addMode")?.value || "url";
+  const isManual = mode === "manual";
+  $("addUrlBlock")?.classList.toggle("hidden", isManual);
+  $("addManualBlock")?.classList.toggle("hidden", !isManual);
+  $("btnAddSubmit").textContent = isManual ? "Create Manual Job" : "Ingest";
+}
+
 async function doIngest() {
   const box = $("addResult");
   try {
     spin(true);
     box.classList.add("hidden");
     box.innerHTML = "";
+    const mode = $("addMode")?.value || "url";
+    const isManual = mode === "manual";
 
-    const res = await ingestUrls($("addUrlText").value);
-    const data = res?.data || {};
-    const results = Array.isArray(data.results) ? data.results : [];
+    let data;
+    let results;
+    let firstKey = null;
+
+    if (isManual) {
+      const ref = String($("manualRef")?.value || "").trim();
+      const jdText = String($("manualJdText")?.value || "").trim();
+      const syntheticUrl = buildManualSyntheticUrl_(ref);
+      const ingestRes = await api("/ingest", { method: "POST", body: { raw_urls: [syntheticUrl] } });
+      data = ingestRes?.data || {};
+      results = Array.isArray(data.results) ? data.results : [];
+      firstKey = results[0]?.job_key || null;
+
+      if (jdText.length >= 200 && firstKey) {
+        await api(`/jobs/${encodeURIComponent(firstKey)}/manual-jd`, {
+          method: "POST",
+          body: { jd_text_clean: jdText },
+        });
+        data = {
+          ...data,
+          note: "Manual JD saved and rescored",
+        };
+      } else if (jdText.length > 0 && jdText.length < 200) {
+        data = {
+          ...data,
+          note: "Manual job created; add 200+ chars JD to score.",
+        };
+      } else {
+        data = {
+          ...data,
+          note: "Manual job created; paste JD in detail view when ready.",
+        };
+      }
+    } else {
+      const res = await ingestUrls($("addUrlText").value);
+      data = res?.data || {};
+      results = Array.isArray(data.results) ? data.results : [];
+      firstKey = results[0]?.job_key || null;
+    }
+
     const inserted = Number.isFinite(data?.inserted_count)
       ? data.inserted_count
       : results.filter((r) => r?.action === "inserted").length;
@@ -1001,16 +1061,18 @@ async function doIngest() {
       ? data.link_only
       : results.filter((r) => String(r?.status || "").toUpperCase() === "LINK_ONLY").length;
 
-    box.innerHTML = renderIngestResultBox(data);
+    const note = data?.note ? `<div style="margin-top:8px;"><b>note:</b> ${escapeHtml(String(data.note))}</div>` : "";
+    box.innerHTML = renderIngestResultBox(data) + note;
     box.classList.remove("hidden");
     $("addUrlText").value = "";
+    $("manualRef").value = "";
+    $("manualJdText").value = "";
 
     $("statusFilter").value = "";
     $("search").value = "";
     toast(`Ingested: ${inserted} inserted, ${updated} updated, ${ignored} ignored, ${linkOnly} link-only`);
     await loadJobs();
 
-    const firstKey = Array.isArray(results) && results[0]?.job_key ? results[0].job_key : null;
     if (firstKey) await setActive(firstKey);
   } catch (e) {
     box.textContent = "Error: " + e.message + "\n\n" + JSON.stringify(e.payload || {}, null, 2);
@@ -1084,6 +1146,7 @@ async function saveSettings() {
   $("btnCloseAdd").onclick = () => closeModal("modalAdd");
   $("btnAddCancel").onclick = () => closeModal("modalAdd");
   $("btnAddSubmit").onclick = doIngest;
+  $("addMode").onchange = syncAddModeUi;
 
   $("btnSettings").onclick = openSettings;
   $("btnCloseSettings").onclick = () => closeModal("modalSettings");
@@ -1109,6 +1172,7 @@ async function saveSettings() {
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
   hydrateSettingsUI();
+  syncAddModeUi();
   loadResumeProfiles();
   showView("jobs");
   loadJobs();
