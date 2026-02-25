@@ -82,6 +82,7 @@ export default {
         path === "/extract-jd" ||
         path === "/score-jd" ||
         path === "/score-pending" ||
+        path === "/jobs/recover/rescore-existing-jd" ||
         (path.startsWith("/jobs/") && path.endsWith("/rescore"));
 
       const ai = needsAI ? getAi_(env) : null;
@@ -198,7 +199,7 @@ export default {
           SELECT
             job_key, company, role_title, location, seniority,
             final_score, status, job_url, source_domain,
-            system_status, updated_at, created_at
+            system_status, fetch_debug_json, updated_at, created_at
           FROM jobs
           ${whereSql}
           ORDER BY updated_at DESC
@@ -209,6 +210,9 @@ export default {
 
         const res = await env.DB.prepare(sql).bind(...args).all();
         const rows = (res.results || []).map((row) => {
+          const fetchDebug = safeJsonParse_(row.fetch_debug_json) || {};
+          row.fetch_debug = fetchDebug;
+          row.jd_confidence = String(fetchDebug.jd_confidence || "").trim().toLowerCase() || null;
           const display = computeDisplayFields_(row);
           return { ...row, ...display };
         });
@@ -353,6 +357,102 @@ export default {
             processed: rawUrls.length,
             skipped_no_url: skippedNoUrl.length,
             skipped_job_keys: skippedNoUrl,
+            inserted_or_updated: ingestData?.inserted_or_updated || 0,
+            inserted_count: ingestData?.inserted_count || 0,
+            updated_count: ingestData?.updated_count || 0,
+            ignored: ingestData?.ignored || 0,
+            link_only: ingestData?.link_only || 0,
+            results: Array.isArray(ingestData?.results) ? ingestData.results : [],
+          }
+        }, env, 200);
+      }
+
+      // ============================
+      // UI: Recovery - rescore existing JD only (no fetch)
+      // ============================
+      if (path === "/jobs/recover/rescore-existing-jd" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const batch = await runScorePending_(env, ai, body, {
+          defaultStatuses: ["NEW", "SCORED", "LINK_ONLY"],
+          allowedStatuses: ["NEW", "SCORED", "LINK_ONLY"],
+          requireJd: true,
+        });
+        if (!batch.ok) return json_({ ok: false, error: batch.error }, env, batch.status || 400);
+
+        await logEvent_(env, "RESCORE_EXISTING_JD", null, {
+          limit: batch.limit,
+          status: batch.statuses.join(","),
+          updated: batch.data.updated,
+          picked: batch.data.picked,
+          ts: Date.now(),
+        });
+        return json_({ ok: true, data: batch.data }, env, 200);
+      }
+
+      // ============================
+      // UI: Recovery - retry fetch for missing JD only
+      // ============================
+      if (path === "/jobs/recover/retry-fetch-missing-jd" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const limit = clampInt_(body.limit || 30, 1, 200);
+
+        const rows = await env.DB.prepare(`
+          SELECT job_key, job_url
+          FROM jobs
+          WHERE
+            status IN ('NEW', 'LINK_ONLY')
+            AND COALESCE(TRIM(jd_text_clean), '') = ''
+            AND COALESCE(TRIM(job_url), '') != ''
+          ORDER BY updated_at ASC
+          LIMIT ?;
+        `.trim()).bind(limit).all();
+
+        const pickedRows = Array.isArray(rows?.results) ? rows.results : [];
+        const rawUrls = pickedRows
+          .map((r) => String(r?.job_url || "").trim())
+          .filter(Boolean);
+
+        if (!rawUrls.length) {
+          return json_({
+            ok: true,
+            data: {
+              picked: pickedRows.length,
+              processed: 0,
+              inserted_or_updated: 0,
+              inserted_count: 0,
+              updated_count: 0,
+              ignored: 0,
+              link_only: 0,
+              results: [],
+            }
+          }, env, 200);
+        }
+
+        const ingestData = await ingestRawUrls_(env, {
+          rawUrls,
+          emailText: "",
+          emailHtml: "",
+          emailSubject: "",
+          emailFrom: "",
+        });
+
+        await logEvent_(env, "RETRY_FETCH_MISSING_JD", null, {
+          limit,
+          picked: pickedRows.length,
+          processed: rawUrls.length,
+          inserted_or_updated: ingestData?.inserted_or_updated || 0,
+          inserted_count: ingestData?.inserted_count || 0,
+          updated_count: ingestData?.updated_count || 0,
+          ignored: ingestData?.ignored || 0,
+          link_only: ingestData?.link_only || 0,
+          ts: Date.now(),
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            picked: pickedRows.length,
+            processed: rawUrls.length,
             inserted_or_updated: ingestData?.inserted_or_updated || 0,
             inserted_count: ingestData?.inserted_count || 0,
             updated_count: ingestData?.updated_count || 0,
@@ -2311,7 +2411,12 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
   const defaultStatuses = Array.isArray(opts.defaultStatuses) && opts.defaultStatuses.length
     ? opts.defaultStatuses
     : ["NEW"];
-  const allowedStatuses = new Set(["NEW", "SCORED"]);
+  const allowedStatuses = new Set(
+    Array.isArray(opts.allowedStatuses) && opts.allowedStatuses.length
+      ? opts.allowedStatuses.map((s) => String(s || "").trim().toUpperCase()).filter(Boolean)
+      : ["NEW", "SCORED"]
+  );
+  const requireJd = Boolean(opts.requireJd);
   const limit = clampInt_(body.limit || 30, 1, 200);
 
   const statusIn = body.status;
@@ -2324,7 +2429,7 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
   const statuses = (normalized.length ? normalized : defaultStatuses).filter((s) => allowedStatuses.has(s));
 
   if (!statuses.length) {
-    return { ok: false, status: 400, error: "Invalid status filter. Allowed: NEW,SCORED" };
+    return { ok: false, status: 400, error: `Invalid status filter. Allowed: ${Array.from(allowedStatuses).join(",")}` };
   }
   if (!ai) {
     return { ok: false, status: 500, error: "Missing Workers AI binding (env.AI or AI_BINDING)" };
@@ -2335,9 +2440,11 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
   const cfg = await loadSysCfg_(env);
 
   const placeholders = statuses.map(() => "?").join(",");
+  const jdWhere = requireJd ? "AND COALESCE(TRIM(jd_text_clean), '') != ''" : "";
   const rows = await env.DB.prepare(`
     SELECT * FROM jobs
     WHERE status IN (${placeholders})
+    ${jdWhere}
     ORDER BY updated_at ASC
     LIMIT ?;
   `.trim()).bind(...statuses, limit).all();
