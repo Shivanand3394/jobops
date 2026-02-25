@@ -108,6 +108,21 @@ Restrict production CORS while keeping debug flexibility.
 **Notes:**
 Document exact environment values per deployment stage to avoid accidental wildcard rollout.
 
+## Issue: ALLOW_ORIGIN wildcard rollback plan
+
+**Goal:**
+Treat `ALLOW_ORIGIN="*"` as temporary and migrate to pinned origin(s) without breaking UI access.
+
+**Acceptance Criteria:**
+- Current runtime using wildcard is documented as temporary risk acceptance.
+- Production worker is updated to explicit Pages origin allowlist (at minimum `https://jobops-ui.pages.dev` and active custom UI domain if used).
+- Preflight (`OPTIONS`) continues to allow `Content-Type`, `x-ui-key`, `x-api-key`.
+- Smoke tests pass for `GET /jobs` and `POST /ingest` from the production UI after tightening.
+- Backout procedure is documented (temporary rollback to `*` only during incident).
+
+**Notes:**
+Do not tighten until final UI domain is confirmed stable in Pages settings.
+
 ## Issue: Reactive Resume profile sync on generate
 
 **Goal:**
