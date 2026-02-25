@@ -110,6 +110,10 @@ body{
   padding:14px;
 }
 
+.app-single{
+  grid-template-columns: 1fr;
+}
+
 .panel{
   border: 1px solid var(--line);
   border-radius: 16px;

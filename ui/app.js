@@ -272,8 +272,10 @@ async function loadMetrics() {
 }
 
 function isNeedsAttentionJob(j) {
+  const status = String(j.status || "").trim().toUpperCase();
   const systemStatus = String(j.system_status || "").trim().toUpperCase();
   const jdConfidence = String(j.jd_confidence || j.fetch_debug?.jd_confidence || "").trim().toLowerCase();
+  if (status === "LINK_ONLY") return true;
   if (systemStatus === "NEEDS_MANUAL_JD" || systemStatus === "AI_UNAVAILABLE") return true;
   if (jdConfidence === "low") return true;
   return false;
