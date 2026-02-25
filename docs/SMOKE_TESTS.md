@@ -468,6 +468,7 @@ Expected:
 - `ok:true`
 - `data.feeds_total >= 1` (when feeds are configured)
 - `data.items_listed >= 0`
+- `data.items_filtered_allow` / `data.items_filtered_block` present
 - `data.urls_job_domains_total >= 0`
 - `data.inserted_or_updated` present
 - `data.source_summary[]` present
@@ -480,7 +481,7 @@ curl -sS "$BASE_URL/rss/poll" \
   -X POST \
   -H "Content-Type: application/json" \
   -H "x-api-key: $API_KEY" \
-  -d '{"feed_urls":["https://example.com/jobs-feed.xml"],"max_per_run":10}'
+  -d '{"feed_urls":["https://example.com/jobs-feed.xml"],"max_per_run":10,"allow_keywords":["strategy","consulting"],"block_keywords":["newsletter","premium","upgrade"]}'
 ```
 
 ## 22) Verify fallback reason logging (blocked/low_quality/manual_required)

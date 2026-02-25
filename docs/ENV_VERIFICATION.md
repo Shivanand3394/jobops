@@ -15,6 +15,8 @@ Source: `worker/wrangler.jsonc`
   - `GMAIL_MAX_PER_RUN`
   - `RSS_FEEDS`
   - `RSS_MAX_PER_RUN`
+  - `RSS_ALLOW_KEYWORDS`
+  - `RSS_BLOCK_KEYWORDS`
   - `ALLOW_ORIGIN`
 
 ### Current repo state
@@ -25,6 +27,8 @@ Source: `worker/wrangler.jsonc`
 - `vars.GMAIL_MAX_PER_RUN`: present
 - `vars.RSS_FEEDS`: should be present (empty allowed, or feed URLs)
 - `vars.RSS_MAX_PER_RUN`: should be present
+- `vars.RSS_ALLOW_KEYWORDS`: optional (comma/newline-separated keywords)
+- `vars.RSS_BLOCK_KEYWORDS`: optional (comma/newline-separated keywords)
 - `vars.ALLOW_ORIGIN`: present
 
 ### If missing, what to do
@@ -49,6 +53,8 @@ Source files:
 | `GMAIL_MAX_PER_RUN` | Var | Gmail poll message cap | Unexpected poll volume |
 | `RSS_FEEDS` | Var | RSS poll feed list (`/rss/poll`, scheduled poll) | RSS poll reports `skipped: no_feeds_configured` |
 | `RSS_MAX_PER_RUN` | Var | RSS poll item cap | Unexpected RSS ingest volume |
+| `RSS_ALLOW_KEYWORDS` | Var | RSS item allow filter (title/summary) | Too many irrelevant RSS items pass through |
+| `RSS_BLOCK_KEYWORDS` | Var | RSS item block filter (title/summary) | Promo/non-job RSS items still processed |
 | `ALLOW_ORIGIN` | Var | CORS response header | Browser CORS failures |
 | `DB` | Binding (D1) | Jobs/targets/events and Gmail state persistence | `Missing D1 binding env.DB (bind your D1 as DB)` |
 | `AI` or `AI_BINDING` | Binding/Var indirection | Extraction/scoring routes (`getAi_`) | `Missing Workers AI binding (env.AI or AI_BINDING)` |
@@ -146,6 +152,8 @@ Expected:
 - `ok:true`
 - `data.feeds_total`
 - `data.items_listed`
+- `data.items_filtered_allow`
+- `data.items_filtered_block`
 - `data.inserted_or_updated`
 - `data.source_summary`
 
@@ -158,6 +166,8 @@ Expected:
 | Gmail OAuth redirect/callback failures | `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET` mismatch or redirect URI mismatch | Inspect `/gmail/auth` redirect and Google OAuth client config | Correct vars/secrets and exact callback URI `/gmail/callback` |
 | Cron not firing or `/gmail/poll` not ingesting | Trigger missing or poll runtime error | Check `wrangler.jsonc` cron and use `wrangler tail` around schedule | Ensure cron exists, deploy latest Worker, fix poll errors |
 | `/rss/poll` returns `skipped: no_feeds_configured` | `RSS_FEEDS` empty/missing | Call `/rss/poll` and inspect payload | Set `RSS_FEEDS` var to feed URLs (comma/newline separated), redeploy |
+| `/rss/poll` has high `items_filtered_allow` | `RSS_ALLOW_KEYWORDS` too strict | Inspect response counters | Relax/remove `RSS_ALLOW_KEYWORDS` |
+| `/rss/poll` still ingests promo/news items | `RSS_BLOCK_KEYWORDS` not set or too weak | Inspect `items_filtered_block` and item sources | Add stronger block keywords (e.g., `premium,newsletter,upgrade,sponsored`) |
 | `/gmail/poll` returns `ok:true` but `scanned=0` | Query too narrow (label mismatch / mailbox visibility) | Inspect `data.query_used` in poll response | Temporarily set `GMAIL_QUERY` to `in:anywhere newer_than:7d`, or call `/gmail/poll` with body override `{ "query":"in:anywhere newer_than:7d","max_per_run":50 }` |
 | D1 errors / missing migrations | DB binding wrong or migrations not applied | Endpoint errors and `wrangler d1 list` | Bind D1 as `DB` and apply `001_init.sql` + `002_gmail.sql` |
 | CORS/origin failures | `ALLOW_ORIGIN` not set for UI origin | Check response headers and browser console | Set `ALLOW_ORIGIN` to Pages URL in prod (`https://getjobs.shivanand-shah94.workers.dev`) |
