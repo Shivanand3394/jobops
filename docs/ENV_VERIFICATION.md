@@ -17,6 +17,9 @@ Source: `worker/wrangler.jsonc`
   - `RSS_MAX_PER_RUN`
   - `RSS_ALLOW_KEYWORDS`
   - `RSS_BLOCK_KEYWORDS`
+  - `RECOVERY_ENABLED`
+  - `RECOVER_BACKFILL_LIMIT`
+  - `RECOVER_RESCORE_LIMIT`
   - `ALLOW_ORIGIN`
 
 ### Current repo state
@@ -29,6 +32,9 @@ Source: `worker/wrangler.jsonc`
 - `vars.RSS_MAX_PER_RUN`: should be present
 - `vars.RSS_ALLOW_KEYWORDS`: optional (comma/newline-separated keywords)
 - `vars.RSS_BLOCK_KEYWORDS`: optional (comma/newline-separated keywords)
+- `vars.RECOVERY_ENABLED`: optional (`1` default, set `0` to disable cron recovery)
+- `vars.RECOVER_BACKFILL_LIMIT`: optional (default `30`)
+- `vars.RECOVER_RESCORE_LIMIT`: optional (default `30`)
 - `vars.ALLOW_ORIGIN`: present
 
 ### If missing, what to do
@@ -55,6 +61,9 @@ Source files:
 | `RSS_MAX_PER_RUN` | Var | RSS poll item cap | Unexpected RSS ingest volume |
 | `RSS_ALLOW_KEYWORDS` | Var | RSS item allow filter (title/summary) | Too many irrelevant RSS items pass through |
 | `RSS_BLOCK_KEYWORDS` | Var | RSS item block filter (title/summary) | Promo/non-job RSS items still processed |
+| `RECOVERY_ENABLED` | Var | Enables/disables cron recovery sequence (backfill + rescore-existing-jd) | No periodic recovery events/counters if disabled |
+| `RECOVER_BACKFILL_LIMIT` | Var | Cron limit for `/jobs/backfill-missing` equivalent | Too few/too many jobs retried per run |
+| `RECOVER_RESCORE_LIMIT` | Var | Cron limit for `/jobs/recover/rescore-existing-jd` equivalent | Too few/too many rescored jobs per run |
 | `ALLOW_ORIGIN` | Var | CORS response header | Browser CORS failures |
 | `DB` | Binding (D1) | Jobs/targets/events and Gmail state persistence | `Missing D1 binding env.DB (bind your D1 as DB)` |
 | `AI` or `AI_BINDING` | Binding/Var indirection | Extraction/scoring routes (`getAi_`) | `Missing Workers AI binding (env.AI or AI_BINDING)` |

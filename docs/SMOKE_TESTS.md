@@ -567,4 +567,40 @@ Expected payload keys:
 - `source_domain`
 - `fallback_reason` (`blocked|low_quality|manual_required`)
 - `fallback_policy`
+
+## 24) Recovery automation (manual endpoint smoke + cron vars)
+Recovery now runs in cron when enabled, using:
+- `RECOVERY_ENABLED` (`1`/`0`)
+- `RECOVER_BACKFILL_LIMIT` (default `30`)
+- `RECOVER_RESCORE_LIMIT` (default `30`)
+
+Manual endpoint check (same flow UI Tracking CTA uses):
+
+### curl
+```bash
+curl -sS "$BASE_URL/jobs/backfill-missing" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"limit":30}'
+```
+
+```bash
+curl -sS "$BASE_URL/jobs/recover/rescore-existing-jd" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"limit":30}'
+```
+
+### PowerShell
+```powershell
+$body = @{ limit = 30 } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/jobs/backfill-missing" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+Invoke-WebRequest -Uri "$BASE_URL/jobs/recover/rescore-existing-jd" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- backfill returns `picked`, `processed`, `inserted_or_updated`, `updated_count`, `link_only`, `source_summary`
+- rescore-existing-jd returns `picked`, `updated`, `jobs[]`
 - `fetch_status`
