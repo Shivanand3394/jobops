@@ -67,6 +67,14 @@
           </select>
         </div>
 
+        <div class="field">
+          <label>Queue</label>
+          <select id="queueFilter">
+            <option value="">All</option>
+            <option value="needs_attention">Needs Attention</option>
+          </select>
+        </div>
+
         <button class="btn btn-ghost" id="btnRefresh" title="Refresh">Refresh</button>
         <button class="btn btn-ghost" id="btnBatchOps" title="Batch operations">Batch Ops</button>
       </div>
@@ -244,7 +252,8 @@
         <div class="row" style="justify-content:flex-start;">
           <button class="btn" id="btnBatchRescoreNew">Rescore NEW</button>
           <button class="btn btn-secondary" id="btnBatchRescoreScored">Rescore SCORED</button>
-          <button class="btn btn-secondary" id="btnBatchBackfillMissing">Fix Missing Details</button>
+          <button class="btn btn-secondary" id="btnBatchRescoreExistingJd">Rescore Existing JD</button>
+          <button class="btn btn-secondary" id="btnBatchRetryFetchMissingJd">Retry Fetch Missing JD</button>
           <button class="btn btn-ghost" id="btnBatchCancel">Cancel</button>
         </div>
       </div>

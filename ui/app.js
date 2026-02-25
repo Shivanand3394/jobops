@@ -263,9 +263,18 @@ async function loadMetrics() {
   }
 }
 
-function filterJobs(jobs, status, q) {
+function isNeedsAttentionJob(j) {
+  const systemStatus = String(j.system_status || "").trim().toUpperCase();
+  const jdConfidence = String(j.jd_confidence || j.fetch_debug?.jd_confidence || "").trim().toLowerCase();
+  if (systemStatus === "NEEDS_MANUAL_JD" || systemStatus === "AI_UNAVAILABLE") return true;
+  if (jdConfidence === "low") return true;
+  return false;
+}
+
+function filterJobs(jobs, status, q, queue) {
   let out = jobs;
   if (status) out = out.filter((j) => String(j.status || "").toUpperCase() === status);
+  if (queue === "needs_attention") out = out.filter(isNeedsAttentionJob);
   if (q) {
     out = out.filter((j) => {
       const s = `${getDisplayTitle(j)} ${j.company || ""} ${j.location || ""} ${j.source_domain || ""}`.toLowerCase();
@@ -300,9 +309,13 @@ function sortJobs(jobs, sortBy) {
 
 function renderListMeta() {
   const status = $("statusFilter").value;
+  const queue = $("queueFilter")?.value || "";
   const q = $("search").value.trim().toLowerCase();
-  const filtered = sortJobs(filterJobs(state.jobs, status, q), $("sortBy")?.value || "updated_desc");
-  $("listHint").textContent = `${filtered.length} job(s)` + (status ? ` - ${status}` : "");
+  const filtered = sortJobs(filterJobs(state.jobs, status, q, queue), $("sortBy")?.value || "updated_desc");
+  const parts = [`${filtered.length} job(s)`];
+  if (status) parts.push(status);
+  if (queue === "needs_attention") parts.push("Needs Attention");
+  $("listHint").textContent = parts.join(" - ");
 }
 
 function jobCard(j) {
@@ -341,8 +354,9 @@ function jobCard(j) {
 
 function renderJobs() {
   const status = $("statusFilter").value;
+  const queue = $("queueFilter")?.value || "";
   const q = $("search").value.trim().toLowerCase();
-  const filtered = sortJobs(filterJobs(state.jobs, status, q), $("sortBy")?.value || "updated_desc");
+  const filtered = sortJobs(filterJobs(state.jobs, status, q, queue), $("sortBy")?.value || "updated_desc");
   const container = $("jobList");
   container.innerHTML = filtered.map(jobCard).join("") || `<div class="muted">No jobs found.</div>`;
 
@@ -1623,6 +1637,42 @@ async function backfillMissing(limit = 50) {
   }
 }
 
+async function rescoreExistingJd(limit = 60) {
+  try {
+    spin(true);
+    const res = await api("/jobs/recover/rescore-existing-jd", {
+      method: "POST",
+      body: { limit },
+    });
+    const d = res?.data || {};
+    toast(`Rescore existing JD - picked ${d.picked ?? "-"} - updated ${d.updated ?? "-"}`);
+    await loadJobs();
+    if (state.activeKey) await setActive(state.activeKey);
+  } catch (e) {
+    toast("Rescore existing JD failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
+async function retryFetchMissingJd(limit = 60) {
+  try {
+    spin(true);
+    const res = await api("/jobs/recover/retry-fetch-missing-jd", {
+      method: "POST",
+      body: { limit },
+    });
+    const d = res?.data || {};
+    toast(`Retry fetch missing JD - picked ${d.picked ?? "-"} - processed ${d.processed ?? "-"}`);
+    await loadJobs();
+    if (state.activeKey) await setActive(state.activeKey);
+  } catch (e) {
+    toast("Retry fetch missing JD failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
 function hydrateSettingsUI() {
   const cfg = getCfg();
   $("apiHost").textContent = cfg.apiBase.replace(/^https?:\/\//, "");
@@ -1685,7 +1735,8 @@ async function saveSettings() {
   $("btnBatchCancel").onclick = () => closeModal("modalBatch");
   $("btnBatchRescoreNew").onclick = async () => { closeModal("modalBatch"); await rescorePending("NEW"); };
   $("btnBatchRescoreScored").onclick = async () => { closeModal("modalBatch"); await rescorePending("SCORED"); };
-  $("btnBatchBackfillMissing").onclick = async () => { closeModal("modalBatch"); await backfillMissing(60); };
+  $("btnBatchRescoreExistingJd").onclick = async () => { closeModal("modalBatch"); await rescoreExistingJd(60); };
+  $("btnBatchRetryFetchMissingJd").onclick = async () => { closeModal("modalBatch"); await retryFetchMissingJd(60); };
 
   $("btnTargetsRefresh").onclick = loadTargets;
   $("btnTargetNew").onclick = createNewTarget;
@@ -1695,6 +1746,7 @@ async function saveSettings() {
   $("statusFilter").onchange = loadJobs;
   $("search").oninput = () => { renderJobs(); renderListMeta(); };
   $("sortBy").onchange = () => { renderJobs(); renderListMeta(); };
+  $("queueFilter").onchange = () => { renderJobs(); renderListMeta(); };
 
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
