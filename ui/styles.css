@@ -240,6 +240,32 @@ body{
   margin-bottom:12px;
 }
 
+.workspace-shell{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background: rgba(17,28,51,.55);
+  margin-bottom:12px;
+  padding:10px;
+}
+
+.workspace-tabbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+
+.workspace-pane{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background: rgba(15,26,48,.55);
+  padding:10px;
+}
+
+.workspace-pane-head{
+  margin-bottom:8px;
+}
+
 .target-form{
   display:flex;
   flex-direction:column;

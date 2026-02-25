@@ -370,6 +370,29 @@ async function setActive(jobKey) {
   }
 }
 
+function activateWorkspaceTab_(tabName) {
+  const section = $("appPackSection");
+  if (!section) return;
+  const tab = String(tabName || "jd").toLowerCase();
+  section.querySelectorAll("[data-ws-tab]").forEach((btn) => {
+    const isActive = btn.dataset.wsTab === tab;
+    btn.classList.toggle("active-tab", isActive);
+  });
+  section.querySelectorAll("[data-ws-pane]").forEach((pane) => {
+    const isActive = pane.dataset.wsPane === tab;
+    pane.classList.toggle("hidden", !isActive);
+  });
+}
+
+function bindWorkspaceTabs_(defaultTab = "jd") {
+  const section = $("appPackSection");
+  if (!section) return;
+  section.querySelectorAll("[data-ws-tab]").forEach((btn) => {
+    btn.onclick = () => activateWorkspaceTab_(btn.dataset.wsTab || "jd");
+  });
+  activateWorkspaceTab_(defaultTab);
+}
+
 function renderDetail(j) {
   $("detailBody").classList.remove("empty");
   const headerTitle = getDisplayTitle(j);
@@ -402,6 +425,10 @@ function renderDetail(j) {
 
   const status = String(j.status || "").toUpperCase();
   const needsManualJd = String(j.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD" || !String(j.role_title || "").trim();
+  const jdText = String(j.jd_text_clean || "").trim();
+  const jdHint = needsManualJd
+    ? "This job needs manual JD to improve extraction/scoring."
+    : "Edit JD only if source content is incomplete.";
 
   $("detailBody").innerHTML = `
     <div class="kv">
@@ -436,49 +463,64 @@ function renderDetail(j) {
       <div class="k">Job URL</div><div class="v"><a class="muted" href="${escapeHtml(j.job_url || "#")}" target="_blank" rel="noopener">${escapeHtml(j.job_url || "-")}</a></div>
     </div>
 
-    <div id="appPackSection" class="kv">
-      <div class="k">Application Pack</div><div class="v">
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <span id="appPackStatus"><span class="badge">-</span></span>
-          <span class="chip">ATS: <b id="appAtsScore">-</b></span>
+    <div id="appPackSection" class="workspace-shell">
+      <div class="workspace-tabbar">
+        <button class="btn btn-ghost active-tab" type="button" data-ws-tab="jd">JD</button>
+        <button class="btn btn-ghost" type="button" data-ws-tab="ats">ATS</button>
+        <button class="btn btn-ghost" type="button" data-ws-tab="resume">Resume</button>
+      </div>
+
+      <div class="workspace-pane" data-ws-pane="jd">
+        <div class="workspace-pane-head">
+          <div class="h3">Job Description</div>
+          <div class="muted tiny">${escapeHtml(jdHint)}</div>
         </div>
-        <div id="appPackEmpty" class="muted tiny" style="margin-top:8px;">No Application Pack yet</div>
+        <textarea id="jdCurrentText" rows="12" placeholder="Paste JD text here...">${escapeHtml(jdText)}</textarea>
+        <div class="row" style="justify-content:flex-start; margin-top:10px;">
+          <button class="btn" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save JD & Rescore</button>
+          <button class="btn btn-secondary" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
+        </div>
       </div>
-      <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
-      <div class="k">Profile</div><div class="v">
-        <select id="appProfileSelect"></select>
-        <select id="appRenderer" style="margin-top:8px;">
-          <option value="reactive_resume">reactive_resume</option>
-          <option value="html_simple">html_simple</option>
-        </select>
+
+      <div class="workspace-pane hidden" data-ws-pane="ats">
+        <div class="kv">
+          <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
+          <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
+          <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
+          <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
+        </div>
       </div>
-      <div class="k">Profile ID</div><div class="v"><input id="appProfileId" placeholder="primary" /></div>
-      <div class="k">Profile Name</div><div class="v"><input id="appProfileName" placeholder="Primary" /></div>
-      <div class="k">Profile JSON</div><div class="v"><textarea id="appProfileJson" rows="5" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea></div>
-      <div class="k">Actions</div><div class="v">
-        <div class="row" style="justify-content:flex-start; margin-top:0;">
-          <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
-          <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
-          <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
-          <button class="btn btn-secondary" onclick="copyPackSummary()">Copy tailored summary</button>
-          <button class="btn btn-secondary" onclick="copyPackBullets()">Copy tailored bullets</button>
-          <button class="btn btn-secondary" onclick="downloadRrJson()">Download RR JSON</button>
+
+      <div class="workspace-pane hidden" data-ws-pane="resume">
+        <div class="kv" style="margin-bottom:10px;">
+          <div class="k">Profile</div><div class="v">
+            <select id="appProfileSelect"></select>
+            <select id="appRenderer" style="margin-top:8px;">
+              <option value="reactive_resume">reactive_resume</option>
+              <option value="html_simple">html_simple</option>
+            </select>
+          </div>
+          <div class="k">Profile ID</div><div class="v"><input id="appProfileId" placeholder="primary" /></div>
+          <div class="k">Profile Name</div><div class="v"><input id="appProfileName" placeholder="Primary" /></div>
+          <div class="k">Profile JSON</div><div class="v"><textarea id="appProfileJson" rows="5" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea></div>
+          <div class="k">Actions</div><div class="v">
+            <div class="row" style="justify-content:flex-start; margin-top:0;">
+              <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
+              <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
+              <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
+              <button class="btn btn-secondary" onclick="copyPackSummary()">Copy tailored summary</button>
+              <button class="btn btn-secondary" onclick="copyPackBullets()">Copy tailored bullets</button>
+              <button class="btn btn-secondary" onclick="downloadRrJson()">Download RR JSON</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    ${needsManualJd ? `
-      <div class="h3" style="margin: 12px 0 8px;">Paste JD (Manual)</div>
-      <div class="muted tiny" style="margin-bottom: 8px;">Paste full JD text and save to extract + rescore.</div>
-      <textarea id="manualJd" rows="8" placeholder="Paste JD text here..."></textarea>
-      <div class="row" style="justify-content:flex-start;">
-        <button class="btn" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save & Rescore</button>
-      </div>
-    ` : ""}
   `;
   if (window.location.hostname.includes("workers.dev")) {
     console.log("Rendering Application Pack", j.job_key);
   }
+  bindWorkspaceTabs_("jd");
   hydrateApplicationPack(j.job_key);
 }
 
@@ -929,7 +971,7 @@ async function updateStatus(jobKey, status) {
 }
 
 async function saveAndRescoreManualJd(jobKey) {
-  const jdText = String($("manualJd")?.value || "").trim();
+  const jdText = String($("jdCurrentText")?.value || $("manualJd")?.value || "").trim();
   if (jdText.length < 200) {
     toast("Paste at least 200 characters of JD.");
     return;
@@ -946,6 +988,7 @@ async function saveAndRescoreManualJd(jobKey) {
   } catch (e) {
     toast("Manual JD failed: " + e.message);
   } finally {
+    activateWorkspaceTab_("ats");
     spin(false);
   }
 }
