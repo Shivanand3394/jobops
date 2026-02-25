@@ -116,42 +116,45 @@
           <label>Search</label>
           <input id="trackingSearch" type="search" placeholder="Role, company, location..." />
         </div>
-        <div class="field">
-          <label>Scope</label>
-          <select id="trackingScope">
-            <option value="active_only" selected>Active Only</option>
-            <option value="all">All Statuses</option>
-          </select>
+        <button class="btn btn-ghost btn-xs hidden" id="btnTrackingFiltersToggle" type="button">Filters</button>
+        <div id="trackingControlsExtras" class="tracking-controls-extras">
+          <div class="field">
+            <label>Scope</label>
+            <select id="trackingScope">
+              <option value="active_only" selected>Active Only</option>
+              <option value="all">All Statuses</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Window</label>
+            <select id="trackingWindow">
+              <option value="7">Last 7 days</option>
+              <option value="14" selected>Last 14 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="0">All time</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Sort</label>
+            <select id="trackingSort">
+              <option value="updated_desc">Updated (Newest)</option>
+              <option value="updated_asc">Updated (Oldest)</option>
+              <option value="score_desc">Score (High to Low)</option>
+              <option value="score_asc">Score (Low to High)</option>
+              <option value="title_asc">Title (A-Z)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Per Column</label>
+            <select id="trackingLimit">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="30">30</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+          <button class="btn btn-ghost" id="btnTrackingRefresh" title="Refresh">Refresh</button>
         </div>
-        <div class="field">
-          <label>Window</label>
-          <select id="trackingWindow">
-            <option value="7">Last 7 days</option>
-            <option value="14" selected>Last 14 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="0">All time</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Sort</label>
-          <select id="trackingSort">
-            <option value="updated_desc">Updated (Newest)</option>
-            <option value="updated_asc">Updated (Oldest)</option>
-            <option value="score_desc">Score (High to Low)</option>
-            <option value="score_asc">Score (Low to High)</option>
-            <option value="title_asc">Title (A-Z)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Per Column</label>
-          <select id="trackingLimit">
-            <option value="10">10</option>
-            <option value="20" selected>20</option>
-            <option value="30">30</option>
-            <option value="50">50</option>
-          </select>
-        </div>
-        <button class="btn btn-ghost" id="btnTrackingRefresh" title="Refresh">Refresh</button>
       </div>
 
       <div class="list-meta">

@@ -31,6 +31,7 @@ const state = {
   activeTemplateId: DEFAULT_TEMPLATE_ID,
   selectedAtsKeywords: [],
   activeJob: null,
+  trackingFiltersOpen: false,
 };
 const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
@@ -172,6 +173,7 @@ function getDisplayCompany(j) {
 
 function showView(view) {
   state.view = view;
+  document.body.dataset.view = view;
   const jobsView = $("jobsView");
   const trackingView = $("trackingView");
   const targetsView = $("targetsView");
@@ -192,12 +194,37 @@ function showView(view) {
   $("btnAdd").classList.toggle("hidden", jobsActionsHidden);
   $("btnRescore").classList.toggle("hidden", jobsActionsHidden);
 
+  if (view === "tracking" && isSmallMobile_()) {
+    state.trackingFiltersOpen = false;
+  }
+  syncTrackingControlsUi_();
+
   if (view === "tracking") {
     if (!state.jobs.length) loadJobs({ ignoreStatus: true });
     else renderTracking();
   }
   if (view === "targets") loadTargets();
   if (view === "metrics") loadMetrics();
+}
+
+function isSmallMobile_() {
+  return window.matchMedia("(max-width: 640px)").matches;
+}
+
+function syncTrackingControlsUi_() {
+  const extras = $("trackingControlsExtras");
+  const toggleBtn = $("btnTrackingFiltersToggle");
+  if (!extras || !toggleBtn) return;
+
+  if (!isSmallMobile_()) {
+    toggleBtn.classList.add("hidden");
+    extras.classList.remove("hidden");
+    return;
+  }
+
+  toggleBtn.classList.remove("hidden");
+  extras.classList.toggle("hidden", !state.trackingFiltersOpen);
+  toggleBtn.textContent = state.trackingFiltersOpen ? "Hide filters" : "Filters";
 }
 
 function fmtNum(v) {
@@ -1913,6 +1940,11 @@ async function saveSettings() {
   $("trackingScope").onchange = () => renderTracking();
   $("trackingWindow").onchange = () => renderTracking();
   $("trackingLimit").onchange = () => renderTracking();
+  $("btnTrackingFiltersToggle").onclick = () => {
+    state.trackingFiltersOpen = !state.trackingFiltersOpen;
+    syncTrackingControlsUi_();
+  };
+  window.addEventListener("resize", syncTrackingControlsUi_);
 
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
@@ -1920,6 +1952,7 @@ async function saveSettings() {
   syncAddModeUi();
   loadResumeProfiles();
   loadResumeTemplates_();
+  syncTrackingControlsUi_();
   showView("jobs");
   loadJobs();
 })();
