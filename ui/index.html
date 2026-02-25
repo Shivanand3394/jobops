@@ -16,6 +16,7 @@
 
     <div class="right">
       <button class="btn btn-ghost" id="btnTabJobs">Jobs</button>
+      <button class="btn btn-ghost" id="btnTabTracking">Tracking</button>
       <button class="btn btn-ghost" id="btnTabTargets">Targets</button>
       <button class="btn btn-ghost" id="btnTabMetrics">Metrics</button>
       <button class="btn btn-ghost hidden" id="btnShowAiNotice" title="Show AI notice">Show AI notice</button>
@@ -104,6 +105,43 @@
           <div class="h3">Pick a job from the left.</div>
           <div class="muted">Then update status, rescore, or paste JD if needed.</div>
         </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="app hidden" id="trackingView">
+    <section class="panel panel-full">
+      <div class="toolbar">
+        <div class="field grow">
+          <label>Search</label>
+          <input id="trackingSearch" type="search" placeholder="Role, company, location..." />
+        </div>
+        <div class="field">
+          <label>Sort</label>
+          <select id="trackingSort">
+            <option value="updated_desc">Updated (Newest)</option>
+            <option value="updated_asc">Updated (Oldest)</option>
+            <option value="score_desc">Score (High to Low)</option>
+            <option value="score_asc">Score (Low to High)</option>
+            <option value="title_asc">Title (A-Z)</option>
+          </select>
+        </div>
+        <button class="btn btn-ghost" id="btnTrackingRefresh" title="Refresh">Refresh</button>
+      </div>
+
+      <div class="list-meta">
+        <div id="trackingHint" class="muted">Loading tracking board...</div>
+      </div>
+
+      <div class="tracking-wrap">
+        <div class="tracking-needs">
+          <div class="tracking-needs-head">
+            <div class="h3">Needs Attention</div>
+            <div id="trackingNeedsCount" class="muted tiny">0</div>
+          </div>
+          <div id="trackingNeedsList" class="tracking-needs-list"></div>
+        </div>
+        <div id="trackingBoard" class="tracking-board"></div>
       </div>
     </section>
   </main>

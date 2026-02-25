@@ -121,6 +121,7 @@ body{
 
 .panel-left{display:flex; flex-direction:column}
 .panel-right{display:flex; flex-direction:column}
+.panel-full{display:flex; flex-direction:column}
 
 .toolbar{
   display:flex;
@@ -400,6 +401,121 @@ body{
   margin:4px 0;
 }
 
+.tracking-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:12px;
+  overflow:auto;
+}
+
+.tracking-needs{
+  border:1px solid rgba(245,158,11,.45);
+  border-radius:14px;
+  background: rgba(120,70,0,.14);
+  padding:10px;
+}
+
+.tracking-needs-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:8px;
+}
+
+.tracking-needs-list{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+
+.tracking-board{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(280px, 1fr);
+  gap:12px;
+  overflow-x:auto;
+  padding-bottom:4px;
+}
+
+.tracking-col{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background: rgba(17,28,51,.55);
+  min-height: 260px;
+  display:flex;
+  flex-direction:column;
+}
+
+.tracking-col-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px;
+  border-bottom:1px solid var(--line);
+}
+
+.tracking-col-body{
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.track-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background: linear-gradient(180deg, rgba(17,28,51,.82), rgba(15,26,48,.82));
+  padding:10px;
+}
+
+.track-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.track-title{
+  font-weight:700;
+  font-size:13px;
+  line-height:1.25;
+}
+
+.track-score{
+  font-weight:800;
+  padding:2px 8px;
+  border-radius:999px;
+  background: rgba(37,99,235,.16);
+  border:1px solid rgba(37,99,235,.30);
+  font-size:12px;
+}
+
+.track-sub{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:6px;
+}
+
+.track-meta{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+
+.track-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+
+.btn-xs{
+  padding:6px 8px;
+  font-size:12px;
+}
+
 textarea, input{
   width:100%;
 }
@@ -504,7 +620,10 @@ textarea, input{
   .app{grid-template-columns: 1fr; }
   .panel{min-height: auto}
   .metrics-grid{grid-template-columns: 1fr 1fr;}
+  .tracking-needs-list{grid-template-columns: 1fr 1fr;}
+  .tracking-board{grid-auto-columns:minmax(85vw, 1fr);}
 }
 @media (max-width: 640px){
   .metrics-grid{grid-template-columns: 1fr;}
+  .tracking-needs-list{grid-template-columns: 1fr;}
 }

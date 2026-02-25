@@ -32,6 +32,7 @@ const state = {
   selectedAtsKeywords: [],
   activeJob: null,
 };
+const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
 const AI_NOTICE_SESSION_KEY = "jobops_ai_notice_seen_session";
 const AI_NOTICE_DETECTED_KEY = "jobops_ai_notice_detected";
@@ -172,13 +173,16 @@ function getDisplayCompany(j) {
 function showView(view) {
   state.view = view;
   const jobsView = $("jobsView");
+  const trackingView = $("trackingView");
   const targetsView = $("targetsView");
   const metricsView = $("metricsView");
   jobsView.classList.toggle("hidden", view !== "jobs");
+  trackingView.classList.toggle("hidden", view !== "tracking");
   targetsView.classList.toggle("hidden", view !== "targets");
   metricsView.classList.toggle("hidden", view !== "metrics");
 
   $("btnTabJobs").classList.toggle("active-tab", view === "jobs");
+  $("btnTabTracking").classList.toggle("active-tab", view === "tracking");
   $("btnTabTargets").classList.toggle("active-tab", view === "targets");
   $("btnTabMetrics").classList.toggle("active-tab", view === "metrics");
 
@@ -186,6 +190,10 @@ function showView(view) {
   $("btnAdd").classList.toggle("hidden", jobsActionsHidden);
   $("btnRescore").classList.toggle("hidden", jobsActionsHidden);
 
+  if (view === "tracking") {
+    if (!state.jobs.length) loadJobs({ ignoreStatus: true });
+    else renderTracking();
+  }
   if (view === "targets") loadTargets();
   if (view === "metrics") loadMetrics();
 }
@@ -368,15 +376,127 @@ function renderJobs() {
   });
 }
 
-async function loadJobs() {
+function trackingCard(j) {
+  const title = getDisplayTitle(j);
+  const company = getDisplayCompany(j) || "-";
+  const score = (j.final_score === null || j.final_score === undefined) ? "-" : j.final_score;
+  const updated = fmtTs(j.updated_at);
+  const status = String(j.status || "").toUpperCase();
+  const needsAttention = isNeedsAttentionJob(j);
+
+  return `
+    <div class="track-card" data-track-key="${escapeHtml(j.job_key)}">
+      <div class="track-row">
+        <div class="track-title">${escapeHtml(title)}</div>
+        <div class="track-score">${escapeHtml(String(score))}</div>
+      </div>
+      <div class="track-sub">${escapeHtml(company)} - ${escapeHtml(j.source_domain || "-")}</div>
+      <div class="track-sub tiny">Updated: ${escapeHtml(updated)}</div>
+      <div class="track-meta">
+        <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
+        ${needsAttention ? `<span class="chip">Needs Attention</span>` : ""}
+      </div>
+      <div class="track-actions">
+        <button class="btn btn-ghost btn-xs" data-track-action="open" data-track-key="${escapeHtml(j.job_key)}">Open</button>
+        <button class="btn btn-ghost btn-xs" data-track-action="shortlist" data-track-key="${escapeHtml(j.job_key)}">Shortlist</button>
+        <button class="btn btn-ghost btn-xs" data-track-action="applied" data-track-key="${escapeHtml(j.job_key)}">Applied</button>
+        <button class="btn btn-ghost btn-xs" data-track-action="archive" data-track-key="${escapeHtml(j.job_key)}">Archive</button>
+      </div>
+    </div>
+  `;
+}
+
+async function handleTrackingAction(action, jobKey) {
+  const key = String(jobKey || "").trim();
+  if (!key) return;
+  if (action === "open") {
+    showView("jobs");
+    await setActive(key);
+    return;
+  }
+  const setTrackingStatus = async (status) => {
+    if (status === "ARCHIVED" && !confirm("Mark this job as ARCHIVED?")) return;
+    try {
+      spin(true);
+      await api(`/jobs/${encodeURIComponent(key)}/status`, { method: "POST", body: { status } });
+      toast(`Status updated: ${status}`);
+      await loadJobs({ ignoreStatus: true });
+    } catch (e) {
+      toast("Status failed: " + e.message);
+    } finally {
+      spin(false);
+    }
+  };
+  if (action === "shortlist") {
+    await setTrackingStatus("SHORTLISTED");
+    return;
+  }
+  if (action === "applied") {
+    await setTrackingStatus("APPLIED");
+    return;
+  }
+  if (action === "archive") {
+    await setTrackingStatus("ARCHIVED");
+    return;
+  }
+}
+
+function renderTracking() {
+  const q = String($("trackingSearch")?.value || "").trim().toLowerCase();
+  const sort = String($("trackingSort")?.value || "updated_desc").trim();
+  const filtered = sortJobs(filterJobs(state.jobs, "", q, ""), sort);
+  const needsAttention = filtered.filter(isNeedsAttentionJob);
+  const byStatus = new Map(TRACKING_COLUMNS.map((s) => [s, []]));
+  for (const j of filtered) {
+    const s = String(j.status || "").toUpperCase();
+    if (!byStatus.has(s)) continue;
+    byStatus.get(s).push(j);
+  }
+
+  $("trackingNeedsCount").textContent = String(needsAttention.length);
+  $("trackingNeedsList").innerHTML = needsAttention.length
+    ? needsAttention.map(trackingCard).join("")
+    : `<div class="muted tiny">No jobs need attention right now.</div>`;
+
+  $("trackingBoard").innerHTML = TRACKING_COLUMNS.map((status) => {
+    const items = byStatus.get(status) || [];
+    return `
+      <section class="tracking-col">
+        <div class="tracking-col-head">
+          <div class="h3">${escapeHtml(status)}</div>
+          <span class="chip">${escapeHtml(String(items.length))}</span>
+        </div>
+        <div class="tracking-col-body">
+          ${items.length ? items.map(trackingCard).join("") : `<div class="muted tiny">No jobs</div>`}
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  $("trackingHint").textContent = `${filtered.length} jobs on board`;
+
+  document.querySelectorAll("[data-track-action][data-track-key]").forEach((el) => {
+    el.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const action = String(el.getAttribute("data-track-action") || "").trim().toLowerCase();
+      const key = String(el.getAttribute("data-track-key") || "").trim();
+      await handleTrackingAction(action, key);
+    });
+  });
+}
+
+async function loadJobs(opts = {}) {
   try {
     spin(true);
-    const status = $("statusFilter").value;
+    const ignoreStatus = Boolean(opts?.ignoreStatus);
+    const status = ignoreStatus ? "" : $("statusFilter").value;
     const qs = status ? `?status=${encodeURIComponent(status)}&limit=200&offset=0` : `?limit=200&offset=0`;
     const res = await api("/jobs" + qs);
     state.jobs = Array.isArray(res.data) ? res.data : [];
     renderJobs();
     renderListMeta();
+    if (state.view === "tracking") renderTracking();
     if (state.activeKey && !state.jobs.some((j) => j.job_key === state.activeKey)) {
       setActive(null);
     }
@@ -1701,6 +1821,7 @@ async function saveSettings() {
   hydrateSettingsUI();
   toast("Saved settings");
   if (state.view === "jobs") await loadJobs();
+  if (state.view === "tracking") await loadJobs({ ignoreStatus: true });
   if (state.view === "targets") await loadTargets();
   if (state.view === "metrics") await loadMetrics();
 }
@@ -1714,6 +1835,7 @@ async function saveSettings() {
   }
 
   $("btnTabJobs").onclick = () => showView("jobs");
+  $("btnTabTracking").onclick = () => showView("tracking");
   $("btnTabTargets").onclick = () => showView("targets");
   $("btnTabMetrics").onclick = () => showView("metrics");
 
@@ -1729,6 +1851,7 @@ async function saveSettings() {
   $("btnSaveSettings").onclick = saveSettings;
 
   $("btnRefresh").onclick = loadJobs;
+  $("btnTrackingRefresh").onclick = () => loadJobs({ ignoreStatus: true });
   $("btnRescore").onclick = () => rescorePending("NEW");
   $("btnBatchOps").onclick = () => openModal("modalBatch");
   $("btnCloseBatch").onclick = () => closeModal("modalBatch");
@@ -1747,6 +1870,8 @@ async function saveSettings() {
   $("search").oninput = () => { renderJobs(); renderListMeta(); };
   $("sortBy").onchange = () => { renderJobs(); renderListMeta(); };
   $("queueFilter").onchange = () => { renderJobs(); renderListMeta(); };
+  $("trackingSearch").oninput = () => renderTracking();
+  $("trackingSort").onchange = () => renderTracking();
 
   const cfg = getCfg();
   if (!cfg.uiKey) setTimeout(() => openSettings(), 50);
