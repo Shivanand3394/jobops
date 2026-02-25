@@ -371,88 +371,21 @@ export default {
       if (path === "/jobs/backfill-missing" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
         const limit = clampInt_(body.limit || 30, 1, 200);
-
-        const pickedRes = await env.DB.prepare(`
-          SELECT job_key, job_url
-          FROM jobs
-          WHERE
-            status NOT IN ('APPLIED', 'REJECTED', 'ARCHIVED')
-            AND (
-              status = 'LINK_ONLY'
-              OR COALESCE(TRIM(role_title), '') = ''
-              OR COALESCE(TRIM(company), '') = ''
-              OR COALESCE(TRIM(system_status), '') IN ('AI_UNAVAILABLE', 'NEEDS_MANUAL_JD')
-            )
-          ORDER BY updated_at DESC
-          LIMIT ?;
-        `.trim()).bind(limit).all();
-
-        const picked = Array.isArray(pickedRes?.results) ? pickedRes.results : [];
-        const rawUrls = [];
-        const skippedNoUrl = [];
-        for (const row of picked) {
-          const u = String(row?.job_url || "").trim();
-          if (!u) {
-            skippedNoUrl.push(String(row?.job_key || "").trim());
-            continue;
-          }
-          rawUrls.push(u);
-        }
-
-        if (!rawUrls.length) {
-          return json_({
-            ok: true,
-            data: {
-              picked: picked.length,
-              processed: 0,
-              skipped_no_url: skippedNoUrl.length,
-              skipped_job_keys: skippedNoUrl,
-              inserted_or_updated: 0,
-              inserted_count: 0,
-              updated_count: 0,
-              ignored: 0,
-              link_only: 0,
-              results: [],
-            }
-          }, env, 200);
-        }
-
-        const ingestData = await ingestRawUrls_(env, {
-          rawUrls,
-          emailText: "",
-          emailHtml: "",
-          emailSubject: "",
-          emailFrom: "",
-          ingestChannel: "recover",
-        });
+        const data = await runBackfillMissing_(env, limit);
 
         await logEvent_(env, "BACKFILL_MISSING", null, {
-          picked: picked.length,
-          processed: rawUrls.length,
-          skipped_no_url: skippedNoUrl.length,
-          inserted_or_updated: ingestData?.inserted_or_updated || 0,
-          inserted_count: ingestData?.inserted_count || 0,
-          updated_count: ingestData?.updated_count || 0,
-          ignored: ingestData?.ignored || 0,
-          link_only: ingestData?.link_only || 0,
+          picked: data?.picked || 0,
+          processed: data?.processed || 0,
+          skipped_no_url: data?.skipped_no_url || 0,
+          inserted_or_updated: data?.inserted_or_updated || 0,
+          inserted_count: data?.inserted_count || 0,
+          updated_count: data?.updated_count || 0,
+          ignored: data?.ignored || 0,
+          link_only: data?.link_only || 0,
           ts: Date.now(),
         });
 
-        return json_({
-          ok: true,
-          data: {
-            picked: picked.length,
-            processed: rawUrls.length,
-            skipped_no_url: skippedNoUrl.length,
-            skipped_job_keys: skippedNoUrl,
-            inserted_or_updated: ingestData?.inserted_or_updated || 0,
-            inserted_count: ingestData?.inserted_count || 0,
-            updated_count: ingestData?.updated_count || 0,
-            ignored: ingestData?.ignored || 0,
-            link_only: ingestData?.link_only || 0,
-            results: Array.isArray(ingestData?.results) ? ingestData.results : [],
-          }
-        }, env, 200);
+        return json_({ ok: true, data }, env, 200);
       }
 
       // ============================
@@ -1352,6 +1285,62 @@ export default {
             await logEvent_(env, "RSS_POLL", null, { source: "cron", ...rssData, ts: Date.now() });
           }
           console.log("rss poll", JSON.stringify(rssData));
+
+          const recoveryEnabled = toBoolEnv_(env.RECOVERY_ENABLED, true);
+          if (recoveryEnabled) {
+            const backfillLimit = clampInt_(env.RECOVER_BACKFILL_LIMIT || 30, 1, 200);
+            const rescoreLimit = clampInt_(env.RECOVER_RESCORE_LIMIT || 30, 1, 200);
+
+            const backfillData = await runBackfillMissing_(env, backfillLimit);
+            await logEvent_(env, "RECOVERY_BACKFILL", null, {
+              source: "cron",
+              limit: backfillLimit,
+              picked: backfillData.picked,
+              processed: backfillData.processed,
+              inserted_or_updated: backfillData.inserted_or_updated,
+              inserted_count: backfillData.inserted_count,
+              updated_count: backfillData.updated_count,
+              ignored: backfillData.ignored,
+              link_only: backfillData.link_only,
+              ts: Date.now(),
+            });
+            console.log("recovery backfill cron", JSON.stringify({
+              picked: backfillData.picked,
+              processed: backfillData.processed,
+              inserted_or_updated: backfillData.inserted_or_updated,
+              updated_count: backfillData.updated_count,
+              link_only: backfillData.link_only,
+            }));
+
+            const aiRecovery = getAi_(env);
+            if (!aiRecovery) {
+              console.warn("recovery rescore skipped: missing AI binding");
+            } else {
+              const recoveryBatch = await runScorePending_(
+                env,
+                aiRecovery,
+                { limit: rescoreLimit, status: "NEW,SCORED,LINK_ONLY" },
+                {
+                  defaultStatuses: ["NEW", "SCORED", "LINK_ONLY"],
+                  allowedStatuses: ["NEW", "SCORED", "LINK_ONLY"],
+                  requireJd: true,
+                }
+              );
+              if (!recoveryBatch.ok) {
+                console.warn("recovery rescore skipped:", recoveryBatch.error);
+              } else {
+                await logEvent_(env, "RECOVERY_RESCORE", null, {
+                  source: "cron",
+                  limit: recoveryBatch.limit,
+                  status: recoveryBatch.statuses.join(","),
+                  picked: recoveryBatch.data.picked,
+                  updated: recoveryBatch.data.updated,
+                  ts: Date.now(),
+                });
+                console.log("recovery rescore cron", JSON.stringify(recoveryBatch.data));
+              }
+            }
+          }
 
           const ai = getAi_(env);
           if (!ai) {
@@ -2885,6 +2874,76 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
       updated,
       jobs: results,
     },
+  };
+}
+
+async function runBackfillMissing_(env, limitIn = 30) {
+  const limit = clampInt_(limitIn || 30, 1, 200);
+
+  const pickedRes = await env.DB.prepare(`
+    SELECT job_key, job_url
+    FROM jobs
+    WHERE
+      status NOT IN ('APPLIED', 'REJECTED', 'ARCHIVED')
+      AND (
+        status = 'LINK_ONLY'
+        OR COALESCE(TRIM(role_title), '') = ''
+        OR COALESCE(TRIM(company), '') = ''
+        OR COALESCE(TRIM(system_status), '') IN ('AI_UNAVAILABLE', 'NEEDS_MANUAL_JD')
+      )
+    ORDER BY updated_at DESC
+    LIMIT ?;
+  `.trim()).bind(limit).all();
+
+  const picked = Array.isArray(pickedRes?.results) ? pickedRes.results : [];
+  const rawUrls = [];
+  const skippedNoUrl = [];
+  for (const row of picked) {
+    const u = String(row?.job_url || "").trim();
+    if (!u) {
+      skippedNoUrl.push(String(row?.job_key || "").trim());
+      continue;
+    }
+    rawUrls.push(u);
+  }
+
+  if (!rawUrls.length) {
+    return {
+      picked: picked.length,
+      processed: 0,
+      skipped_no_url: skippedNoUrl.length,
+      skipped_job_keys: skippedNoUrl,
+      inserted_or_updated: 0,
+      inserted_count: 0,
+      updated_count: 0,
+      ignored: 0,
+      link_only: 0,
+      source_summary: [],
+      results: [],
+    };
+  }
+
+  const ingestData = await ingestRawUrls_(env, {
+    rawUrls,
+    emailText: "",
+    emailHtml: "",
+    emailSubject: "",
+    emailFrom: "",
+    ingestChannel: "recover",
+  });
+
+  return {
+    picked: picked.length,
+    processed: rawUrls.length,
+    skipped_no_url: skippedNoUrl.length,
+    skipped_job_keys: skippedNoUrl,
+    inserted_or_updated: ingestData?.inserted_or_updated || 0,
+    inserted_count: ingestData?.inserted_count || 0,
+    updated_count: ingestData?.updated_count || 0,
+    ignored: ingestData?.ignored || 0,
+    link_only: ingestData?.link_only || 0,
+    source_summary: Array.isArray(ingestData?.source_summary) ? ingestData.source_summary : [],
+    results: Array.isArray(ingestData?.results) ? ingestData.results : [],
   };
 }
 
