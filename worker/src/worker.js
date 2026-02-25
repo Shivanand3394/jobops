@@ -1199,7 +1199,7 @@ export default {
         const emailFrom = typeof body.email_from === "string" ? body.email_from : "";
         if (!jobUrl) return json_({ ok: false, error: "Missing job_url" }, env, 400);
 
-        const resolved = await resolveJd_(jobUrl, { emailHtml, emailText, emailSubject, emailFrom });
+        const resolved = await resolveJd_(env, jobUrl, { emailHtml, emailText, emailSubject, emailFrom });
         return json_({ ok: true, data: resolved }, env, 200);
       }
 
@@ -2090,54 +2090,73 @@ function decodeUrlSafely_(v) {
  * JD resolution (fetch + email fallback + window extraction)
  * ========================================================= */
 
-async function resolveJd_(jobUrl, { emailHtml, emailText, emailSubject, emailFrom }) {
+async function resolveJd_(env, jobUrl, { emailHtml, emailText, emailSubject, emailFrom }) {
   const out = { jd_text_clean: "", jd_source: "none", fetch_status: "failed", debug: { jd_confidence: "low", jd_length: 0 } };
   const sourceDomain = sourceDomainFromUrl_(jobUrl);
+  const sourceName = normalizeSourceDomainName_(sourceDomain);
 
-  // Try fetch first
-  try {
-    const res = await fetch(jobUrl, {
-      redirect: "follow",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
-
-    out.debug.http_status = res.status;
-
-    if ([401, 403, 429].includes(res.status)) {
-      out.fetch_status = "blocked";
-    } else if (!res.ok) {
-      out.fetch_status = "failed";
-    } else {
-      const html = await res.text();
-      const text = htmlToText_(html);
-      const cleanedAll = cleanJdText_(text);
-      const cleaned = extractJdWindow_(cleanedAll);
-
-      if (isLowQualityJd_(cleaned, sourceDomain)) {
-        out.fetch_status = "blocked";
-        out.debug.low_quality = true;
-        out.debug.jd_confidence = "low";
-        out.debug.jd_length = cleaned.length;
-      } else if (cleaned.length >= 260) {
-        const confidence = computeJdConfidence_(cleaned);
-        out.jd_text_clean = cleaned.slice(0, 12000);
-        out.jd_source = "fetched";
-        out.fetch_status = "ok";
-        out.debug.jd_confidence = confidence;
-        out.debug.jd_length = cleaned.length;
-        return out;
-      } else {
-        out.fetch_status = out.fetch_status === "blocked" ? "blocked" : "failed";
-        out.debug.jd_confidence = "low";
-        out.debug.jd_length = cleaned.length;
-      }
-    }
-  } catch (e) {
+  // Strict LinkedIn policy: avoid slow/blocked fetch loops and go to manual/email path.
+  if (sourceName === "linkedin") {
     out.fetch_status = "blocked";
-    out.debug.fetch_error = String(e?.message || e);
+    out.debug.skipped_fetch = "strict_linkedin_manual";
+  } else {
+    // Try fetch first
+    const fetchTimeoutMs = clampInt_(env?.JD_FETCH_TIMEOUT_MS || 7000, 1500, 15000);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort("jd_fetch_timeout"), fetchTimeoutMs);
+    try {
+      const res = await fetch(jobUrl, {
+        redirect: "follow",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      });
+
+      out.debug.http_status = res.status;
+
+      if ([401, 403, 429].includes(res.status)) {
+        out.fetch_status = "blocked";
+      } else if (!res.ok) {
+        out.fetch_status = "failed";
+      } else {
+        const html = await res.text();
+        const text = htmlToText_(html);
+        const cleanedAll = cleanJdText_(text);
+        const cleaned = extractJdWindow_(cleanedAll);
+
+        if (isLowQualityJd_(cleaned, sourceDomain)) {
+          out.fetch_status = "blocked";
+          out.debug.low_quality = true;
+          out.debug.jd_confidence = "low";
+          out.debug.jd_length = cleaned.length;
+        } else if (cleaned.length >= 260) {
+          const confidence = computeJdConfidence_(cleaned);
+          out.jd_text_clean = cleaned.slice(0, 12000);
+          out.jd_source = "fetched";
+          out.fetch_status = "ok";
+          out.debug.jd_confidence = confidence;
+          out.debug.jd_length = cleaned.length;
+          return out;
+        } else {
+          out.fetch_status = out.fetch_status === "blocked" ? "blocked" : "failed";
+          out.debug.jd_confidence = "low";
+          out.debug.jd_length = cleaned.length;
+        }
+      }
+    } catch (e) {
+      const err = String(e?.message || e || "");
+      if (err.toLowerCase().includes("abort") || err.toLowerCase().includes("timeout")) {
+        out.fetch_status = "failed";
+        out.debug.fetch_timeout_ms = fetchTimeoutMs;
+      } else {
+        out.fetch_status = "blocked";
+      }
+      out.debug.fetch_error = err;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   // Email fallback
@@ -2578,7 +2597,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     ).bind(norm.job_key).first();
     const wasExisting = Boolean(existing && existing.ok === 1);
 
-    const resolved = await resolveJd_(norm.job_url, { emailHtml, emailText, emailSubject, emailFrom });
+    const resolved = await resolveJd_(env, norm.job_url, { emailHtml, emailText, emailSubject, emailFrom });
 
     const jdText = String(resolved.jd_text_clean || "").trim();
     const fallbackDecision = computeFallbackDecision_(norm.source_domain, resolved, jdText, aiAvailable);
