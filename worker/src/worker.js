@@ -2187,11 +2187,17 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
         fetch_debug_json = COALESCE(excluded.fetch_debug_json, jobs.fetch_debug_json),
         status = CASE
           WHEN jobs.status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN jobs.status
-          WHEN excluded.status = 'LINK_ONLY' AND jobs.status IN ('NEW', 'SCORED', 'LINK_ONLY') THEN 'LINK_ONLY'
+          WHEN excluded.status = 'LINK_ONLY' AND jobs.status IN ('NEW', 'LINK_ONLY') THEN 'LINK_ONLY'
           ELSE jobs.status
         END,
-        next_status = excluded.next_status,
-        system_status = excluded.system_status,
+        next_status = CASE
+          WHEN excluded.status = 'LINK_ONLY' AND jobs.status = 'SCORED' THEN jobs.next_status
+          ELSE excluded.next_status
+        END,
+        system_status = CASE
+          WHEN excluded.status = 'LINK_ONLY' AND jobs.status = 'SCORED' THEN jobs.system_status
+          ELSE excluded.system_status
+        END,
         updated_at = excluded.updated_at;
     `.trim()).bind(
       norm.job_key,
