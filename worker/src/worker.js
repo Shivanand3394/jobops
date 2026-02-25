@@ -682,6 +682,16 @@ export default {
         const force = Boolean(body.force);
         const renderer = String(body.renderer || "reactive_resume").trim().toLowerCase();
         const rendererSafe = (renderer === "html_simple" || renderer === "reactive_resume") ? renderer : "reactive_resume";
+        const controls = {
+          template_id: String(body.template_id || body.templateId || "").trim().slice(0, 80),
+          enabled_blocks: Array.isArray(body.enabled_blocks)
+            ? body.enabled_blocks
+            : (Array.isArray(body.enabledBlocks) ? body.enabledBlocks : []),
+          selected_keywords: Array.isArray(body.selected_keywords)
+            ? body.selected_keywords
+            : (Array.isArray(body.selectedKeywords) ? body.selectedKeywords : []),
+          ats_target_mode: String(body.ats_target_mode || body.atsTargetMode || "").trim().toLowerCase(),
+        };
 
         const job = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
         if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
@@ -706,6 +716,7 @@ export default {
             target,
             profile,
             renderer: rendererSafe,
+            controls,
           });
         } catch (e) {
           packData = {
@@ -747,6 +758,9 @@ export default {
             profile_id: profile.id,
             status: packData.status,
             ats_score: packData.ats_score,
+            template_id: controls.template_id || "",
+            enabled_blocks_count: Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks.length : 0,
+            selected_keywords_count: Array.isArray(controls.selected_keywords) ? controls.selected_keywords.length : 0,
           }
         }, env, 200);
       }

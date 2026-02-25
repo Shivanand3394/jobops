@@ -1,13 +1,20 @@
-export async function generateApplicationPack_({ env, ai, job, target, profile, renderer = "reactive_resume" }) {
-  const must = arr_(job.must_have_keywords_json || job.must_have_keywords);
-  const nice = arr_(job.nice_to_have_keywords_json || job.nice_to_have_keywords);
+export async function generateApplicationPack_({ env, ai, job, target, profile, renderer = "reactive_resume", controls = {} }) {
+  const mustAll = arr_(job.must_have_keywords_json || job.must_have_keywords);
+  const niceAll = arr_(job.nice_to_have_keywords_json || job.nice_to_have_keywords);
+  const selectedKeywords = unique_(arr_(controls.selected_keywords || controls.selectedKeywords));
+  const templateId = str_(controls.template_id || controls.templateId || "balanced") || "balanced";
+  const atsTargetMode = str_(controls.ats_target_mode || controls.atsTargetMode || "all").toLowerCase() || "all";
+  const enabledBlocks = normalizeEnabledBlocks_(controls.enabled_blocks || controls.enabledBlocks);
+  const focusKeywords = selectedKeywords.length ? selectedKeywords : mustAll;
+  const atsMust = (atsTargetMode === "selected_only" && selectedKeywords.length) ? selectedKeywords : mustAll;
+  const atsNice = (atsTargetMode === "selected_only" && selectedKeywords.length) ? [] : niceAll;
   const profileJson = safeJsonObj_(profile?.profile_json) || {};
 
   const role = str_(job.role_title) || "Role";
   const company = str_(job.company) || "Company";
   const location = str_(job.location) || "";
-  const summaryBase = buildTailoredSummary_({ role, company, location, must, profileJson });
-  const bulletsBase = buildTailoredBullets_({ role, company, must, nice, profileJson });
+  const summaryBase = buildTailoredSummary_({ role, company, location, must: focusKeywords, profileJson });
+  const bulletsBase = buildTailoredBullets_({ role, company, must: focusKeywords, nice: niceAll, profileJson });
 
   let tailoredSummary = summaryBase;
   let tailoredBullets = bulletsBase;
@@ -24,7 +31,11 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
     }
   }
 
-  const keywordCoverage = computeKeywordCoverage_(must, nice, `${tailoredSummary}\n${tailoredBullets.join("\n")}`);
+  if (!enabledBlocks.has("summary")) tailoredSummary = "";
+  if (!enabledBlocks.has("bullets")) tailoredBullets = [];
+
+  const atsText = `${tailoredSummary}\n${tailoredBullets.join("\n")}`.trim() || `${role}\n${company}\n${location}`.trim();
+  const keywordCoverage = computeKeywordCoverage_(atsMust, atsNice, atsText);
   const atsJson = {
     score: keywordCoverage.score,
     missing_keywords: keywordCoverage.missing,
@@ -53,13 +64,19 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
     tailoring: {
       summary: tailoredSummary,
       bullets: tailoredBullets,
-      must_keywords: must,
-      nice_keywords: nice,
+      must_keywords: atsMust,
+      nice_keywords: atsNice,
+    },
+    controls: {
+      template_id: templateId,
+      enabled_blocks: Array.from(enabledBlocks),
+      selected_keywords: selectedKeywords,
+      ats_target_mode: atsTargetMode,
     },
     renderer,
   };
 
-  const rrExport = toReactiveResumeExport_(profileJson, packJson);
+  const rrExport = toReactiveResumeExport_(profileJson, packJson, { enabledBlocks, templateId });
   return {
     status,
     error_text: errorText,
@@ -202,29 +219,36 @@ function buildTailoredBullets_({ role, company, must, nice, profileJson }) {
   return unique_([...expBullets, ...generated]).slice(0, 8);
 }
 
-function toReactiveResumeExport_(profileJson, packJson) {
+function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
   const basics = profileJson?.basics || {};
   const experience = Array.isArray(profileJson?.experience) ? profileJson.experience : [];
   const skills = Array.isArray(profileJson?.skills) ? profileJson.skills : [];
   const bullets = Array.isArray(packJson?.tailoring?.bullets) ? packJson.tailoring.bullets : [];
+  const enabledBlocks = normalizeEnabledBlocks_(opts.enabledBlocks);
+  const includeSummary = enabledBlocks.has("summary");
+  const includeExperience = enabledBlocks.has("experience");
+  const includeSkills = enabledBlocks.has("skills");
+  const includeHighlights = enabledBlocks.has("highlights");
+  const templateId = str_(opts.templateId || packJson?.controls?.template_id || "balanced") || "balanced";
 
   return {
     metadata: {
       source: "jobops",
       exported_at: Date.now(),
       version: 1,
+      template_id: templateId,
     },
     basics: {
       name: str_(basics.name),
       email: str_(basics.email),
       phone: str_(basics.phone),
       location: str_(basics.location),
-      summary: str_(packJson?.tailoring?.summary),
+      summary: includeSummary ? str_(packJson?.tailoring?.summary) : "",
     },
     sections: {
-      experience,
-      skills,
-      highlights: bullets.map((x) => ({ text: str_(x) })).filter((x) => x.text),
+      experience: includeExperience ? experience : [],
+      skills: includeSkills ? skills : [],
+      highlights: includeHighlights ? bullets.map((x) => ({ text: str_(x) })).filter((x) => x.text) : [],
     },
     job_context: {
       job_key: str_(packJson?.job?.job_key),
@@ -274,6 +298,19 @@ function arr_(v) {
   } catch {
     return [];
   }
+}
+
+function normalizeEnabledBlocks_(v) {
+  const allowed = ["summary", "experience", "skills", "highlights", "bullets"];
+  const set = new Set(
+    (Array.isArray(v) ? v : [])
+      .map((x) => str_(x).toLowerCase())
+      .filter((x) => allowed.includes(x))
+  );
+  if (!set.size) {
+    for (const block of allowed) set.add(block);
+  }
+  return set;
 }
 
 function pickModelText_(result) {
