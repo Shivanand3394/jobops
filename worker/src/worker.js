@@ -1830,6 +1830,7 @@ function titleCaseMaybe_(s) {
   const raw = String(s || "").trim();
   const txt = raw.replace(/[_=;]+/g, " ").replace(/\s+/g, " ").trim();
   if (!txt) return "";
+  if (/^\d{4,}\b/.test(txt)) return "";
 
   // Reject obvious tracking/token noise from malformed URL slugs.
   const words = txt.split(" ").filter(Boolean);
@@ -1868,13 +1869,14 @@ function cleanHumanLabel_(value) {
   const hasUrlish = /https?:\/\//i.test(raw) || /www\./i.test(raw);
   const hasNoiseChars = /[=;{}<>]/.test(raw);
   const hasTrackingWords = /\b(utm|trk|token|session|redirect|clickid|fbclid|gclid)\b/i.test(raw);
+  const startsWithLongId = /^\d{4,}\b/.test(txt);
   const looksLikeSingleOpaqueToken =
     words.length === 1 &&
     /^[a-z0-9._-]+$/i.test(words[0]) &&
     (maxWordLen >= 28 || (digits >= 6 && digits > letters));
   const tooNumeric = (letters < 3 && digits >= 3) || (digits > letters && digits >= 8);
 
-  if (hasUrlish || hasNoiseChars || hasTrackingWords || looksLikeSingleOpaqueToken || tooNumeric) {
+  if (hasUrlish || hasNoiseChars || hasTrackingWords || startsWithLongId || looksLikeSingleOpaqueToken || tooNumeric) {
     return "";
   }
 
@@ -3549,16 +3551,20 @@ async function runCanonicalizeTitles_(env, opts = {}) {
     scanned += 1;
     const jobKey = String(row?.job_key || "").trim();
     const currentRoleRaw = String(row?.role_title || "").trim();
+    const status = String(row?.status || "").trim().toUpperCase();
     if (!jobKey) {
       skipped += 1;
       continue;
     }
 
     const currentRoleClean = cleanRoleTitle_(currentRoleRaw);
+    const currentRoleInvalid = Boolean(currentRoleRaw) && !currentRoleClean;
     const shouldProcess = !onlyMissing
       || !currentRoleRaw
+      || currentRoleInvalid
       || currentRoleClean !== currentRoleRaw
-      || isNoisyRoleTitle_(currentRoleRaw);
+      || isNoisyRoleTitle_(currentRoleRaw)
+      || status === "LINK_ONLY";
 
     if (!shouldProcess) {
       skipped += 1;
@@ -3573,12 +3579,35 @@ async function runCanonicalizeTitles_(env, opts = {}) {
     );
 
     const nextRole = currentRoleClean || roleFromUrl || roleFromDisplay || "";
-    if (!nextRole || nextRole === currentRoleRaw) {
-      skipped += 1;
-      continue;
-    }
-
     try {
+      if (!nextRole) {
+        if (currentRoleInvalid) {
+          if (!dryRun) {
+            await env.DB.prepare(`
+              UPDATE jobs
+              SET role_title = NULL, updated_at = ?
+              WHERE job_key = ?;
+            `.trim()).bind(now, jobKey).run();
+          }
+          updated += 1;
+          if (samples.length < 25) {
+            samples.push({
+              job_key: jobKey,
+              from: currentRoleRaw || null,
+              to: null,
+            });
+          }
+        } else {
+          skipped += 1;
+        }
+        continue;
+      }
+
+      if (nextRole === currentRoleRaw) {
+        skipped += 1;
+        continue;
+      }
+
       if (!dryRun) {
         await env.DB.prepare(`
           UPDATE jobs
