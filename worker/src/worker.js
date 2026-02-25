@@ -477,13 +477,15 @@ export default {
           }, env, 200);
         }
 
-        const ingestData = await ingestRawUrls_(env, {
+        const recoverConcurrency = clampInt_(env.RECOVER_CONCURRENCY || 3, 1, 6);
+        const ingestData = await runIngestBatchConcurrent_(env, {
           rawUrls,
           emailText: "",
           emailHtml: "",
           emailSubject: "",
           emailFrom: "",
           ingestChannel: "recover",
+          concurrency: recoverConcurrency,
         });
 
         await logEvent_(env, "RETRY_FETCH_MISSING_JD", null, {
@@ -2844,6 +2846,91 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
   };
 }
 
+function mergeIngestBatchResults_(parts) {
+  const rows = Array.isArray(parts) ? parts : [];
+  const merged = {
+    count_in: 0,
+    inserted_or_updated: 0,
+    inserted_count: 0,
+    updated_count: 0,
+    ignored: 0,
+    link_only: 0,
+    source_summary: [],
+    results: [],
+  };
+  for (const p of rows) {
+    merged.count_in += numOr_(p?.count_in, 0);
+    merged.inserted_or_updated += numOr_(p?.inserted_or_updated, 0);
+    merged.inserted_count += numOr_(p?.inserted_count, 0);
+    merged.updated_count += numOr_(p?.updated_count, 0);
+    merged.ignored += numOr_(p?.ignored, 0);
+    merged.link_only += numOr_(p?.link_only, 0);
+    if (Array.isArray(p?.results)) merged.results.push(...p.results);
+  }
+  merged.source_summary = summarizeRecoveryResultsBySource_(merged.results);
+  return merged;
+}
+
+async function runIngestBatchConcurrent_(env, opts = {}) {
+  const urls = Array.isArray(opts.rawUrls)
+    ? opts.rawUrls.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  const concurrency = clampInt_(opts.concurrency || 1, 1, 6);
+  if (!urls.length) return mergeIngestBatchResults_([]);
+  if (concurrency <= 1 || urls.length === 1) {
+    return ingestRawUrls_(env, {
+      rawUrls: urls,
+      emailText: opts.emailText,
+      emailHtml: opts.emailHtml,
+      emailSubject: opts.emailSubject,
+      emailFrom: opts.emailFrom,
+      ingestChannel: opts.ingestChannel,
+    });
+  }
+
+  let idx = 0;
+  const parts = [];
+  const workerCount = Math.min(concurrency, urls.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (true) {
+      if (idx >= urls.length) break;
+      const i = idx;
+      idx += 1;
+      const raw = urls[i];
+      try {
+        const part = await ingestRawUrls_(env, {
+          rawUrls: [raw],
+          emailText: opts.emailText,
+          emailHtml: opts.emailHtml,
+          emailSubject: opts.emailSubject,
+          emailFrom: opts.emailFrom,
+          ingestChannel: opts.ingestChannel,
+        });
+        parts.push(part);
+      } catch (e) {
+        parts.push({
+          count_in: 1,
+          inserted_or_updated: 0,
+          inserted_count: 0,
+          updated_count: 0,
+          ignored: 1,
+          link_only: 0,
+          source_summary: [],
+          results: [{
+            raw_url: raw,
+            source_domain: normalizeSourceDomainName_(sourceDomainFromUrl_(raw)),
+            action: "ignored",
+            error: String(e?.message || e),
+          }],
+        });
+      }
+    }
+  });
+
+  await Promise.all(workers);
+  return mergeIngestBatchResults_(parts);
+}
+
 async function runScorePending_(env, ai, body = {}, opts = {}) {
   const defaultStatuses = Array.isArray(opts.defaultStatuses) && opts.defaultStatuses.length
     ? opts.defaultStatuses
@@ -3070,13 +3157,15 @@ async function runBackfillMissing_(env, limitIn = 30) {
     };
   }
 
-  const ingestData = await ingestRawUrls_(env, {
+  const recoverConcurrency = clampInt_(env.RECOVER_CONCURRENCY || 3, 1, 6);
+  const ingestData = await runIngestBatchConcurrent_(env, {
     rawUrls,
     emailText: "",
     emailHtml: "",
     emailSubject: "",
     emailFrom: "",
     ingestChannel: "recover",
+    concurrency: recoverConcurrency,
   });
 
   return {
