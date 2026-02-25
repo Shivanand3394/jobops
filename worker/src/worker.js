@@ -2123,17 +2123,33 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
   for (const j of jobs) {
     try {
       const jdClean = String(j.jd_text_clean || "").trim();
-      const roleTitle = String(j.role_title || "").trim();
+      let roleTitle = String(j.role_title || "").trim();
+      let location = String(j.location || "").trim();
+      let seniority = String(j.seniority || "").trim();
+      let company = String(j.company || "").trim();
+      let extracted = null;
 
       if (!jdClean && !roleTitle) {
         results.push({ job_key: j.job_key, ok: false, error: "missing_jd_and_title" });
         continue;
       }
 
+      if (jdClean.length >= 180) {
+        extracted = await extractJdWithModel_(ai, jdClean)
+          .then((x) => sanitizeExtracted_(x, jdClean))
+          .catch(() => null);
+        if (extracted) {
+          roleTitle = String(extracted.role_title || roleTitle || "").trim();
+          location = String(extracted.location || location || "").trim();
+          seniority = String(extracted.seniority || seniority || "").trim();
+          company = String(extracted.company || company || "").trim();
+        }
+      }
+
       const scoring = await scoreJobWithModel_(ai, {
         role_title: roleTitle,
-        location: String(j.location || ""),
-        seniority: String(j.seniority || ""),
+        location,
+        seniority,
         jd_clean: jdClean,
       }, targets, cfg);
 
@@ -2155,6 +2171,17 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
       const now = Date.now();
       const r = await env.DB.prepare(`
         UPDATE jobs SET
+          company = COALESCE(?, company),
+          role_title = COALESCE(?, role_title),
+          location = COALESCE(?, location),
+          work_mode = COALESCE(?, work_mode),
+          seniority = COALESCE(?, seniority),
+          experience_years_min = COALESCE(?, experience_years_min),
+          experience_years_max = COALESCE(?, experience_years_max),
+          skills_json = CASE WHEN ? != '[]' THEN ? ELSE skills_json END,
+          must_have_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE must_have_keywords_json END,
+          nice_to_have_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE nice_to_have_keywords_json END,
+          reject_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE reject_keywords_json END,
           primary_target_id = ?,
           score_must = ?,
           score_nice = ?,
@@ -2170,6 +2197,21 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
           last_scored_at = ?
         WHERE job_key = ?;
       `.trim()).bind(
+        extracted?.company ?? null,
+        extracted?.role_title ?? null,
+        extracted?.location ?? null,
+        extracted?.work_mode ?? null,
+        extracted?.seniority ?? null,
+        numOrNull_(extracted?.experience_years_min),
+        numOrNull_(extracted?.experience_years_max),
+        JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+        JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+        JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
         scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
         clampInt_(scoring.score_must, 0, 100),
         clampInt_(scoring.score_nice, 0, 100),
