@@ -682,6 +682,9 @@ textarea, input{
   #btnTrackingFiltersToggle{
     align-self:flex-end;
   }
+  #btnTrackingRecover{
+    width:100%;
+  }
   .tracking-controls-extras{
     width:100%;
     display:grid;

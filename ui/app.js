@@ -1900,6 +1900,35 @@ async function retryFetchMissingJd(limit = 60) {
   }
 }
 
+async function recoverMissingDetailsFromTracking(limit = 60) {
+  const ok = confirm("Run recovery now? This retries missing-details fetch and then rescoring.");
+  if (!ok) return;
+  try {
+    spin(true);
+    const backfillRes = await api("/jobs/backfill-missing", {
+      method: "POST",
+      body: { limit },
+    });
+    const rescoreRes = await api("/jobs/recover/rescore-existing-jd", {
+      method: "POST",
+      body: { limit },
+    });
+
+    const b = backfillRes?.data || {};
+    const r = rescoreRes?.data || {};
+    toast(
+      `Recovery complete - fetch processed ${b.processed ?? 0}, updated ${b.updated_count ?? 0}; rescore updated ${r.updated ?? 0}/${r.picked ?? 0}`
+    );
+
+    await loadJobs({ ignoreStatus: true });
+    if (state.activeKey) await setActive(state.activeKey);
+  } catch (e) {
+    toast("Recover missing details failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
 function hydrateSettingsUI() {
   const cfg = getCfg();
   $("apiHost").textContent = cfg.apiBase.replace(/^https?:\/\//, "");
@@ -1986,6 +2015,7 @@ async function saveSettings() {
   $("trackingScope").onchange = () => renderTracking();
   $("trackingWindow").onchange = () => renderTracking();
   $("trackingLimit").onchange = () => renderTracking();
+  $("btnTrackingRecover").onclick = () => recoverMissingDetailsFromTracking(60);
   $("btnTrackingFiltersToggle").onclick = () => {
     state.trackingFiltersOpen = !state.trackingFiltersOpen;
     syncTrackingControlsUi_();
