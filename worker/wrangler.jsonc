@@ -13,7 +13,7 @@
     "binding": "AI"
   },
   "vars": {
-    "ALLOW_ORIGIN": "https://getjobs.shivanand-shah94.workers.dev",
+    "ALLOW_ORIGIN": "*",
     "GMAIL_CLIENT_ID": "773808649704-l0re7bam051sb2e7kg5e5nqjt1ijpqnf.apps.googleusercontent.com",
     "GMAIL_QUERY": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
     "GMAIL_MAX_PER_RUN": "25",

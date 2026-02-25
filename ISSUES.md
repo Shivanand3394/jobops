@@ -2,6 +2,7 @@
 
 - Reference baseline shipped on `main`: `41ad8a5` (manual JD + low-quality detection) and `12631ae` (manual JD UI + display title fallback).
 - Keep issues below as follow-up hardening/UX work unless marked complete in GitHub.
+- Current operational choice: `ALLOW_ORIGIN="*"` to avoid recurring UI fetch failures across domains. Track Issue `CORS tightening` below for staged hardening later.
 
 ## Issue: Detect low-quality JD fetch and mark NEEDS_MANUAL_JD
 
