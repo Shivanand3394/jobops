@@ -4319,21 +4319,43 @@ async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {})
 
 async function patchReactiveResumeDataRequest_(rrBase, rrKey, resumeId, rrExport, timeoutMs) {
   const updatePath = normalizeHealthPath_(`/api/openapi/resumes/${encodeURIComponent(String(resumeId || "").trim())}`);
-  const payload = {
-    operations: [
-      { op: "replace", path: "/data", value: rrExport || {} },
-    ],
-  };
+  const dataModel = toReactiveResumeDataModelFromRr_(rrExport);
+  const patchOps = Object.entries(dataModel || {})
+    .map(([k, v]) => ({ op: "replace", path: `/${k}`, value: v }));
+  const attempts = [
+    { method: "PATCH", body: { operations: patchOps } }, // JSON patch against resume.data
+    { method: "PUT", body: { data: dataModel } }, // full replace shape
+    { method: "PATCH", body: { data: dataModel } }, // partial nested shape
+    { method: "PATCH", body: dataModel }, // partial direct shape
+  ];
 
+  let lastFail = null;
+  for (const a of attempts) {
+    const one = await tryReactiveResumeUpdateAttempt_(rrBase, rrKey, updatePath, resumeId, a.method, a.body, timeoutMs);
+    if (one.ok) return one;
+    lastFail = one;
+    if (one.http_status === 401 || one.http_status === 403 || one.http_status === 404) {
+      return one;
+    }
+  }
+
+  return lastFail || {
+    ok: false,
+    import_path: updatePath,
+    error: "Reactive Resume update failed",
+  };
+}
+
+async function tryReactiveResumeUpdateAttempt_(rrBase, rrKey, updatePath, resumeId, method, bodyObj, timeoutMs) {
   try {
     const res = await fetchWithTimeout_(`${rrBase}${updatePath}`, {
-      method: "PATCH",
+      method,
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json, text/plain, */*",
         "x-api-key": rrKey,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(bodyObj || {}),
     }, timeoutMs);
 
     const rawText = await res.text();
