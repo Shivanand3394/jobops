@@ -4198,15 +4198,15 @@ async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {})
     return { ...first, adapter: "jobops_rr_export" };
   }
 
-  // Fallback adapter: convert to JSON Resume style if target RR deployment rejects custom schema.
+  // Fallback adapter: convert to Reactive Resume native data model if import rejects custom schema.
   if (Number(first.http_status) === 400) {
     const fallbackPayload = {
-      data: toJsonResumeFromRr_(rrExport),
+      data: toReactiveResumeDataModelFromRr_(rrExport),
     };
     if (safeTitle) fallbackPayload.name = safeTitle.slice(0, 120);
     const second = await postReactiveResumeImportRequest_(rrBase, importPath, rrKey, fallbackPayload, timeoutMs);
     if (second.ok) {
-      return { ...second, adapter: "json_resume_fallback" };
+      return { ...second, adapter: "rxresu_data_model_fallback" };
     }
     return second;
   }
@@ -4258,48 +4258,10 @@ async function postReactiveResumeImportRequest_(rrBase, importPath, rrKey, paylo
   }
 }
 
-function toJsonResumeFromRr_(rr) {
+function toReactiveResumeDataModelFromRr_(rr) {
   const basicsIn = rr && typeof rr === "object" ? (rr.basics || {}) : {};
   const sections = rr && typeof rr === "object" ? (rr.sections || {}) : {};
-  const workIn = Array.isArray(sections.experience) ? sections.experience : [];
-  const skillsIn = Array.isArray(sections.skills) ? sections.skills : [];
   const highlightsIn = Array.isArray(sections.highlights) ? sections.highlights : [];
-
-  const work = workIn.map((w) => {
-    const item = w && typeof w === "object" ? w : {};
-    const name = String(item.name || item.company || item.organization || "").trim();
-    const position = String(item.position || item.title || "").trim();
-    const summary = String(item.summary || "").trim();
-    const startDate = String(item.startDate || item.start || "").trim();
-    const endDate = String(item.endDate || item.end || "").trim();
-    const highlights = Array.isArray(item.highlights)
-      ? item.highlights.map((x) => String(x || "").trim()).filter(Boolean)
-      : [];
-    return {
-      name: name || "Unknown",
-      position: position || "Role",
-      startDate,
-      endDate,
-      summary,
-      highlights,
-    };
-  });
-
-  const skillKeywords = [];
-  const skills = skillsIn.map((s) => {
-    if (typeof s === "string") {
-      const name = String(s || "").trim();
-      if (name) skillKeywords.push(name);
-      return { name: name || "Skill", keywords: [] };
-    }
-    const item = s && typeof s === "object" ? s : {};
-    const name = String(item.name || item.label || "").trim();
-    const keywords = Array.isArray(item.keywords)
-      ? item.keywords.map((x) => String(x || "").trim()).filter(Boolean)
-      : [];
-    if (name) skillKeywords.push(name);
-    return { name: name || "Skill", keywords };
-  }).filter((x) => x && x.name);
 
   const fallbackSummary = highlightsIn
     .map((h) => String(h?.text || h || "").trim())
@@ -4307,26 +4269,107 @@ function toJsonResumeFromRr_(rr) {
     .slice(0, 4)
     .join(" ");
 
-  const locationRaw = String(basicsIn.location || "").trim();
+  const summaryText = String(basicsIn.summary || fallbackSummary || "").trim();
+  const emptySection = (title = "") => ({ title, columns: 1, hidden: false, items: [] });
+
   return {
+    picture: {
+      hidden: false,
+      url: "",
+      size: 80,
+      rotation: 0,
+      aspectRatio: 1,
+      borderRadius: 0,
+      borderColor: "rgba(0, 0, 0, 0.5)",
+      borderWidth: 0,
+      shadowColor: "rgba(0, 0, 0, 0.5)",
+      shadowWidth: 0,
+    },
     basics: {
       name: String(basicsIn.name || "").trim(),
+      headline: "",
       email: String(basicsIn.email || "").trim(),
       phone: String(basicsIn.phone || "").trim(),
-      location: {
-        address: locationRaw,
+      location: String(basicsIn.location || "").trim(),
+      website: {
+        url: "",
+        label: "",
       },
-      summary: String(basicsIn.summary || fallbackSummary || "").trim(),
+      customFields: [],
     },
-    work,
-    skills: skills.length ? skills : (skillKeywords.length ? [{ name: "Core Skills", keywords: unique_(skillKeywords) }] : []),
-    projects: [],
-    education: [],
-    certificates: [],
-    publications: [],
-    languages: [],
-    interests: [],
-    references: [],
+    summary: {
+      title: "",
+      columns: 1,
+      hidden: false,
+      content: summaryText,
+    },
+    sections: {
+      profiles: emptySection(""),
+      experience: emptySection(""),
+      education: emptySection(""),
+      projects: emptySection(""),
+      skills: emptySection(""),
+      languages: emptySection(""),
+      interests: emptySection(""),
+      awards: emptySection(""),
+      certifications: emptySection(""),
+      publications: emptySection(""),
+      volunteer: emptySection(""),
+      references: emptySection(""),
+    },
+    customSections: [],
+    metadata: {
+      template: "onyx",
+      layout: {
+        sidebarWidth: 35,
+        pages: [
+          {
+            fullWidth: false,
+            main: ["profiles", "summary", "education", "experience", "projects", "volunteer", "references"],
+            sidebar: ["skills", "certifications", "awards", "languages", "interests", "publications"],
+          },
+        ],
+      },
+      css: {
+        enabled: false,
+        value: "",
+      },
+      page: {
+        gapX: 4,
+        gapY: 6,
+        marginX: 14,
+        marginY: 12,
+        format: "a4",
+        locale: "en-US",
+        hideIcons: false,
+      },
+      design: {
+        level: {
+          icon: "star",
+          type: "circle",
+        },
+        colors: {
+          primary: "rgba(220, 38, 38, 1)",
+          text: "rgba(0, 0, 0, 1)",
+          background: "rgba(255, 255, 255, 1)",
+        },
+      },
+      typography: {
+        body: {
+          fontFamily: "IBM Plex Serif",
+          fontWeights: ["400", "500"],
+          fontSize: 10,
+          lineHeight: 1.5,
+        },
+        heading: {
+          fontFamily: "IBM Plex Serif",
+          fontWeights: ["600"],
+          fontSize: 14,
+          lineHeight: 1.5,
+        },
+      },
+      notes: "",
+    },
   };
 }
 

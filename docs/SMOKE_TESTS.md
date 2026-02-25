@@ -678,4 +678,4 @@ Expected:
 - `ok:true`
 - `data.rr_http_status` is 2xx
 - `data.rr_import_path` matches configured import path
-- `data.rr_push_adapter` is `jobops_rr_export` or `json_resume_fallback`
+- `data.rr_push_adapter` is `jobops_rr_export` or `rxresu_data_model_fallback`
