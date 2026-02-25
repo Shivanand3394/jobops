@@ -23,7 +23,7 @@
     "RECOVERY_ENABLED": "1",
     "RECOVER_BACKFILL_LIMIT": "30",
     "RECOVER_RESCORE_LIMIT": "30",
-    "RSS_FEEDS": "https://news.google.com/rss/search?q=site:iimjobs.com/j/&hl=en-IN&gl=IN&ceid=IN:en,https://news.google.com/rss/search?q=site:naukri.com/job-listings-&hl=en-IN&gl=IN&ceid=IN:en",
+    "RSS_FEEDS": "",
     "RSS_MAX_PER_RUN": "25",
     "RSS_ALLOW_KEYWORDS": "",
     "RSS_BLOCK_KEYWORDS": ""
