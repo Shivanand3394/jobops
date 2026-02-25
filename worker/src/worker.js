@@ -1852,6 +1852,29 @@ function cleanHumanLabel_(value) {
   return txt.length > 140 ? `${txt.slice(0, 137)}...` : txt;
 }
 
+function cleanRoleTitle_(value) {
+  let t = cleanHumanLabel_(value);
+  if (!t) return "";
+  t = t
+    .replace(/\b\d+\s*[-to]+\s*\d+\s*(?:yrs?|years?)\b/gi, "")
+    .replace(/\b\d+\+?\s*(?:yrs?|years?)\b/gi, "")
+    .replace(/\b(?:yrs?|years?)\b/gi, "")
+    .replace(/^[a-z0-9._-]*com\b[\s\-:]*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleanHumanLabel_(t);
+}
+
+function isNoisyRoleTitle_(value) {
+  const t = String(value || "").trim();
+  if (!t) return true;
+  if (/^[a-z0-9._-]*com\b/i.test(t)) return true;
+  if (/\b\d+\s*[-to]+\s*\d+\s*(?:yrs?|years?)\b/i.test(t)) return true;
+  if (/\b\d+\+?\s*(?:yrs?|years?)\b/i.test(t)) return true;
+  if (/\b(?:yrs?|years?)\b/i.test(t)) return true;
+  return false;
+}
+
 function isLikelyCompanyName_(value) {
   const s = String(value || "").replace(/\s+/g, " ").trim();
   if (!s) return false;
@@ -1948,7 +1971,7 @@ function deriveRoleFromJobUrl_(jobUrl, sourceDomain = "") {
     if (words.length && /^(iimjobs|naukri|linkedin)$/i.test(words[0])) words.shift();
     slug = words.join(" ").trim();
 
-    return cleanHumanLabel_(slug);
+    return cleanRoleTitle_(slug);
   } catch {
     return "";
   }
@@ -1981,7 +2004,7 @@ function sanitizeExtracted_(raw, jdText, ctx = {}) {
   const normalize = (v) => String(v || "").replace(/\s+/g, " ").trim();
 
   out.company = cleanHumanLabel_(normalize(out.company));
-  out.role_title = cleanHumanLabel_(normalize(out.role_title));
+  out.role_title = cleanRoleTitle_(normalize(out.role_title));
   out.location = normalize(out.location);
   out.seniority = normalize(out.seniority);
   out.work_mode = normalize(out.work_mode);
@@ -1994,7 +2017,7 @@ function sanitizeExtracted_(raw, jdText, ctx = {}) {
     const m =
       txt.match(/as a\s+([^\n,]{3,140})[,.:]/i) ||
       txt.match(/role(?:\s+and\s+responsibilities)?\s*[:\-]\s*([^\n]{3,140})/i);
-    if (m && m[1]) out.role_title = cleanHumanLabel_(normalize(m[1]));
+    if (m && m[1]) out.role_title = cleanRoleTitle_(normalize(m[1]));
   }
 
   if (!out.role_title || out.role_title.length < 3) {
@@ -3369,6 +3392,7 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
       const currentLocation = String(j?.location || "").trim();
       const currentWorkMode = String(j?.work_mode || "").trim();
       const currentSeniority = String(j?.seniority || "").trim();
+      const currentRoleNoisy = isNoisyRoleTitle_(currentRole);
       const currentCompanyValid = isLikelyCompanyName_(currentCompany);
       const extractedRole = String(extracted?.role_title || "").trim();
       const extractedCompany = String(extracted?.company || "").trim();
@@ -3376,7 +3400,9 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
       const extractedWorkMode = String(extracted?.work_mode || "").trim();
       const extractedSeniority = String(extracted?.seniority || "").trim();
 
-      const nextRole = currentRole || extractedRole || fallbackRole;
+      const nextRole = currentRole && !currentRoleNoisy
+        ? currentRole
+        : cleanRoleTitle_(extractedRole || fallbackRole || currentRole);
       const nextCompany = currentCompanyValid
         ? currentCompany
         : (isLikelyCompanyName_(extractedCompany) ? extractedCompany : "");
