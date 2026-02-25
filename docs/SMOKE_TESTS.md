@@ -445,3 +445,68 @@ Expected:
    - binding `AI` (preferred), or var `AI_BINDING` pointing to a valid AI binding name.
 4. Validate AI routes:
    - `POST /extract-jd` with `x-api-key` should return `ok:true` for valid text.
+
+## 21) RSS poll (API key)
+Set worker var `RSS_FEEDS` to comma/newline-separated feed URLs, then call:
+
+### curl
+```bash
+curl -sS "$BASE_URL/rss/poll" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"max_per_run":20}'
+```
+
+### PowerShell
+```powershell
+$body = @{ max_per_run = 20 } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/rss/poll" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- `ok:true`
+- `data.feeds_total >= 1` (when feeds are configured)
+- `data.items_listed >= 0`
+- `data.urls_job_domains_total >= 0`
+- `data.inserted_or_updated` present
+- `data.source_summary[]` present
+
+Optional one-off override without env var:
+
+### curl
+```bash
+curl -sS "$BASE_URL/rss/poll" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"feed_urls":["https://example.com/jobs-feed.xml"],"max_per_run":10}'
+```
+
+## 22) Verify fallback reason logging (blocked/low_quality/manual_required)
+Trigger ingest with a known difficult URL (e.g., LinkedIn) and inspect result rows:
+
+### curl
+```bash
+curl -sS "$BASE_URL/ingest" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"raw_urls":["https://www.linkedin.com/jobs/view/1234567890/"]}'
+```
+
+Expected per result row:
+- `fallback_reason` is one of `blocked`, `low_quality`, `manual_required`, or `none`
+- `fallback_policy` present
+
+Then verify events in D1:
+
+```bash
+wrangler d1 execute jobops-db --remote --command "SELECT event_type, job_key, payload_json, ts FROM events WHERE event_type='INGEST_FALLBACK' ORDER BY ts DESC LIMIT 10;"
+```
+
+Expected payload keys:
+- `source_domain`
+- `fallback_reason` (`blocked|low_quality|manual_required`)
+- `fallback_policy`
+- `fetch_status`

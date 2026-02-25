@@ -13,6 +13,8 @@ Source: `worker/wrangler.jsonc`
   - `GMAIL_CLIENT_ID`
   - `GMAIL_QUERY`
   - `GMAIL_MAX_PER_RUN`
+  - `RSS_FEEDS`
+  - `RSS_MAX_PER_RUN`
   - `ALLOW_ORIGIN`
 
 ### Current repo state
@@ -21,6 +23,8 @@ Source: `worker/wrangler.jsonc`
 - `vars.GMAIL_CLIENT_ID`: present (`REPLACE_IN_DASHBOARD` placeholder)
 - `vars.GMAIL_QUERY`: present
 - `vars.GMAIL_MAX_PER_RUN`: present
+- `vars.RSS_FEEDS`: should be present (empty allowed, or feed URLs)
+- `vars.RSS_MAX_PER_RUN`: should be present
 - `vars.ALLOW_ORIGIN`: present
 
 ### If missing, what to do
@@ -43,6 +47,8 @@ Source files:
 | `GMAIL_CLIENT_ID` | Var | Gmail OAuth URL + token exchange | `Missing GMAIL_CLIENT_ID` |
 | `GMAIL_QUERY` | Var | Gmail `messages.list` query | Poll scans wrong/no messages; start debug with `in:anywhere newer_than:7d` |
 | `GMAIL_MAX_PER_RUN` | Var | Gmail poll message cap | Unexpected poll volume |
+| `RSS_FEEDS` | Var | RSS poll feed list (`/rss/poll`, scheduled poll) | RSS poll reports `skipped: no_feeds_configured` |
+| `RSS_MAX_PER_RUN` | Var | RSS poll item cap | Unexpected RSS ingest volume |
 | `ALLOW_ORIGIN` | Var | CORS response header | Browser CORS failures |
 | `DB` | Binding (D1) | Jobs/targets/events and Gmail state persistence | `Missing D1 binding env.DB (bind your D1 as DB)` |
 | `AI` or `AI_BINDING` | Binding/Var indirection | Extraction/scoring routes (`getAi_`) | `Missing Workers AI binding (env.AI or AI_BINDING)` |
@@ -129,6 +135,20 @@ curl -i -X POST "$BASE_URL/gmail/poll" -H "x-api-key: $API_KEY"
 ```
 Expected response keys under `data`: `scanned`, `processed`, `skipped_existing`, `inserted_or_updated`, `ignored`, `link_only`.
 
+### 5) RSS poll (API auth)
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/rss/poll" -Method POST -ContentType "application/json" -Headers @{ "x-api-key" = $API_KEY } -Body (@{ max_per_run = 20 } | ConvertTo-Json) | Select-Object -ExpandProperty Content
+```
+```bash
+curl -i -X POST "$BASE_URL/rss/poll" -H "x-api-key: $API_KEY" -H "Content-Type: application/json" -d '{"max_per_run":20}'
+```
+Expected:
+- `ok:true`
+- `data.feeds_total`
+- `data.items_listed`
+- `data.inserted_or_updated`
+- `data.source_summary`
+
 ## E) Troubleshooting table
 
 | Failure symptom | Likely cause | How to confirm | Fix |
@@ -137,6 +157,7 @@ Expected response keys under `data`: `scanned`, `processed`, `skipped_existing`,
 | `Missing Workers AI binding (env.AI or AI_BINDING)` | AI binding not configured | Call scoring endpoint (`/score-pending` or `/jobs/:job_key/rescore`) | Add AI binding `AI` or set `AI_BINDING` to valid binding name |
 | Gmail OAuth redirect/callback failures | `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET` mismatch or redirect URI mismatch | Inspect `/gmail/auth` redirect and Google OAuth client config | Correct vars/secrets and exact callback URI `/gmail/callback` |
 | Cron not firing or `/gmail/poll` not ingesting | Trigger missing or poll runtime error | Check `wrangler.jsonc` cron and use `wrangler tail` around schedule | Ensure cron exists, deploy latest Worker, fix poll errors |
+| `/rss/poll` returns `skipped: no_feeds_configured` | `RSS_FEEDS` empty/missing | Call `/rss/poll` and inspect payload | Set `RSS_FEEDS` var to feed URLs (comma/newline separated), redeploy |
 | `/gmail/poll` returns `ok:true` but `scanned=0` | Query too narrow (label mismatch / mailbox visibility) | Inspect `data.query_used` in poll response | Temporarily set `GMAIL_QUERY` to `in:anywhere newer_than:7d`, or call `/gmail/poll` with body override `{ "query":"in:anywhere newer_than:7d","max_per_run":50 }` |
 | D1 errors / missing migrations | DB binding wrong or migrations not applied | Endpoint errors and `wrangler d1 list` | Bind D1 as `DB` and apply `001_init.sql` + `002_gmail.sql` |
 | CORS/origin failures | `ALLOW_ORIGIN` not set for UI origin | Check response headers and browser console | Set `ALLOW_ORIGIN` to Pages URL in prod (`https://getjobs.shivanand-shah94.workers.dev`) |
