@@ -1,6 +1,13 @@
 ﻿// worker_jobops_v2_ui_plus_clean.js
 import { buildGmailAuthUrl_, handleGmailOAuthCallback_, pollGmailAndIngest_ } from "./gmail.js";
-import { ensurePrimaryProfile_, generateApplicationPack_, persistResumeDraft_ } from "./resume_pack.js";
+import {
+  RR_EXPORT_CONTRACT_ID,
+  RR_EXPORT_SCHEMA_VERSION,
+  ensurePrimaryProfile_,
+  ensureReactiveResumeExportContract_,
+  generateApplicationPack_,
+  persistResumeDraft_,
+} from "./resume_pack.js";
 import { diagnoseRssFeedsAndIngest_, pollRssFeedsAndIngest_ } from "./rss.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
@@ -1042,6 +1049,8 @@ export default {
           profile_id: profile.id,
           status: packData.status,
           ats_score: packData.ats_score,
+          rr_export_contract_id: RR_EXPORT_CONTRACT_ID,
+          rr_export_schema_version: RR_EXPORT_SCHEMA_VERSION,
           ts: Date.now(),
         });
 
@@ -1056,6 +1065,10 @@ export default {
             template_id: controls.template_id || "",
             enabled_blocks_count: Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks.length : 0,
             selected_keywords_count: Array.isArray(controls.selected_keywords) ? controls.selected_keywords.length : 0,
+            rr_export_contract: {
+              id: RR_EXPORT_CONTRACT_ID,
+              schema_version: RR_EXPORT_SCHEMA_VERSION,
+            },
           }
         }, env, 200);
       }
@@ -1084,6 +1097,16 @@ export default {
 
         if (!row) return json_({ ok: false, error: "Not found" }, env, 404);
 
+        const packJson = safeJsonParse_(row.pack_json) || {};
+        const atsJson = safeJsonParse_(row.ats_json) || {};
+        const rrExportJson = ensureReactiveResumeExportContract_(
+          safeJsonParse_(row.rr_export_json) || {},
+          {
+            jobKey: row.job_key,
+            templateId: String(packJson?.controls?.template_id || ""),
+          }
+        );
+
         return json_({
           ok: true,
           data: {
@@ -1092,9 +1115,13 @@ export default {
             profile_id: row.profile_id,
             status: row.status,
             error_text: row.error_text || "",
-            pack_json: safeJsonParse_(row.pack_json) || {},
-            ats_json: safeJsonParse_(row.ats_json) || {},
-            rr_export_json: safeJsonParse_(row.rr_export_json) || {},
+            pack_json: packJson,
+            ats_json: atsJson,
+            rr_export_json: rrExportJson,
+            rr_export_contract: {
+              id: RR_EXPORT_CONTRACT_ID,
+              schema_version: RR_EXPORT_SCHEMA_VERSION,
+            },
             updated_at: row.updated_at,
           }
         }, env, 200);

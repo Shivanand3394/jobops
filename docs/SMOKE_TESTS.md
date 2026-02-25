@@ -437,6 +437,9 @@ Expected:
 - save profile returns `ok:true` with `id`
 - generate returns `ok:true` with `status` (`DRAFT_READY` or `NEEDS_AI`)
 - fetch pack returns saved `pack_json`, `ats_json`, `rr_export_json`
+- fetch pack returns `rr_export_contract.id = "jobops.rr_export.v1"`
+- fetch pack returns `rr_export_contract.schema_version = 1`
+- fetch pack returns `rr_export_json.metadata.contract_valid = true`
 
 ## 20) If titles/company are missing
 1. Call `/jobs?limit=5` and confirm rows include `display_title` and `display_company`.

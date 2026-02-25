@@ -1,3 +1,6 @@
+export const RR_EXPORT_CONTRACT_ID = "jobops.rr_export.v1";
+export const RR_EXPORT_SCHEMA_VERSION = 1;
+
 export async function generateApplicationPack_({ env, ai, job, target, profile, renderer = "reactive_resume", controls = {} }) {
   const mustAll = arr_(job.must_have_keywords_json || job.must_have_keywords);
   const niceAll = arr_(job.nice_to_have_keywords_json || job.nice_to_have_keywords);
@@ -76,7 +79,12 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
     renderer,
   };
 
-  const rrExport = toReactiveResumeExport_(profileJson, packJson, { enabledBlocks, templateId });
+  const rrExportRaw = toReactiveResumeExport_(profileJson, packJson, { enabledBlocks, templateId });
+  const rrExport = ensureReactiveResumeExportContract_(rrExportRaw, {
+    jobKey: str_(job.job_key),
+    templateId,
+  });
+
   return {
     status,
     error_text: errorText,
@@ -89,6 +97,19 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
 
 export async function persistResumeDraft_({ env, jobKey, profileId, pack, force }) {
   const now = Date.now();
+  const packSafe = pack && typeof pack === "object" ? pack : {};
+  const rrExport = ensureReactiveResumeExportContract_(packSafe.rr_export_json, {
+    jobKey: str_(jobKey),
+    templateId: str_(packSafe?.pack_json?.controls?.template_id) || "balanced",
+  });
+  const rrValidation = validateReactiveResumeExport_(rrExport);
+  const statusFromPack = str_(packSafe.status) || "DRAFT_READY";
+  const statusSafe = rrValidation.ok
+    ? statusFromPack
+    : (statusFromPack === "NEEDS_AI" ? "NEEDS_AI" : "ERROR");
+  const errorPrefix = rrValidation.ok ? "" : `RR export contract invalid: ${rrValidation.errors.join("; ")}`;
+  const errorTextSafe = [errorPrefix, str_(packSafe.error_text)].filter(Boolean).join(" | ").slice(0, 1000);
+
   const existing = await env.DB.prepare(
     `SELECT id, status FROM resume_drafts WHERE job_key = ? AND profile_id = ? LIMIT 1;`
   ).bind(jobKey, profileId).first();
@@ -100,11 +121,11 @@ export async function persistResumeDraft_({ env, jobKey, profileId, pack, force 
       SET pack_json = ?, ats_json = ?, rr_export_json = ?, status = ?, error_text = ?, updated_at = ?
       WHERE id = ?;
     `.trim()).bind(
-      JSON.stringify(pack.pack_json),
-      JSON.stringify(pack.ats_json),
-      JSON.stringify(pack.rr_export_json),
-      str_(pack.status) || "DRAFT_READY",
-      str_(pack.error_text),
+      JSON.stringify(packSafe.pack_json || {}),
+      JSON.stringify(packSafe.ats_json || {}),
+      JSON.stringify(rrExport),
+      statusSafe,
+      errorTextSafe,
       now,
       id
     ).run();
@@ -126,11 +147,11 @@ export async function persistResumeDraft_({ env, jobKey, profileId, pack, force 
     id,
     jobKey,
     profileId,
-    JSON.stringify(pack.pack_json),
-    JSON.stringify(pack.ats_json),
-    JSON.stringify(pack.rr_export_json),
-    str_(pack.status) || "DRAFT_READY",
-    str_(pack.error_text),
+    JSON.stringify(packSafe.pack_json || {}),
+    JSON.stringify(packSafe.ats_json || {}),
+    JSON.stringify(rrExport),
+    statusSafe,
+    errorTextSafe,
     now,
     now
   ).run();
@@ -234,9 +255,12 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
   return {
     metadata: {
       source: "jobops",
+      contract_id: RR_EXPORT_CONTRACT_ID,
+      schema_version: RR_EXPORT_SCHEMA_VERSION,
       exported_at: Date.now(),
       version: 1,
       template_id: templateId,
+      renderer: "reactive_resume",
     },
     basics: {
       name: str_(basics.name),
@@ -257,6 +281,52 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
       job_url: str_(packJson?.job?.job_url),
     },
   };
+}
+
+export function ensureReactiveResumeExportContract_(value, ctx = {}) {
+  const parsed = safeJsonObj_(value) || {};
+  const metadataIn = safeJsonObj_(parsed.metadata) || {};
+  const basicsIn = safeJsonObj_(parsed.basics) || {};
+  const sectionsIn = safeJsonObj_(parsed.sections) || {};
+  const jobIn = safeJsonObj_(parsed.job_context) || {};
+  const highlightsIn = Array.isArray(sectionsIn.highlights) ? sectionsIn.highlights : [];
+
+  const out = {
+    metadata: {
+      source: str_(metadataIn.source) || "jobops",
+      contract_id: RR_EXPORT_CONTRACT_ID,
+      schema_version: RR_EXPORT_SCHEMA_VERSION,
+      version: RR_EXPORT_SCHEMA_VERSION,
+      exported_at: num_(metadataIn.exported_at) || Date.now(),
+      template_id: str_(metadataIn.template_id || ctx.templateId || "balanced") || "balanced",
+      renderer: "reactive_resume",
+    },
+    basics: {
+      name: str_(basicsIn.name),
+      email: str_(basicsIn.email),
+      phone: str_(basicsIn.phone),
+      location: str_(basicsIn.location),
+      summary: str_(basicsIn.summary),
+    },
+    sections: {
+      experience: Array.isArray(sectionsIn.experience) ? sectionsIn.experience : [],
+      skills: Array.isArray(sectionsIn.skills) ? sectionsIn.skills : [],
+      highlights: highlightsIn
+        .map((h) => (typeof h === "string" ? { text: str_(h) } : { text: str_(h?.text) }))
+        .filter((h) => h.text),
+    },
+    job_context: {
+      job_key: str_(jobIn.job_key || ctx.jobKey),
+      role_title: str_(jobIn.role_title),
+      company: str_(jobIn.company),
+      job_url: str_(jobIn.job_url),
+    },
+  };
+
+  const validation = validateReactiveResumeExport_(out);
+  out.metadata.contract_valid = validation.ok;
+  if (!validation.ok) out.metadata.contract_errors = validation.errors.slice(0, 5);
+  return out;
 }
 
 async function polishWithAi_(ai, summary, bullets) {
@@ -344,4 +414,15 @@ function str_(v) {
 function num_(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function validateReactiveResumeExport_(rr) {
+  const errors = [];
+  const contractId = str_(rr?.metadata?.contract_id);
+  const schemaVersion = num_(rr?.metadata?.schema_version);
+  if (contractId !== RR_EXPORT_CONTRACT_ID) errors.push("contract_id_mismatch");
+  if (schemaVersion !== RR_EXPORT_SCHEMA_VERSION) errors.push("schema_version_mismatch");
+  if (!str_(rr?.job_context?.job_key)) errors.push("missing_job_key");
+  if (!rr?.sections || typeof rr.sections !== "object") errors.push("missing_sections");
+  return { ok: errors.length === 0, errors };
 }

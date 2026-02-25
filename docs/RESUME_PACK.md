@@ -7,6 +7,15 @@ Pack output is renderer-agnostic:
 - `ats_json`: deterministic ATS coverage/score
 - `rr_export_json`: Reactive Resume-compatible export payload (adapter output)
 
+RR export contract (locked):
+- `rr_export_json.metadata.contract_id = "jobops.rr_export.v1"`
+- `rr_export_json.metadata.schema_version = 1`
+- `rr_export_json.job_context.job_key` is always present
+
+Worker behavior:
+- normalizes RR payload on generate/save/fetch
+- validates contract fields and marks `metadata.contract_valid`
+
 Reactive Resume is not a runtime dependency; it is an export format target.
 
 ## Statuses
@@ -89,6 +98,11 @@ curl:
 ```bash
 curl -sS "$BASE_URL/jobs/$JOB_KEY/application-pack?profile_id=primary" -H "x-ui-key: $UI_KEY"
 ```
+
+Expected on fetch:
+- `data.rr_export_contract.id = "jobops.rr_export.v1"`
+- `data.rr_export_contract.schema_version = 1`
+- `data.rr_export_json.metadata.contract_valid = true`
 
 ## Mobile usage
 From job detail in UI:
