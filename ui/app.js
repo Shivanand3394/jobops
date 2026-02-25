@@ -689,7 +689,7 @@ function renderTrackingRecoverySummary_() {
       .join(" | ")
     : "source summary unavailable";
 
-  el.textContent = `Recovery Snapshot (${fmtTsWithAbs(last.ts)}): fetch processed ${fmtNum(last.fetch_processed || 0)}, fetch updated ${fmtNum(last.fetch_updated || 0)}, rescore updated ${fmtNum(last.rescore_updated || 0)}/${fmtNum(last.rescore_picked || 0)}. ${sourceText}`;
+  el.textContent = `Recovery Snapshot (${fmtTsWithAbs(last.ts)}): fetch processed ${fmtNum(last.fetch_processed || 0)}, fetch updated ${fmtNum(last.fetch_updated || 0)}, fields updated ${fmtNum(last.fields_updated || 0)}, rescore updated ${fmtNum(last.rescore_updated || 0)}/${fmtNum(last.rescore_picked || 0)}. ${sourceText}`;
 }
 
 async function loadJobs(opts = {}) {
@@ -2029,18 +2029,24 @@ async function recoverMissingDetailsFromTracking(limit = 10) {
       method: "POST",
       body: { limit },
     });
+    const fillRes = await api("/jobs/recover/missing-fields", {
+      method: "POST",
+      body: { limit },
+    });
     const rescoreRes = await api("/jobs/recover/rescore-existing-jd", {
       method: "POST",
       body: { limit },
     });
 
     const b = backfillRes?.data || {};
+    const f = fillRes?.data || {};
     const r = rescoreRes?.data || {};
     const sourceSummary = Array.isArray(b.source_summary) ? b.source_summary : [];
     const snapshot = {
       ts: Date.now(),
       fetch_processed: Number(b.processed || 0),
       fetch_updated: Number(b.updated_count || 0),
+      fields_updated: Number(f.updated || 0),
       rescore_updated: Number(r.updated || 0),
       rescore_picked: Number(r.picked || 0),
       source_summary: sourceSummary,
@@ -2062,7 +2068,7 @@ async function recoverMissingDetailsFromTracking(limit = 10) {
         .join(" | ")
       : "";
     toast(
-      `Recovery complete - fetch processed ${b.processed ?? 0}, updated ${b.updated_count ?? 0}; rescore updated ${r.updated ?? 0}/${r.picked ?? 0}${sourceText ? ` | ${sourceText}` : ""}`
+      `Recovery complete - fetch ${b.processed ?? 0}/${b.updated_count ?? 0}, fields ${f.updated ?? 0}, rescore ${r.updated ?? 0}/${r.picked ?? 0}${sourceText ? ` | ${sourceText}` : ""}`
     );
 
     await loadJobs({ ignoreStatus: true });
