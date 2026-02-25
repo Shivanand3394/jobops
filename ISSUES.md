@@ -107,3 +107,18 @@ Restrict production CORS while keeping debug flexibility.
 
 **Notes:**
 Document exact environment values per deployment stage to avoid accidental wildcard rollout.
+
+## Issue: Reactive Resume profile sync on generate
+
+**Goal:**
+When a user generates a resume/application pack, persist the generated RR JSON back to the selected profile as a saved version.
+
+**Acceptance Criteria:**
+- `POST /jobs/:job_key/generate-application-pack` (UI key) stores generated `rr_export_json` in `resume_drafts` as today.
+- Generation flow also updates the selected profile with a versioned snapshot of generated RR JSON (no destructive overwrite of historical versions).
+- UI shows confirmation that profile snapshot was saved with generation timestamp.
+- User can still regenerate with different templates without losing prior generated profile snapshots.
+- If generation fails, profile snapshot is not partially written.
+
+**Notes:**
+Use versioned profile snapshots (append-only strategy preferred) to avoid accidental data loss from iterative generation.
