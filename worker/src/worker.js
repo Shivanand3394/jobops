@@ -389,6 +389,34 @@ export default {
       }
 
       // ============================
+      // UI: Cleanup noisy/invalid tracked URLs
+      // ============================
+      if (path === "/jobs/cleanup-urls" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const limit = clampInt_(body.limit || 200, 1, 1000);
+        const archiveInvalid = body.archive_invalid !== false;
+        const archiveDuplicates = body.archive_duplicates !== false;
+
+        const data = await runCleanupTrackedUrls_(env, {
+          limit,
+          archiveInvalid,
+          archiveDuplicates,
+        });
+
+        await logEvent_(env, "CLEANUP_TRACKED_URLS", null, {
+          scanned: data?.scanned || 0,
+          canonicalized: data?.canonicalized || 0,
+          archived_invalid: data?.archived_invalid || 0,
+          archived_duplicates: data?.archived_duplicates || 0,
+          unchanged: data?.unchanged || 0,
+          errors: data?.errors || 0,
+          ts: Date.now(),
+        });
+
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      // ============================
       // UI: Recovery - rescore existing JD only (no fetch)
       // ============================
       if (path === "/jobs/recover/rescore-existing-jd" && request.method === "POST") {
@@ -1276,10 +1304,35 @@ export default {
     ctx.waitUntil(
       (async () => {
         try {
+          const cronStartedAt = Date.now();
+          const scheduleMaxMs = clampInt_(env.SCHEDULE_MAX_MS || 45000, 5000, 840000);
+          let budgetStopLogged = false;
+          const budgetExceeded_ = async (stage) => {
+            const elapsedMs = Date.now() - cronStartedAt;
+            if (elapsedMs <= scheduleMaxMs) return false;
+            if (!budgetStopLogged) {
+              budgetStopLogged = true;
+              await logEvent_(env, "SCHEDULE_BUDGET_STOP", null, {
+                stage,
+                elapsed_ms: elapsedMs,
+                max_ms: scheduleMaxMs,
+                ts: Date.now(),
+              });
+            }
+            console.warn("scheduled budget reached", JSON.stringify({
+              stage,
+              elapsed_ms: elapsedMs,
+              max_ms: scheduleMaxMs,
+            }));
+            return true;
+          };
+
+          if (await budgetExceeded_("gmail_poll")) return;
           const data = await runGmailPoll_(env);
           await logEvent_(env, "GMAIL_POLL", null, { source: "cron", ...data, ts: Date.now() });
           console.log("gmail poll ok", JSON.stringify(data));
 
+          if (await budgetExceeded_("rss_poll")) return;
           const rssData = await runRssPoll_(env);
           if (!rssData?.skipped) {
             await logEvent_(env, "RSS_POLL", null, { source: "cron", ...rssData, ts: Date.now() });
@@ -1288,6 +1341,7 @@ export default {
 
           const recoveryEnabled = toBoolEnv_(env.RECOVERY_ENABLED, true);
           if (recoveryEnabled) {
+            if (await budgetExceeded_("recovery_backfill")) return;
             const backfillLimit = clampInt_(env.RECOVER_BACKFILL_LIMIT || 30, 1, 200);
             const rescoreLimit = clampInt_(env.RECOVER_RESCORE_LIMIT || 30, 1, 200);
 
@@ -1316,6 +1370,7 @@ export default {
             if (!aiRecovery) {
               console.warn("recovery rescore skipped: missing AI binding");
             } else {
+              if (await budgetExceeded_("recovery_rescore")) return;
               const recoveryBatch = await runScorePending_(
                 env,
                 aiRecovery,
@@ -1342,6 +1397,7 @@ export default {
             }
           }
 
+          if (await budgetExceeded_("score_pending")) return;
           const ai = getAi_(env);
           if (!ai) {
             console.warn("score pending skipped: missing AI binding");
@@ -3019,6 +3075,129 @@ async function runBackfillMissing_(env, limitIn = 30) {
   };
 }
 
+async function runCleanupTrackedUrls_(env, opts = {}) {
+  const limit = clampInt_(opts.limit || 200, 1, 1000);
+  const archiveInvalid = opts.archiveInvalid !== false;
+  const archiveDuplicates = opts.archiveDuplicates !== false;
+  const now = Date.now();
+
+  const rows = await env.DB.prepare(`
+    SELECT job_key, job_url, source_domain, status
+    FROM jobs
+    WHERE COALESCE(TRIM(job_url), '') != ''
+    ORDER BY updated_at DESC
+    LIMIT ?;
+  `.trim()).bind(limit).all();
+
+  const jobs = Array.isArray(rows?.results) ? rows.results : [];
+  let scanned = 0;
+  let canonicalized = 0;
+  let archivedInvalid = 0;
+  let archivedDuplicates = 0;
+  let unchanged = 0;
+  let errors = 0;
+  const samples = [];
+
+  for (const row of jobs) {
+    scanned += 1;
+    const jobKey = String(row?.job_key || "").trim();
+    const rawUrl = String(row?.job_url || "").trim();
+    const sourceDomainCurrent = normalizeSourceDomainName_(row?.source_domain);
+    const statusCurrent = String(row?.status || "").trim().toUpperCase();
+
+    if (!jobKey || !rawUrl) {
+      unchanged += 1;
+      continue;
+    }
+
+    let norm = null;
+    try {
+      norm = await normalizeJobUrl_(rawUrl);
+    } catch {
+      errors += 1;
+      continue;
+    }
+
+    if (!norm || norm.ignored || !norm.job_url) {
+      if (archiveInvalid && isOpenJobStatus_(statusCurrent)) {
+        await env.DB.prepare(`
+          UPDATE jobs
+          SET
+            status = 'ARCHIVED',
+            next_status = 'ARCHIVED',
+            system_status = 'INVALID_URL',
+            archived_at = COALESCE(archived_at, ?),
+            updated_at = ?
+          WHERE job_key = ?;
+        `.trim()).bind(now, now, jobKey).run();
+        archivedInvalid += 1;
+        if (samples.length < 25) samples.push({ job_key: jobKey, action: "archived_invalid" });
+      } else {
+        unchanged += 1;
+      }
+      continue;
+    }
+
+    const canonicalUrl = String(norm.job_url || "").trim();
+    const canonicalSource = normalizeSourceDomainName_(norm.source_domain);
+    const canonicalKey = String(norm.job_key || "").trim();
+
+    if (archiveDuplicates && canonicalKey && canonicalKey !== jobKey) {
+      const existingCanonical = await env.DB.prepare(`
+        SELECT job_key
+        FROM jobs
+        WHERE job_key = ?
+        LIMIT 1;
+      `.trim()).bind(canonicalKey).first();
+
+      if (existingCanonical && isOpenJobStatus_(statusCurrent)) {
+        await env.DB.prepare(`
+          UPDATE jobs
+          SET
+            status = 'ARCHIVED',
+            next_status = 'ARCHIVED',
+            system_status = 'CANONICAL_DUPLICATE',
+            archived_at = COALESCE(archived_at, ?),
+            updated_at = ?
+          WHERE job_key = ?;
+        `.trim()).bind(now, now, jobKey).run();
+        archivedDuplicates += 1;
+        if (samples.length < 25) {
+          samples.push({ job_key: jobKey, action: "archived_duplicate", canonical_job_key: canonicalKey });
+        }
+        continue;
+      }
+    }
+
+    if (canonicalUrl !== rawUrl || canonicalSource !== sourceDomainCurrent) {
+      await env.DB.prepare(`
+        UPDATE jobs
+        SET
+          job_url = ?,
+          source_domain = ?,
+          updated_at = ?
+        WHERE job_key = ?;
+      `.trim()).bind(canonicalUrl, canonicalSource, now, jobKey).run();
+      canonicalized += 1;
+      if (samples.length < 25) {
+        samples.push({ job_key: jobKey, action: "canonicalized", source_domain: canonicalSource });
+      }
+    } else {
+      unchanged += 1;
+    }
+  }
+
+  return {
+    scanned,
+    canonicalized,
+    archived_invalid: archivedInvalid,
+    archived_duplicates: archivedDuplicates,
+    unchanged,
+    errors,
+    samples,
+  };
+}
+
 async function runGmailPoll_(env, opts = {}) {
   const query = typeof opts.query === "string" && opts.query.trim()
     ? opts.query.trim()
@@ -3290,13 +3469,21 @@ function getCookie_(request, name) {
 }
 
 function corsHeaders_(env) {
-  const v = env && env.ALLOW_ORIGIN ? String(env.ALLOW_ORIGIN).trim() : "*";
-  const allowOrigin = (v === "*" || v.startsWith("http")) ? v : "*";
-  return {
+  const raw = env && env.ALLOW_ORIGIN ? String(env.ALLOW_ORIGIN).trim() : "*";
+  const candidates = raw === "*"
+    ? ["*"]
+    : raw
+      .split(/[\r\n,]+/g)
+      .map((x) => String(x || "").trim())
+      .filter((x) => /^https?:\/\//i.test(x));
+  const allowOrigin = candidates.length ? candidates[0] : "*";
+  const headers = {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "POST,GET,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,x-api-key,x-ui-key",
   };
+  if (allowOrigin !== "*") headers["Vary"] = "Origin";
+  return headers;
 }
 
 function json_(obj, env, status = 200) {
@@ -3356,6 +3543,11 @@ function clampInt_(v, lo, hi) {
   const n = Math.round(Number(v));
   if (!Number.isFinite(n)) return lo;
   return Math.max(lo, Math.min(hi, n));
+}
+
+function isOpenJobStatus_(status) {
+  const s = String(status || "").trim().toUpperCase();
+  return s !== "APPLIED" && s !== "REJECTED" && s !== "ARCHIVED";
 }
 
 function normalizeKeywords_(input) {
