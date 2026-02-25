@@ -57,12 +57,6 @@ export default {
         path.startsWith("/targets/") ||
         path.startsWith("/resume/");
 
-      const isAdminRoute =
-        path === "/normalize-job" ||
-        path === "/resolve-jd" ||
-        path === "/extract-jd" ||
-        path === "/score-jd";
-
       const authErr = requireAuth_(request, env, routeMode);
       if (authErr) return authErr;
 
@@ -70,7 +64,6 @@ export default {
       const needsDB =
         isUiRoute ||
         path === "/score-pending" ||
-        path === "/ingest" ||
         path === "/resolve-jd" ||
         path.startsWith("/gmail/") ||
         path.startsWith("/rss/"); // gmail/rss bridge requires D1 state
@@ -2523,22 +2516,6 @@ function computeFallbackDecision_(sourceDomain, resolved, jdText, aiAvailable) {
     confidence,
     jd_length: len,
   };
-}
-
-function shouldRequireManualJd_(resolved, jdText) {
-  const jdSource = String(resolved?.jd_source || "").toLowerCase();
-  const confidence = String(resolved?.debug?.jd_confidence || "").toLowerCase();
-  const jdLen = String(jdText || "").trim().length;
-
-  if (jdSource === "email" || jdSource === "fetched") {
-    if (jdLen < 220) return true;
-    if (confidence === "low") return true;
-    return false;
-  }
-
-  const fetchStatus = String(resolved?.fetch_status || "").toLowerCase();
-  if (fetchStatus === "blocked" || fetchStatus === "low_quality") return true;
-  return jdLen < 220;
 }
 
 function computeJdConfidence_(text) {
