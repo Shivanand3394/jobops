@@ -613,6 +613,13 @@ async function ensureRrPdfForJob_(jobKey, { forceExport = false } = {}) {
   if (existingPdfUrl && !forceExport) {
     return { rr_pdf_url: existingPdfUrl, source: "existing" };
   }
+  const packReadiness = pack?.pdf_readiness && typeof pack.pdf_readiness === "object" ? pack.pdf_readiness : null;
+  if (packReadiness && !packReadiness.ready && !forceExport) {
+    const firstIssue = Array.isArray(packReadiness.failed_checks) && packReadiness.failed_checks.length
+      ? String(packReadiness.failed_checks[0]?.detail || packReadiness.failed_checks[0]?.label || packReadiness.failed_checks[0]?.id || "")
+      : "";
+    throw new Error(firstIssue || "PDF readiness gate failed");
+  }
 
   if (!pack) {
     await api(`/jobs/${encodeURIComponent(key)}/generate-application-pack`, {
@@ -992,6 +999,8 @@ function renderDetail(j) {
           <div class="k">RR dashboard</div><div class="v"><a class="muted" id="appRrDashboardLink" href="#" target="_blank" rel="noopener">-</a></div>
           <div class="k">RR PDF status</div><div class="v" id="appRrPdfStatus">-</div>
           <div class="k">RR PDF exported</div><div class="v" id="appRrPdfExported">-</div>
+          <div class="k">PDF readiness</div><div class="v" id="appPdfReadyStatus">-</div>
+          <div class="k">PDF blockers</div><div class="v" id="appPdfReadyIssues">-</div>
           <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
           <div class="k">Keyword selection</div><div class="v">
             <div class="row" style="justify-content:flex-start; margin-top:0;">
@@ -1778,6 +1787,11 @@ async function hydrateApplicationPack(jobOrKey) {
     const rrPdfExportedAt = Number(d?.rr_pdf_last_exported_at || 0);
     const rrPdfStatus = String(d?.rr_pdf_last_export_status || "").trim();
     const rrPdfError = String(d?.rr_pdf_last_export_error || "").trim();
+    const pdfReadiness = d?.pdf_readiness && typeof d.pdf_readiness === "object" ? d.pdf_readiness : null;
+    const pdfReady = Boolean(pdfReadiness?.ready);
+    const pdfIssues = Array.isArray(pdfReadiness?.failed_checks)
+      ? pdfReadiness.failed_checks.map((x) => String(x?.detail || x?.label || x?.id || "").trim()).filter(Boolean)
+      : [];
     const rrBaseUrl = String(d?.rr_base_url || "").trim();
     $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
     $("appAtsScore").textContent = String(ats.score ?? "-");
@@ -1808,6 +1822,8 @@ async function hydrateApplicationPack(jobOrKey) {
       $("appRrPdfStatus").textContent = rrPdfError ? `${txt} (${rrPdfError})` : txt;
     }
     if ($("appRrPdfExported")) $("appRrPdfExported").textContent = rrPdfExportedAt ? fmtTsWithAbs(rrPdfExportedAt) : "-";
+    if ($("appPdfReadyStatus")) $("appPdfReadyStatus").textContent = pdfReadiness ? (pdfReady ? "READY" : "BLOCKED") : "-";
+    if ($("appPdfReadyIssues")) $("appPdfReadyIssues").textContent = pdfIssues.length ? pdfIssues.join(" | ") : "-";
     $("appPackEmpty").textContent = rrImportReady
       ? "Application Pack loaded"
       : "Application Pack loaded with RR import warnings";
@@ -1817,6 +1833,8 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrImportReady = rrImportReady ? "1" : "0";
     section.dataset.rrImportErrors = rrImportErrors.join(", ");
     section.dataset.rrPdfUrl = rrPdfUrl;
+    section.dataset.pdfReady = pdfReadiness ? (pdfReady ? "1" : "0") : "0";
+    section.dataset.pdfReadyIssues = pdfIssues.join(", ");
 
     const controlTemplateId = String(controls.template_id || "").trim();
     if (controlTemplateId) state.activeTemplateId = controlTemplateId;
@@ -1852,6 +1870,8 @@ async function hydrateApplicationPack(jobOrKey) {
     }
     if ($("appRrPdfStatus")) $("appRrPdfStatus").textContent = "-";
     if ($("appRrPdfExported")) $("appRrPdfExported").textContent = "-";
+    if ($("appPdfReadyStatus")) $("appPdfReadyStatus").textContent = "-";
+    if ($("appPdfReadyIssues")) $("appPdfReadyIssues").textContent = "-";
     $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
@@ -1859,6 +1879,8 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrImportReady = "0";
     section.dataset.rrImportErrors = "";
     section.dataset.rrPdfUrl = "";
+    section.dataset.pdfReady = "0";
+    section.dataset.pdfReadyIssues = "";
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
     syncRrDownloadUi_();
@@ -1879,6 +1901,8 @@ function syncRrDownloadUi_() {
   const hasPack = rrJson && rrJson !== "{}";
   const rrImportReady = String(section?.dataset?.rrImportReady || "") === "1";
   const rrImportErrors = String(section?.dataset?.rrImportErrors || "").trim();
+  const pdfReady = String(section?.dataset?.pdfReady || "0") === "1";
+  const pdfReadyIssues = String(section?.dataset?.pdfReadyIssues || "").trim();
   const renderer = String($("appRenderer")?.value || "reactive_resume").trim().toLowerCase();
 
   let disabled = !hasPack;
@@ -1903,10 +1927,14 @@ function syncRrDownloadUi_() {
     pushBtn.title = disabled ? reason : "Push RR payload to Reactive Resume";
   }
   if (genPdfBtn) {
-    genPdfBtn.disabled = disabled;
-    genPdfBtn.style.opacity = disabled ? "0.6" : "1";
-    genPdfBtn.style.pointerEvents = disabled ? "none" : "auto";
-    genPdfBtn.title = disabled ? reason : "Generate Reactive Resume PDF";
+    const pdfGenDisabled = disabled || (renderer === "reactive_resume" && !pdfReady);
+    const pdfReason = disabled
+      ? reason
+      : (!pdfReady ? (pdfReadyIssues ? `PDF blocked: ${pdfReadyIssues}` : "PDF readiness gate failed.") : "");
+    genPdfBtn.disabled = pdfGenDisabled;
+    genPdfBtn.style.opacity = pdfGenDisabled ? "0.6" : "1";
+    genPdfBtn.style.pointerEvents = pdfGenDisabled ? "none" : "auto";
+    genPdfBtn.title = pdfGenDisabled ? pdfReason : "Generate Reactive Resume PDF";
   }
   if (pdfBtn) {
     const pdfDisabled = !rrPdfUrl;

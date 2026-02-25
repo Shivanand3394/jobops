@@ -1126,6 +1126,18 @@ export default {
             templateId: String(packJson?.controls?.template_id || ""),
           }
         );
+        const jobRow = await env.DB.prepare(`
+          SELECT job_key, role_title, company, status, system_status, jd_text_clean, fetch_debug_json
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(row.job_key).first();
+        const pdfReadiness = evaluatePdfReadiness_(env, {
+          job: jobRow || {},
+          packJson,
+          atsJson,
+          rrExportJson,
+        });
         const rrResumeId = draftSchema.hasRrPushFields
           ? (String(row.rr_resume_id || "").trim() || null)
           : null;
@@ -1178,6 +1190,7 @@ export default {
             rr_pdf_last_exported_at: rrPdfLastExportedAt,
             rr_pdf_last_export_status: rrPdfLastExportStatus,
             rr_pdf_last_export_error: rrPdfLastExportError,
+            pdf_readiness: pdfReadiness,
             rr_base_url: getReactiveResumeBaseUrl_(env),
             updated_at: row.updated_at,
           }
@@ -1345,6 +1358,41 @@ export default {
             templateId: String(packJson?.controls?.template_id || ""),
           }
         );
+        const atsJson = safeJsonParse_(row.ats_json) || {};
+        const jobRow = await env.DB.prepare(`
+          SELECT job_key, role_title, company, status, system_status, jd_text_clean, fetch_debug_json
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(row.job_key).first();
+        const pdfReadiness = evaluatePdfReadiness_(env, {
+          job: jobRow || {},
+          packJson,
+          atsJson,
+          rrExportJson: rrExport,
+        });
+        if (!pdfReadiness.ready) {
+          const exportTs = Date.now();
+          const firstIssue = pdfReadiness.failed_checks?.[0]?.detail || pdfReadiness.failed_checks?.[0]?.id || "readiness_gate_failed";
+          if (draftSchema.hasRrPdfFields) {
+            await env.DB.prepare(`
+              UPDATE resume_drafts
+              SET rr_pdf_last_exported_at = ?, rr_pdf_last_export_status = ?, rr_pdf_last_export_error = ?, updated_at = ?
+              WHERE id = ?;
+            `.trim()).bind(
+              exportTs,
+              "BLOCKED",
+              String(firstIssue).slice(0, 1000),
+              exportTs,
+              row.id
+            ).run();
+          }
+          return json_({
+            ok: false,
+            error: "PDF readiness gate failed",
+            data: { pdf_readiness: pdfReadiness },
+          }, env, 400);
+        }
         if (!Boolean(rrExport?.metadata?.import_ready)) {
           return json_({
             ok: false,
@@ -4452,6 +4500,97 @@ async function probeReactiveResume_(env) {
 function getReactiveResumeBaseUrl_(env) {
   const rrBase = String(env?.RR_BASE_URL || "").trim().replace(/\/+$/, "");
   return rrBase || null;
+}
+
+function evaluatePdfReadiness_(env, { job, packJson, atsJson, rrExportJson } = {}) {
+  const minSummaryChars = clampInt_(env?.PDF_MIN_SUMMARY_CHARS || 80, 20, 1000);
+  const minBullets = clampInt_(env?.PDF_MIN_BULLETS || 3, 1, 12);
+  const minAtsScore = clampInt_(env?.PDF_MIN_ATS_SCORE || 60, 0, 100);
+  const minMustCoveragePct = clampInt_(env?.PDF_MIN_MUST_COVERAGE_PCT || 50, 0, 100);
+  const jobSafe = job && typeof job === "object" ? job : {};
+  const packSafe = packJson && typeof packJson === "object" ? packJson : {};
+  const atsSafe = atsJson && typeof atsJson === "object" ? atsJson : {};
+  const rrSafe = rrExportJson && typeof rrExportJson === "object" ? rrExportJson : {};
+  const fetchDebug = safeJsonParse_(jobSafe.fetch_debug_json) || {};
+
+  const roleTitle = String(packSafe?.extracted?.role_title || jobSafe.role_title || "").trim();
+  const company = String(packSafe?.extracted?.company || jobSafe.company || "").trim();
+  const jdTextLen = String(jobSafe.jd_text_clean || "").trim().length;
+  const jdConfidence = String(fetchDebug.jd_confidence || "").trim().toLowerCase();
+  const summary = String(packSafe?.tailoring?.summary || rrSafe?.basics?.summary || "").trim();
+  const bullets = Array.isArray(packSafe?.tailoring?.bullets) ? packSafe.tailoring.bullets.filter((x) => String(x || "").trim()) : [];
+  const atsScore = numOrNull_(atsSafe?.score);
+  const coverage = atsSafe?.coverage && typeof atsSafe.coverage === "object" ? atsSafe.coverage : {};
+  const mustTotal = Math.max(0, Number(coverage.must_total || 0));
+  const mustHit = Math.max(0, Number(coverage.must_hit || 0));
+  const mustCoveragePct = mustTotal > 0 ? Math.round((mustHit / mustTotal) * 100) : 100;
+  const rrImportReady = Boolean(rrSafe?.metadata?.import_ready);
+
+  const checks = [
+    {
+      id: "role_title",
+      label: "Role title present",
+      ok: roleTitle.length >= 3,
+      detail: roleTitle ? `role: ${roleTitle}` : "Missing role title",
+    },
+    {
+      id: "company",
+      label: "Company present",
+      ok: company.length >= 2,
+      detail: company ? `company: ${company}` : "Missing company",
+    },
+    {
+      id: "jd_quality",
+      label: "JD quality usable",
+      ok: jdTextLen >= 200 || jdConfidence === "medium" || jdConfidence === "high",
+      detail: `jd_len=${jdTextLen}, jd_confidence=${jdConfidence || "-"}`,
+    },
+    {
+      id: "summary_length",
+      label: "Tailored summary length",
+      ok: summary.length >= minSummaryChars,
+      detail: `summary_chars=${summary.length}/${minSummaryChars}`,
+    },
+    {
+      id: "bullets_count",
+      label: "Tailored bullets count",
+      ok: bullets.length >= minBullets,
+      detail: `bullets=${bullets.length}/${minBullets}`,
+    },
+    {
+      id: "ats_score",
+      label: "ATS score threshold",
+      ok: atsScore !== null && atsScore >= minAtsScore,
+      detail: `ats_score=${atsScore ?? "-"} / ${minAtsScore}`,
+    },
+    {
+      id: "must_coverage",
+      label: "Must-keyword coverage",
+      ok: mustCoveragePct >= minMustCoveragePct,
+      detail: `must_coverage=${mustCoveragePct}% (${mustHit}/${mustTotal})`,
+    },
+    {
+      id: "rr_import_ready",
+      label: "RR import contract ready",
+      ok: rrImportReady,
+      detail: rrImportReady ? "ready" : "not import-ready",
+    },
+  ];
+
+  const failedChecks = checks.filter((c) => !c.ok);
+  return {
+    gate_version: "pdf_readiness_v1",
+    ready: failedChecks.length === 0,
+    failed_count: failedChecks.length,
+    checks,
+    failed_checks: failedChecks,
+    thresholds: {
+      min_summary_chars: minSummaryChars,
+      min_bullets: minBullets,
+      min_ats_score: minAtsScore,
+      min_must_coverage_pct: minMustCoveragePct,
+    },
+  };
 }
 
 async function exportReactiveResumePdf_(env, { resumeId } = {}) {
