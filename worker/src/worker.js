@@ -1045,7 +1045,19 @@ export default {
               tailoring: { summary: "", bullets: [], must_keywords: safeJsonParseArray_(job.must_have_keywords_json), nice_keywords: safeJsonParseArray_(job.nice_to_have_keywords_json) },
               renderer: rendererSafe,
             },
-            ats_json: { score: 0, missing_keywords: safeJsonParseArray_(job.must_have_keywords_json).slice(0, 20), coverage: {}, notes: "Pack generation failed. Retry later." },
+            ats_json: {
+              score: 0,
+              missing_keywords: safeJsonParseArray_(job.must_have_keywords_json).slice(0, 20),
+              coverage: {},
+              notes: "Pack generation failed. Retry later.",
+              pm_rubric: {
+                applicable: /product manager|product management|product owner|\bpm\b/i.test(String(job.role_title || "")),
+                score: null,
+                dimensions: [],
+                missing_evidence: [],
+                notes: "PM rubric unavailable due to pack generation failure.",
+              },
+            },
             rr_export_json: {},
             ats_score: 0,
           };

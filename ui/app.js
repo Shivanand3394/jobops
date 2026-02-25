@@ -991,6 +991,8 @@ function renderDetail(j) {
           <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
+          <div class="k">PM rubric score</div><div class="v" id="appPmRubricScore">-</div>
+          <div class="k">PM evidence gaps</div><div class="v" id="appPmRubricGaps">-</div>
           <div class="k">RR import</div><div class="v" id="appRrImportStatus">-</div>
           <div class="k">RR import issues</div><div class="v" id="appRrImportErrors">-</div>
           <div class="k">RR resume id</div><div class="v" id="appRrResumeId">-</div>
@@ -1773,6 +1775,10 @@ async function hydrateApplicationPack(jobOrKey) {
     const status = String(d.status || "-");
     const ats = d.ats_json || {};
     const missing = Array.isArray(ats.missing_keywords) ? ats.missing_keywords : [];
+    const pmRubric = ats?.pm_rubric && typeof ats.pm_rubric === "object" ? ats.pm_rubric : null;
+    const pmApplicable = pmRubric ? Boolean(pmRubric.applicable) : false;
+    const pmScore = Number.isFinite(Number(pmRubric?.score)) ? Number(pmRubric.score) : null;
+    const pmGaps = Array.isArray(pmRubric?.missing_evidence) ? pmRubric.missing_evidence : [];
     const rrImportReady = (typeof d?.rr_export_import_ready === "boolean")
       ? d.rr_export_import_ready
       : Boolean(d?.rr_export_json?.metadata?.import_ready);
@@ -1796,6 +1802,14 @@ async function hydrateApplicationPack(jobOrKey) {
     $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
     $("appAtsScore").textContent = String(ats.score ?? "-");
     $("appMissingKw").textContent = missing.length ? missing.join(", ") : "-";
+    if ($("appPmRubricScore")) {
+      $("appPmRubricScore").textContent = pmRubric
+        ? (pmApplicable ? String(pmScore ?? "-") : `N/A (${String(pmRubric.notes || "non-PM role")})`)
+        : "-";
+    }
+    if ($("appPmRubricGaps")) {
+      $("appPmRubricGaps").textContent = pmGaps.length ? pmGaps.slice(0, 8).join(" | ") : "-";
+    }
     if ($("appRrImportStatus")) {
       $("appRrImportStatus").textContent = rrImportReady ? "Ready" : "Needs Fix";
     }
@@ -1859,6 +1873,8 @@ async function hydrateApplicationPack(jobOrKey) {
     $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
     $("appAtsScore").textContent = "-";
     $("appMissingKw").textContent = e.httpStatus === 404 ? "-" : ("Error: " + e.message);
+    if ($("appPmRubricScore")) $("appPmRubricScore").textContent = "-";
+    if ($("appPmRubricGaps")) $("appPmRubricGaps").textContent = "-";
     if ($("appRrImportStatus")) $("appRrImportStatus").textContent = "-";
     if ($("appRrImportErrors")) $("appRrImportErrors").textContent = "-";
     if ($("appRrResumeId")) $("appRrResumeId").textContent = "-";

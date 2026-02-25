@@ -39,11 +39,17 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
 
   const atsText = `${tailoredSummary}\n${tailoredBullets.join("\n")}`.trim() || `${role}\n${company}\n${location}`.trim();
   const keywordCoverage = computeKeywordCoverage_(atsMust, atsNice, atsText);
+  const pmRubric = computePmRubric_({
+    roleTitle: role,
+    targetRole: str_(target?.primaryRole || target?.primary_role),
+    text: atsText,
+  });
   const atsJson = {
     score: keywordCoverage.score,
     missing_keywords: keywordCoverage.missing,
     coverage: keywordCoverage.coverage,
     notes: keywordCoverage.notes,
+    pm_rubric: pmRubric,
   };
 
   const extracted = {
@@ -217,6 +223,89 @@ function computeKeywordCoverage_(must, nice, text) {
       nice_hit: niceHit.length,
     },
     notes: missing.length ? `Add evidence for: ${missing.slice(0, 8).join(", ")}` : "Good keyword coverage",
+  };
+}
+
+function computePmRubric_({ roleTitle = "", targetRole = "", text = "" } = {}) {
+  const roleCombined = `${str_(roleTitle)} ${str_(targetRole)}`.toLowerCase();
+  const isPmLikeRole =
+    /product manager|product management|product owner|group product manager|senior product manager|technical product manager|\bpm\b/.test(roleCombined);
+  const low = str_(text).toLowerCase();
+
+  const dimensions = [
+    {
+      id: "strategy",
+      label: "Product Strategy",
+      target_hits: 3,
+      keywords: [
+        "strategy", "vision", "roadmap", "prioritization", "market", "go-to-market", "business case",
+      ],
+    },
+    {
+      id: "discovery",
+      label: "Discovery & Research",
+      target_hits: 3,
+      keywords: [
+        "customer", "user research", "discovery", "problem statement", "persona", "journey", "feedback",
+      ],
+    },
+    {
+      id: "analytics",
+      label: "Analytics & Experimentation",
+      target_hits: 3,
+      keywords: [
+        "a/b", "experiment", "hypothesis", "funnel", "retention", "activation", "metric", "kpi", "sql", "analytics",
+      ],
+    },
+    {
+      id: "execution",
+      label: "Delivery & Execution",
+      target_hits: 3,
+      keywords: [
+        "prd", "requirements", "backlog", "agile", "scrum", "cross-functional", "launch", "delivery", "execution",
+      ],
+    },
+    {
+      id: "leadership",
+      label: "Leadership & Influence",
+      target_hits: 3,
+      keywords: [
+        "stakeholder", "influence", "alignment", "communication", "collaboration", "leadership", "mentoring",
+      ],
+    },
+  ];
+
+  const scoredDims = dimensions.map((d) => {
+    const found = unique_((d.keywords || []).filter((k) => low.includes(String(k || "").toLowerCase())));
+    const missing = (d.keywords || []).filter((k) => !found.includes(k)).slice(0, 4);
+    const targetHits = Math.max(1, Number(d.target_hits || 3));
+    const score = Math.max(0, Math.min(100, Math.round((found.length / targetHits) * 100)));
+    return {
+      id: d.id,
+      label: d.label,
+      score,
+      hit_count: found.length,
+      target_hits: targetHits,
+      evidence: found.slice(0, 8),
+      missing_evidence: missing,
+    };
+  });
+
+  const avgScore = scoredDims.length
+    ? Math.round(scoredDims.reduce((acc, d) => acc + Number(d.score || 0), 0) / scoredDims.length)
+    : null;
+  const missingEvidence = scoredDims
+    .flatMap((d) => (d.missing_evidence || []).map((m) => `${d.label}: ${m}`))
+    .slice(0, 10);
+
+  return {
+    applicable: isPmLikeRole,
+    score: avgScore,
+    dimensions: scoredDims,
+    missing_evidence: missingEvidence,
+    notes: isPmLikeRole
+      ? (avgScore >= 70 ? "PM rubric coverage looks strong." : "Add stronger PM evidence in summary/bullets.")
+      : "Role is not strongly PM-typed; rubric shown as guidance.",
   };
 }
 
