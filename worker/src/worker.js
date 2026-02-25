@@ -4692,7 +4692,13 @@ async function postReactiveResumeImportRequest_(rrBase, importPath, rrKey, paylo
 function toReactiveResumeDataModelFromRr_(rr) {
   const basicsIn = rr && typeof rr === "object" ? (rr.basics || {}) : {};
   const sections = rr && typeof rr === "object" ? (rr.sections || {}) : {};
+  const jobContext = rr && typeof rr === "object" ? (rr.job_context || {}) : {};
   const highlightsIn = Array.isArray(sections.highlights) ? sections.highlights : [];
+  const skillsIn = Array.isArray(sections.skills) ? sections.skills : [];
+  const experienceIn = Array.isArray(sections.experience) ? sections.experience : [];
+  const roleTitle = String(jobContext?.role_title || "").trim();
+  const companyName = String(jobContext?.company || "").trim();
+  const jobUrl = String(jobContext?.job_url || "").trim();
 
   const fallbackSummary = highlightsIn
     .map((h) => String(h?.text || h || "").trim())
@@ -4701,6 +4707,85 @@ function toReactiveResumeDataModelFromRr_(rr) {
     .join(" ");
 
   const summaryText = String(basicsIn.summary || fallbackSummary || "").trim();
+  const bulletTexts = highlightsIn
+    .map((h) => String(h?.text || h || "").trim())
+    .filter(Boolean)
+    .slice(0, 10);
+  const bulletsHtml = bulletTexts.length
+    ? `<ul>${bulletTexts.map((t) => `<li>${escapeHtmlLite_(t)}</li>`).join("")}</ul>`
+    : "";
+  const summaryHtml = summaryText ? `<p>${escapeHtmlLite_(summaryText)}</p>` : "";
+  const experienceItems = [];
+
+  // Carry over any profile experience summaries if present.
+  for (const e of experienceIn.slice(0, 5)) {
+    const company = String(e?.company || e?.organization || e?.name || companyName || "Experience").trim();
+    const position = String(e?.position || e?.title || roleTitle || "Role").trim();
+    const location = String(e?.location || "").trim();
+    const period = String(e?.period || e?.date || "Recent").trim();
+    const websiteUrl = String(e?.website?.url || e?.url || jobUrl || "").trim();
+    const websiteLabel = String(e?.website?.label || "").trim();
+    const descRaw = String(e?.description || e?.summary || "").trim();
+    const descHtml = descRaw
+      ? `<p>${escapeHtmlLite_(descRaw)}</p>${bulletsHtml}`
+      : (bulletsHtml || summaryHtml || "<p></p>");
+    experienceItems.push({
+      id: crypto.randomUUID(),
+      hidden: false,
+      company: company || "Experience",
+      position: position || "Role",
+      location,
+      period,
+      website: {
+        url: websiteUrl,
+        label: websiteLabel || (websiteUrl ? "Details" : ""),
+      },
+      description: descHtml,
+    });
+  }
+
+  // Ensure at least one visible work item exists for PDF output.
+  if (!experienceItems.length) {
+    experienceItems.push({
+      id: crypto.randomUUID(),
+      hidden: false,
+      company: companyName || "Target company",
+      position: roleTitle || "Target role",
+      location: "",
+      period: "Current",
+      website: {
+        url: jobUrl,
+        label: jobUrl ? "Job posting" : "",
+      },
+      description: bulletsHtml || summaryHtml || "<p>Tailored for this role.</p>",
+    });
+  }
+
+  const projectItems = bulletTexts.slice(0, 5).map((b) => ({
+    id: crypto.randomUUID(),
+    hidden: false,
+    name: "Targeted Achievement",
+    period: "Current",
+    website: { url: jobUrl, label: jobUrl ? "Job posting" : "" },
+    description: `<p>${escapeHtmlLite_(b)}</p>`,
+  }));
+
+  const skillKeywords = unique_([
+    ...skillsIn.map((s) => String(s || "").trim()),
+    ...bulletTexts.flatMap((t) => t.split(/[,|/]+/g).map((x) => String(x || "").trim())),
+  ])
+    .filter(Boolean)
+    .slice(0, 16);
+  const skillItems = skillKeywords.slice(0, 8).map((name) => ({
+    id: crypto.randomUUID(),
+    hidden: false,
+    icon: "",
+    name,
+    proficiency: "Applied",
+    level: 3,
+    keywords: [],
+  }));
+
   const emptySection = (title = "") => ({ title, columns: 1, hidden: false, items: [] });
 
   return {
@@ -4736,10 +4821,10 @@ function toReactiveResumeDataModelFromRr_(rr) {
     },
     sections: {
       profiles: emptySection(""),
-      experience: emptySection(""),
+      experience: { title: "Experience", columns: 1, hidden: false, items: experienceItems },
       education: emptySection(""),
-      projects: emptySection(""),
-      skills: emptySection(""),
+      projects: { title: "Projects", columns: 1, hidden: projectItems.length === 0, items: projectItems },
+      skills: { title: "Skills", columns: 1, hidden: skillItems.length === 0, items: skillItems },
       languages: emptySection(""),
       interests: emptySection(""),
       awards: emptySection(""),
@@ -4802,6 +4887,13 @@ function toReactiveResumeDataModelFromRr_(rr) {
       notes: "",
     },
   };
+}
+
+function escapeHtmlLite_(s) {
+  return String(s || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 function normalizeHealthPath_(p) {
