@@ -928,6 +928,8 @@ function renderDetail(j) {
           <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
+          <div class="k">RR import</div><div class="v" id="appRrImportStatus">-</div>
+          <div class="k">RR import issues</div><div class="v" id="appRrImportErrors">-</div>
           <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
           <div class="k">Keyword selection</div><div class="v">
             <div class="row" style="justify-content:flex-start; margin-top:0;">
@@ -983,7 +985,7 @@ function renderDetail(j) {
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
               <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
-              <button class="btn btn-secondary" onclick="downloadRrJson()">Download RR JSON</button>
+              <button class="btn btn-secondary" id="btnDownloadRrJson" onclick="downloadRrJson()">Download RR JSON</button>
             </div>
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn btn-ghost" onclick="copyPackSummary()">Copy tailored summary</button>
@@ -1665,6 +1667,13 @@ async function hydrateApplicationPack(jobOrKey) {
     };
   }
 
+  const rendererSelect = $("appRenderer");
+  if (rendererSelect) {
+    rendererSelect.onchange = () => {
+      syncRrDownloadUi_();
+    };
+  }
+
   const p = getActiveProfile();
   if ($("appProfileId")) $("appProfileId").value = p?.id || state.activeProfileId || "primary";
   if ($("appProfileName")) $("appProfileName").value = p?.name || "Primary";
@@ -1690,13 +1699,29 @@ async function hydrateApplicationPack(jobOrKey) {
     const status = String(d.status || "-");
     const ats = d.ats_json || {};
     const missing = Array.isArray(ats.missing_keywords) ? ats.missing_keywords : [];
+    const rrImportReady = (typeof d?.rr_export_import_ready === "boolean")
+      ? d.rr_export_import_ready
+      : Boolean(d?.rr_export_json?.metadata?.import_ready);
+    const rrImportErrors = Array.isArray(d?.rr_export_import_errors)
+      ? d.rr_export_import_errors
+      : (Array.isArray(d?.rr_export_json?.metadata?.import_errors) ? d.rr_export_json.metadata.import_errors : []);
     $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
     $("appAtsScore").textContent = String(ats.score ?? "-");
     $("appMissingKw").textContent = missing.length ? missing.join(", ") : "-";
-    $("appPackEmpty").textContent = "Application Pack loaded";
+    if ($("appRrImportStatus")) {
+      $("appRrImportStatus").textContent = rrImportReady ? "Ready" : "Needs Fix";
+    }
+    if ($("appRrImportErrors")) {
+      $("appRrImportErrors").textContent = rrImportErrors.length ? rrImportErrors.join(", ") : "-";
+    }
+    $("appPackEmpty").textContent = rrImportReady
+      ? "Application Pack loaded"
+      : "Application Pack loaded with RR import warnings";
     section.dataset.packSummary = String(d?.pack_json?.tailoring?.summary || "");
     section.dataset.packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
     section.dataset.rrJson = JSON.stringify(d?.rr_export_json || {}, null, 2);
+    section.dataset.rrImportReady = rrImportReady ? "1" : "0";
+    section.dataset.rrImportErrors = rrImportErrors.join(", ");
 
     const controlTemplateId = String(controls.template_id || "").trim();
     if (controlTemplateId) state.activeTemplateId = controlTemplateId;
@@ -1714,21 +1739,52 @@ async function hydrateApplicationPack(jobOrKey) {
     setEnabledBlocksUi_(Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks : getTemplateById_(state.activeTemplateId)?.enabled_blocks || []);
     state.selectedAtsKeywords = Array.isArray(controls.selected_keywords) ? controls.selected_keywords : [];
     renderKeywordPicker_(currentJob, d);
+    syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: true });
     activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: true }));
   } catch (e) {
     $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
     $("appAtsScore").textContent = "-";
     $("appMissingKw").textContent = e.httpStatus === 404 ? "-" : ("Error: " + e.message);
+    if ($("appRrImportStatus")) $("appRrImportStatus").textContent = "-";
+    if ($("appRrImportErrors")) $("appRrImportErrors").textContent = "-";
     $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
     section.dataset.rrJson = "{}";
+    section.dataset.rrImportReady = "0";
+    section.dataset.rrImportErrors = "";
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
+    syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: false });
     activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: false }));
   }
+}
+
+function syncRrDownloadUi_() {
+  const btn = $("btnDownloadRrJson");
+  if (!btn) return;
+  const section = $("appPackSection");
+  const rrJson = String(section?.dataset?.rrJson || "{}").trim();
+  const hasPack = rrJson && rrJson !== "{}";
+  const rrImportReady = String(section?.dataset?.rrImportReady || "") === "1";
+  const rrImportErrors = String(section?.dataset?.rrImportErrors || "").trim();
+  const renderer = String($("appRenderer")?.value || "reactive_resume").trim().toLowerCase();
+
+  let disabled = !hasPack;
+  let reason = hasPack ? "" : "Generate a pack first.";
+  if (!disabled && renderer === "reactive_resume" && !rrImportReady) {
+    disabled = true;
+    reason = rrImportErrors
+      ? `RR import checks failed: ${rrImportErrors}`
+      : "RR import checks failed.";
+  }
+
+  btn.disabled = disabled;
+  btn.style.opacity = disabled ? "0.6" : "1";
+  btn.style.pointerEvents = disabled ? "none" : "auto";
+  btn.title = disabled ? reason : "Download Reactive Resume JSON";
 }
 
 async function copyPackSummary() {
@@ -1744,7 +1800,19 @@ async function copyPackBullets() {
 }
 
 function downloadRrJson() {
-  const txt = String($("appPackSection")?.dataset?.rrJson || "{}");
+  const section = $("appPackSection");
+  const txt = String(section?.dataset?.rrJson || "{}").trim();
+  const renderer = String($("appRenderer")?.value || "reactive_resume").trim().toLowerCase();
+  const rrImportReady = String(section?.dataset?.rrImportReady || "") === "1";
+  const rrImportErrors = String(section?.dataset?.rrImportErrors || "").trim();
+  if (!txt || txt === "{}") {
+    toast("No RR JSON available. Generate pack first.");
+    return;
+  }
+  if (renderer === "reactive_resume" && !rrImportReady) {
+    toast(rrImportErrors ? `RR import blocked: ${rrImportErrors}` : "RR import checks failed. Fix profile/pack first.");
+    return;
+  }
   const blob = new Blob([txt], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
