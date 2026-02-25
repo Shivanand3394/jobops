@@ -240,6 +240,7 @@ export default {
         const rows = (res.results || []).map((row) => {
           const fetchDebug = safeJsonParse_(row.fetch_debug_json) || {};
           row.fetch_debug = fetchDebug;
+          row.ingest_channel = normalizeIngestChannel_(fetchDebug.ingest_channel) || null;
           row.jd_confidence = String(fetchDebug.jd_confidence || "").trim().toLowerCase() || null;
           const display = computeDisplayFields_(row);
           return { ...row, ...display };
@@ -364,6 +365,7 @@ export default {
           emailHtml: "",
           emailSubject: "",
           emailFrom: "",
+          ingestChannel: "recover",
         });
 
         await logEvent_(env, "BACKFILL_MISSING", null, {
@@ -462,6 +464,7 @@ export default {
           emailHtml: "",
           emailSubject: "",
           emailFrom: "",
+          ingestChannel: "recover",
         });
 
         await logEvent_(env, "RETRY_FETCH_MISSING_JD", null, {
@@ -1260,7 +1263,7 @@ export default {
         const emailFrom = typeof body.email_from === "string" ? body.email_from : "";
 
         if (!rawUrls.length) return json_({ ok: false, error: "Missing raw_urls[]" }, env, 400);
-        const data = await ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject, emailFrom });
+        const data = await ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject, emailFrom, ingestChannel: "ui" });
         return json_({ ok: true, data }, env, 200);
       }
 
@@ -1415,6 +1418,7 @@ function decorateJobRow_(row) {
   row.reject_keywords = safeJsonParseArray_(row.reject_keywords_json);
   row.reject_reasons = safeJsonParseArray_(row.reject_reasons_json);
   row.fetch_debug = safeJsonParse_(row.fetch_debug_json) || {};
+  row.ingest_channel = normalizeIngestChannel_(row.fetch_debug?.ingest_channel) || null;
   row.jd_confidence = String(row.fetch_debug?.jd_confidence || "").trim().toLowerCase() || null;
   const display = computeDisplayFields_(row);
   row.display_title = display.display_title;
@@ -1993,6 +1997,18 @@ function normalizeSourceDomainName_(value) {
   return raw.replace(/^www\./, "");
 }
 
+function normalizeIngestChannel_(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (raw.startsWith("rss")) return "rss";
+  if (raw.startsWith("gmail")) return "gmail";
+  if (raw.startsWith("recover")) return "recover";
+  if (raw.startsWith("ui")) return "ui";
+  if (raw.startsWith("manual")) return "manual";
+  if (raw.startsWith("api")) return "api";
+  return raw.replace(/[^a-z0-9_-]/g, "").slice(0, 24);
+}
+
 function summarizeRecoveryResultsBySource_(rows) {
   const summary = new Map();
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -2344,7 +2360,7 @@ function getAi_(env) {
   return null;
 }
 
-async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject, emailFrom }) {
+async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject, emailFrom, ingestChannel }) {
   const now = Date.now();
   const results = [];
   let insertedOrUpdated = 0;
@@ -2367,6 +2383,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     }
   }
   const canAutoScore = aiAvailable && targets.length > 0 && !!cfg;
+  const channel = normalizeIngestChannel_(ingestChannel) || "ui";
 
   for (const rawUrl of rawUrls || []) {
     const norm = await normalizeJobUrl_(String(rawUrl || "").trim());
@@ -2446,6 +2463,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     const fetchDebug = {
       ...(resolved.debug || {}),
       ai_available: aiAvailable,
+      ingest_channel: channel,
       fallback_reason: fallbackDecision.reason,
       fallback_policy: fallbackDecision.policy?.label || "default",
       source_policy_domain: fallbackDecision.policy?.source_domain || normalizeSourceDomainName_(norm.source_domain),
@@ -2606,6 +2624,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       job_key: norm.job_key,
       job_url: norm.job_url,
       source_domain: normalizeSourceDomainName_(norm.source_domain),
+      ingest_channel: channel,
       was_existing: wasExisting,
       action,
       status: transition.status,
@@ -2841,6 +2860,7 @@ async function runGmailPoll_(env, opts = {}) {
         emailHtml: typeof email_html === "string" ? email_html : "",
         emailSubject: typeof email_subject === "string" ? email_subject : "",
         emailFrom: typeof email_from === "string" ? email_from : "",
+        ingestChannel: "gmail",
       });
     },
   });
@@ -2884,6 +2904,7 @@ async function runRssPoll_(env, opts = {}) {
         emailHtml: typeof email_html === "string" ? email_html : "",
         emailSubject: typeof email_subject === "string" ? email_subject : "",
         emailFrom: typeof email_from === "string" ? email_from : "",
+        ingestChannel: "rss",
       });
     },
   });

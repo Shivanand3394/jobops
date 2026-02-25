@@ -171,6 +171,29 @@ function getDisplayCompany(j) {
   return j.company || j.display_company || j.source_domain || "";
 }
 
+function getIngestChannel(j) {
+  const raw = String(j?.ingest_channel || j?.fetch_debug?.ingest_channel || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (raw.startsWith("rss")) return "rss";
+  if (raw.startsWith("gmail")) return "gmail";
+  if (raw.startsWith("recover")) return "recover";
+  if (raw.startsWith("manual")) return "manual";
+  if (raw.startsWith("api")) return "api";
+  if (raw.startsWith("ui")) return "ui";
+  return raw;
+}
+
+function getIngestChannelLabel(j) {
+  const ch = getIngestChannel(j);
+  if (!ch || ch === "ui") return "";
+  if (ch === "rss") return "RSS";
+  if (ch === "gmail") return "Gmail";
+  if (ch === "recover") return "Recover";
+  if (ch === "manual") return "Manual";
+  if (ch === "api") return "API";
+  return ch.toUpperCase();
+}
+
 function showView(view) {
   state.view = view;
   document.body.dataset.view = view;
@@ -408,6 +431,10 @@ function jobCard(j) {
   const createdAtAbs = fmtTsAbs(j.created_at);
   const status = String(j.status || "").toUpperCase();
   const systemStatus = String(j.system_status || "").toUpperCase();
+  const ingestChannelLabel = getIngestChannelLabel(j);
+  const ingestChannelChip = ingestChannelLabel
+    ? `<span class="chip chip-ingest">${escapeHtml(ingestChannelLabel)}</span>`
+    : "";
   const needsJdBadge = systemStatus === "NEEDS_MANUAL_JD"
     ? `<span class="chip">Needs JD</span>`
     : "";
@@ -429,6 +456,7 @@ function jobCard(j) {
       <div class="meta">
         <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
         ${needsJdBadge}
+        ${ingestChannelChip}
         <span class="chip">${escapeHtml(j.source_domain || "-")}</span>
         <span class="chip">${escapeHtml(j.seniority || "-")}</span>
       </div>
@@ -459,6 +487,7 @@ function trackingCard(j) {
   const updated = fmtTs(j.updated_at);
   const updatedAbs = fmtTsAbs(j.updated_at);
   const status = String(j.status || "").toUpperCase();
+  const ingestChannelLabel = getIngestChannelLabel(j);
   const needsAttention = isNeedsAttentionJob(j);
 
   return `
@@ -471,6 +500,7 @@ function trackingCard(j) {
       <div class="track-sub tiny">Updated: <span title="${escapeHtml(updatedAbs)}">${escapeHtml(updated)}</span></div>
       <div class="track-meta">
         <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
+        ${ingestChannelLabel ? `<span class="chip chip-ingest">${escapeHtml(ingestChannelLabel)}</span>` : ""}
         ${needsAttention ? `<span class="chip">Needs Attention</span>` : ""}
       </div>
       <div class="track-actions">
@@ -760,6 +790,7 @@ function renderDetail(j) {
   };
 
   const status = String(j.status || "").toUpperCase();
+  const ingestChannelLabel = getIngestChannelLabel(j) || (getIngestChannel(j) === "ui" ? "UI" : "-");
   const needsManualJd =
     String(j.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD" ||
     jdConfidence === "low";
@@ -776,6 +807,7 @@ function renderDetail(j) {
       <div class="k">Location</div><div class="v">${escapeHtml(j.location || "-")}</div>
       <div class="k">Seniority</div><div class="v">${escapeHtml(j.seniority || "-")}</div>
       <div class="k">Source</div><div class="v">${escapeHtml(j.source_domain || "-")}</div>
+      <div class="k">Ingest channel</div><div class="v">${escapeHtml(ingestChannelLabel)}</div>
       <div class="k">Created</div><div class="v">${escapeHtml(fmtTsWithAbs(j.created_at))}</div>
       <div class="k">Updated</div><div class="v">${escapeHtml(fmtTsWithAbs(j.updated_at))}</div>
     </div>

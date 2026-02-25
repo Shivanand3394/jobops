@@ -189,6 +189,10 @@ body{
   border:1px solid var(--line);
   color: var(--text);
 }
+.chip-ingest{
+  border-color: rgba(14,165,233,.55);
+  background: rgba(14,165,233,.14);
+}
 .badge{
   font-size:12px;
   padding:5px 8px;
