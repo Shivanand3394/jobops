@@ -930,6 +930,10 @@ function renderDetail(j) {
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
           <div class="k">RR import</div><div class="v" id="appRrImportStatus">-</div>
           <div class="k">RR import issues</div><div class="v" id="appRrImportErrors">-</div>
+          <div class="k">RR resume id</div><div class="v" id="appRrResumeId">-</div>
+          <div class="k">RR push status</div><div class="v" id="appRrPushStatus">-</div>
+          <div class="k">RR last pushed</div><div class="v" id="appRrLastPushed">-</div>
+          <div class="k">RR dashboard</div><div class="v"><a class="muted" id="appRrDashboardLink" href="#" target="_blank" rel="noopener">-</a></div>
           <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
           <div class="k">Keyword selection</div><div class="v">
             <div class="row" style="justify-content:flex-start; margin-top:0;">
@@ -1706,6 +1710,11 @@ async function hydrateApplicationPack(jobOrKey) {
     const rrImportErrors = Array.isArray(d?.rr_export_import_errors)
       ? d.rr_export_import_errors
       : (Array.isArray(d?.rr_export_json?.metadata?.import_errors) ? d.rr_export_json.metadata.import_errors : []);
+    const rrResumeId = String(d?.rr_resume_id || "").trim();
+    const rrPushStatus = String(d?.rr_last_push_status || "").trim();
+    const rrLastPushedAt = Number(d?.rr_last_pushed_at || 0);
+    const rrLastPushError = String(d?.rr_last_push_error || "").trim();
+    const rrBaseUrl = String(d?.rr_base_url || "").trim();
     $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
     $("appAtsScore").textContent = String(ats.score ?? "-");
     $("appMissingKw").textContent = missing.length ? missing.join(", ") : "-";
@@ -1714,6 +1723,21 @@ async function hydrateApplicationPack(jobOrKey) {
     }
     if ($("appRrImportErrors")) {
       $("appRrImportErrors").textContent = rrImportErrors.length ? rrImportErrors.join(", ") : "-";
+    }
+    if ($("appRrResumeId")) $("appRrResumeId").textContent = rrResumeId || "-";
+    if ($("appRrPushStatus")) {
+      const pushText = rrPushStatus || "-";
+      $("appRrPushStatus").textContent = rrLastPushError ? `${pushText} (${rrLastPushError})` : pushText;
+    }
+    if ($("appRrLastPushed")) $("appRrLastPushed").textContent = rrLastPushedAt ? fmtTsWithAbs(rrLastPushedAt) : "-";
+    if ($("appRrDashboardLink")) {
+      if (rrBaseUrl) {
+        $("appRrDashboardLink").href = rrBaseUrl;
+        $("appRrDashboardLink").textContent = "Open";
+      } else {
+        $("appRrDashboardLink").href = "#";
+        $("appRrDashboardLink").textContent = "-";
+      }
     }
     $("appPackEmpty").textContent = rrImportReady
       ? "Application Pack loaded"
@@ -1749,6 +1773,13 @@ async function hydrateApplicationPack(jobOrKey) {
     $("appMissingKw").textContent = e.httpStatus === 404 ? "-" : ("Error: " + e.message);
     if ($("appRrImportStatus")) $("appRrImportStatus").textContent = "-";
     if ($("appRrImportErrors")) $("appRrImportErrors").textContent = "-";
+    if ($("appRrResumeId")) $("appRrResumeId").textContent = "-";
+    if ($("appRrPushStatus")) $("appRrPushStatus").textContent = "-";
+    if ($("appRrLastPushed")) $("appRrLastPushed").textContent = "-";
+    if ($("appRrDashboardLink")) {
+      $("appRrDashboardLink").href = "#";
+      $("appRrDashboardLink").textContent = "-";
+    }
     $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
@@ -1846,7 +1877,10 @@ async function pushToReactiveResume(jobKey) {
     });
     const d = res?.data || {};
     const rrId = String(d.rr_resume_id || "").trim();
-    toast(rrId ? `Pushed to Reactive Resume (${rrId})` : "Pushed to Reactive Resume");
+    const mode = String(d.rr_push_mode || "").trim();
+    const modeLabel = mode ? ` [${mode}]` : "";
+    toast(rrId ? `Pushed to Reactive Resume (${rrId})${modeLabel}` : `Pushed to Reactive Resume${modeLabel}`);
+    await hydrateApplicationPack(jobKey);
   } catch (e) {
     toast("Push to Reactive Resume failed: " + e.message);
   } finally {

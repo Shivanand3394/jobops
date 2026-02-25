@@ -1099,6 +1099,7 @@ export default {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const profileId = String(url.searchParams.get("profile_id") || "").trim();
+        const draftSchema = await getResumeDraftSchema_(env);
 
         const row = profileId
           ? await env.DB.prepare(`
@@ -1125,6 +1126,18 @@ export default {
             templateId: String(packJson?.controls?.template_id || ""),
           }
         );
+        const rrResumeId = draftSchema.hasRrPushFields
+          ? (String(row.rr_resume_id || "").trim() || null)
+          : null;
+        const rrLastPushedAt = draftSchema.hasRrPushFields
+          ? numOrNull_(row.rr_last_pushed_at)
+          : null;
+        const rrLastPushStatus = draftSchema.hasRrPushFields
+          ? (String(row.rr_last_push_status || "").trim() || null)
+          : null;
+        const rrLastPushError = draftSchema.hasRrPushFields
+          ? String(row.rr_last_push_error || "").trim()
+          : "";
 
         return json_({
           ok: true,
@@ -1145,6 +1158,11 @@ export default {
             rr_export_import_errors: Array.isArray(rrExportJson?.metadata?.import_errors)
               ? rrExportJson.metadata.import_errors
               : [],
+            rr_resume_id: rrResumeId,
+            rr_last_pushed_at: rrLastPushedAt,
+            rr_last_push_status: rrLastPushStatus,
+            rr_last_push_error: rrLastPushError,
+            rr_base_url: getReactiveResumeBaseUrl_(env),
             updated_at: row.updated_at,
           }
         }, env, 200);
@@ -1156,6 +1174,7 @@ export default {
       if (path.startsWith("/jobs/") && path.endsWith("/push-reactive-resume") && request.method === "POST") {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const draftSchema = await getResumeDraftSchema_(env);
 
         const body = await request.json().catch(() => ({}));
         const profileId = String(body.profile_id || body.profileId || "").trim();
@@ -1197,11 +1216,29 @@ export default {
           }, env, 400);
         }
 
-        const rrPush = await pushReactiveResumeImport_(env, {
+        const existingResumeId = draftSchema.hasRrPushFields
+          ? String(row.rr_resume_id || "").trim()
+          : "";
+        const rrPush = await pushReactiveResume_(env, {
           rrExport,
           titleHint: `${String(packJson?.extracted?.role_title || "").trim()} ${String(packJson?.extracted?.company || "").trim()}`.trim(),
+          resumeId: existingResumeId,
         });
+        const pushedAt = Date.now();
         if (!rrPush.ok) {
+          if (draftSchema.hasRrPushFields) {
+            await env.DB.prepare(`
+              UPDATE resume_drafts
+              SET rr_last_pushed_at = ?, rr_last_push_status = ?, rr_last_push_error = ?, updated_at = ?
+              WHERE id = ?;
+            `.trim()).bind(
+              pushedAt,
+              "ERROR",
+              String(rrPush.error || "Reactive Resume push failed").slice(0, 1000),
+              pushedAt,
+              row.id
+            ).run();
+          }
           return json_({
             ok: false,
             error: rrPush.error || "Reactive Resume push failed",
@@ -1211,13 +1248,28 @@ export default {
             },
           }, env, rrPush.http_status && rrPush.http_status >= 400 ? rrPush.http_status : 502);
         }
+        const rrResumeId = String(rrPush.resume_id || existingResumeId || "").trim() || null;
+        if (draftSchema.hasRrPushFields) {
+          await env.DB.prepare(`
+            UPDATE resume_drafts
+            SET rr_resume_id = ?, rr_last_pushed_at = ?, rr_last_push_status = ?, rr_last_push_error = NULL, updated_at = ?
+            WHERE id = ?;
+          `.trim()).bind(
+            rrResumeId,
+            pushedAt,
+            "SUCCESS",
+            pushedAt,
+            row.id
+          ).run();
+        }
 
         await logEvent_(env, "RR_PUSH", jobKey, {
           profile_id: row.profile_id,
           draft_id: row.id,
-          rr_resume_id: rrPush.resume_id || null,
+          rr_resume_id: rrResumeId,
           import_path: rrPush.import_path,
           http_status: rrPush.http_status,
+          mode: rrPush.mode || null,
           ts: Date.now(),
         });
 
@@ -1227,11 +1279,15 @@ export default {
             job_key: row.job_key,
             profile_id: row.profile_id,
             draft_id: row.id,
-            rr_resume_id: rrPush.resume_id || null,
+            rr_resume_id: rrResumeId,
             rr_import_path: rrPush.import_path,
             rr_http_status: rrPush.http_status,
             rr_push_adapter: rrPush.adapter || "jobops_rr_export",
-            pushed_at: Date.now(),
+            rr_push_mode: rrPush.mode || "imported_new",
+            rr_last_pushed_at: pushedAt,
+            rr_last_push_status: "SUCCESS",
+            rr_base_url: getReactiveResumeBaseUrl_(env),
+            pushed_at: pushedAt,
           }
         }, env, 200);
       }
@@ -1679,6 +1735,22 @@ async function getJobsSchema_(env) {
     };
   } catch {
     return { hasChecklistFields: false };
+  }
+}
+
+async function getResumeDraftSchema_(env) {
+  try {
+    const rows = await env.DB.prepare(`PRAGMA table_info(resume_drafts);`).all();
+    const names = new Set((rows.results || []).map((r) => String(r.name || "").trim()));
+    return {
+      hasRrPushFields:
+        names.has("rr_resume_id") &&
+        names.has("rr_last_pushed_at") &&
+        names.has("rr_last_push_status") &&
+        names.has("rr_last_push_error"),
+    };
+  } catch {
+    return { hasRrPushFields: false };
   }
 }
 
@@ -4178,8 +4250,39 @@ async function probeReactiveResume_(env) {
   return out;
 }
 
-async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {}) {
+function getReactiveResumeBaseUrl_(env) {
   const rrBase = String(env?.RR_BASE_URL || "").trim().replace(/\/+$/, "");
+  return rrBase || null;
+}
+
+async function pushReactiveResume_(env, { rrExport, titleHint = "", resumeId = "" } = {}) {
+  const existingResumeId = String(resumeId || "").trim();
+  const rrBase = getReactiveResumeBaseUrl_(env);
+  const rrKey = String(env?.RR_KEY || "").trim();
+  const timeoutMs = clampInt_(env?.RR_TIMEOUT_MS || 6000, 1000, 20000);
+
+  if (!rrBase || !rrKey) {
+    return { ok: false, error: "Reactive Resume is not configured (missing RR_BASE_URL or RR_KEY)." };
+  }
+
+  if (existingResumeId) {
+    const patched = await patchReactiveResumeDataRequest_(rrBase, rrKey, existingResumeId, rrExport, timeoutMs);
+    if (patched.ok) return { ...patched, mode: "updated_existing" };
+    if (Number(patched.http_status) !== 404) return patched;
+  }
+
+  const imported = await pushReactiveResumeImport_(env, { rrExport, titleHint });
+  if (imported.ok) {
+    return {
+      ...imported,
+      mode: existingResumeId ? "relinked_import" : "imported_new",
+    };
+  }
+  return imported;
+}
+
+async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {}) {
+  const rrBase = getReactiveResumeBaseUrl_(env);
   const rrKey = String(env?.RR_KEY || "").trim();
   const importPath = normalizeHealthPath_(String(env?.RR_IMPORT_PATH || "/api/openapi/resumes/import").trim() || "/api/openapi/resumes/import");
   const timeoutMs = clampInt_(env?.RR_TIMEOUT_MS || 6000, 1000, 20000);
@@ -4212,6 +4315,54 @@ async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {})
   }
 
   return first;
+}
+
+async function patchReactiveResumeDataRequest_(rrBase, rrKey, resumeId, rrExport, timeoutMs) {
+  const updatePath = normalizeHealthPath_(`/api/openapi/resumes/${encodeURIComponent(String(resumeId || "").trim())}`);
+  const payload = {
+    operations: [
+      { op: "replace", path: "/data", value: rrExport || {} },
+    ],
+  };
+
+  try {
+    const res = await fetchWithTimeout_(`${rrBase}${updatePath}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "x-api-key": rrKey,
+      },
+      body: JSON.stringify(payload),
+    }, timeoutMs);
+
+    const rawText = await res.text();
+    let parsed = null;
+    try { parsed = rawText ? JSON.parse(rawText) : null; } catch { parsed = null; }
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        http_status: res.status,
+        import_path: updatePath,
+        error: parsed?.message || parsed?.error || `Reactive Resume update failed (HTTP ${res.status})`,
+      };
+    }
+
+    return {
+      ok: true,
+      http_status: res.status,
+      import_path: updatePath,
+      resume_id: String(parsed?.id || parsed?.resumeId || parsed?.resume_id || resumeId || "").trim() || null,
+      adapter: "jobops_rr_export",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      import_path: updatePath,
+      error: String(e?.message || e || "Reactive Resume update failed").slice(0, 200),
+    };
+  }
 }
 
 async function postReactiveResumeImportRequest_(rrBase, importPath, rrKey, payload, timeoutMs) {
