@@ -161,6 +161,12 @@ async function classifyRssJobUrls_(urls, normalizeFn) {
 
   for (const raw of unique_(urls)) {
     const candidates = expandTrackingUrlCandidates_(raw);
+    if (looksLikeGoogleNewsRssLink_(raw)) {
+      const resolved = await resolveGoogleNewsRssLink_(raw);
+      if (resolved) {
+        for (const c of expandTrackingUrlCandidates_(resolved)) candidates.push(c);
+      }
+    }
     let accepted = null;
     for (const candidate of candidates) {
       let norm = null;
@@ -312,6 +318,32 @@ function decodeUrlSafely_(v) {
     return decodeURIComponent(s.replace(/\+/g, "%20"));
   } catch {
     return s;
+  }
+}
+
+function looksLikeGoogleNewsRssLink_(url) {
+  try {
+    const u = new URL(String(url || ""));
+    return u.hostname.toLowerCase().includes("news.google.") && /\/rss\/articles\//i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function resolveGoogleNewsRssLink_(url) {
+  try {
+    const res = await fetch(String(url), {
+      method: "GET",
+      redirect: "follow",
+      headers: {
+        "User-Agent": "JobOpsRSS/1.0 (+https://get-job.shivanand-shah94.workers.dev)",
+      },
+    });
+    const finalUrl = String(res?.url || "").trim();
+    if (!/^https?:\/\//i.test(finalUrl)) return "";
+    return finalUrl;
+  } catch {
+    return "";
   }
 }
 
