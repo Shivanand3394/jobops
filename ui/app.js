@@ -2019,6 +2019,26 @@ async function recoverMissingFields(limit = 30) {
   }
 }
 
+async function canonicalizeTitles(limit = 200) {
+  const ok = confirm("Run role-title canonicalization now? This will clean noisy/missing titles from existing URLs.");
+  if (!ok) return;
+  try {
+    spin(true);
+    const res = await api("/jobs/canonicalize-titles", {
+      method: "POST",
+      body: { limit, only_missing: true },
+    });
+    const d = res?.data || {};
+    toast(`Canonicalize titles - scanned ${d.scanned ?? "-"} - updated ${d.updated ?? "-"} - skipped ${d.skipped ?? "-"}`);
+    await loadJobs({ ignoreStatus: true });
+    if (state.activeKey) await setActive(state.activeKey);
+  } catch (e) {
+    toast("Canonicalize titles failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
 async function recoverMissingDetailsFromTracking(limit = 10) {
   const ok = confirm("Run recovery now? This retries missing-details fetch and then rescoring.");
   if (!ok) return;
@@ -2169,6 +2189,7 @@ async function saveSettings() {
   $("trackingLimit").onchange = () => renderTracking();
   $("btnTrackingRecover").onclick = () => recoverMissingDetailsFromTracking(10);
   $("btnTrackingRecoverFields").onclick = () => recoverMissingFields(30);
+  $("btnTrackingCanonicalizeTitles").onclick = () => canonicalizeTitles(200);
   $("btnTrackingFiltersToggle").onclick = () => {
     state.trackingFiltersOpen = !state.trackingFiltersOpen;
     syncTrackingControlsUi_();

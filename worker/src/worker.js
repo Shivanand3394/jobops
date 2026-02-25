@@ -418,6 +418,35 @@ export default {
       }
 
       // ============================
+      // UI: Canonicalize noisy/missing role titles
+      // ============================
+      if (path === "/jobs/canonicalize-titles" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const limit = clampInt_(body.limit || 200, 1, 1000);
+        const onlyMissing = body.only_missing !== false;
+        const dryRun = body.dry_run === true;
+
+        const data = await runCanonicalizeTitles_(env, {
+          limit,
+          onlyMissing,
+          dryRun,
+        });
+
+        await logEvent_(env, "CANONICALIZE_TITLES", null, {
+          limit,
+          only_missing: onlyMissing,
+          dry_run: dryRun,
+          scanned: data?.scanned || 0,
+          updated: data?.updated || 0,
+          skipped: data?.skipped || 0,
+          errors: data?.errors || 0,
+          ts: Date.now(),
+        });
+
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      // ============================
       // UI: Recovery - rescore existing JD only (no fetch)
       // ============================
       if (path === "/jobs/recover/rescore-existing-jd" && request.method === "POST") {
@@ -3485,6 +3514,106 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
     skipped,
     errors,
     results,
+  };
+}
+
+async function runCanonicalizeTitles_(env, opts = {}) {
+  const limit = clampInt_(opts.limit || 200, 1, 1000);
+  const onlyMissing = opts.onlyMissing !== false;
+  const dryRun = opts.dryRun === true;
+
+  const rows = await env.DB.prepare(`
+    SELECT job_key, role_title, job_url, source_domain, status, system_status
+    FROM jobs
+    WHERE (
+      ? = 0
+      OR COALESCE(TRIM(role_title), '') = ''
+      OR role_title LIKE '%=%'
+      OR role_title LIKE '%;%'
+      OR status = 'LINK_ONLY'
+      OR COALESCE(TRIM(system_status), '') IN ('NEEDS_MANUAL_JD', 'AI_UNAVAILABLE')
+    )
+    ORDER BY updated_at DESC
+    LIMIT ?;
+  `.trim()).bind(onlyMissing ? 1 : 0, limit).all();
+
+  const jobs = Array.isArray(rows?.results) ? rows.results : [];
+  const now = Date.now();
+  let scanned = 0;
+  let updated = 0;
+  let skipped = 0;
+  let errors = 0;
+  const samples = [];
+
+  for (const row of jobs) {
+    scanned += 1;
+    const jobKey = String(row?.job_key || "").trim();
+    const currentRoleRaw = String(row?.role_title || "").trim();
+    if (!jobKey) {
+      skipped += 1;
+      continue;
+    }
+
+    const currentRoleClean = cleanRoleTitle_(currentRoleRaw);
+    const shouldProcess = !onlyMissing
+      || !currentRoleRaw
+      || currentRoleClean !== currentRoleRaw
+      || isNoisyRoleTitle_(currentRoleRaw);
+
+    if (!shouldProcess) {
+      skipped += 1;
+      continue;
+    }
+
+    const roleFromUrl = cleanRoleTitle_(
+      deriveRoleFromJobUrl_(String(row?.job_url || ""), String(row?.source_domain || ""))
+    );
+    const roleFromDisplay = cleanRoleTitle_(
+      inferDisplayTitleFromUrl_(String(row?.job_url || ""), String(row?.source_domain || ""))
+    );
+
+    const nextRole = currentRoleClean || roleFromUrl || roleFromDisplay || "";
+    if (!nextRole || nextRole === currentRoleRaw) {
+      skipped += 1;
+      continue;
+    }
+
+    try {
+      if (!dryRun) {
+        await env.DB.prepare(`
+          UPDATE jobs
+          SET role_title = ?, updated_at = ?
+          WHERE job_key = ?;
+        `.trim()).bind(nextRole, now, jobKey).run();
+      }
+      updated += 1;
+      if (samples.length < 25) {
+        samples.push({
+          job_key: jobKey,
+          from: currentRoleRaw || null,
+          to: nextRole,
+        });
+      }
+    } catch (e) {
+      errors += 1;
+      if (samples.length < 25) {
+        samples.push({
+          job_key: jobKey,
+          error: String(e?.message || e),
+        });
+      }
+    }
+  }
+
+  return {
+    limit,
+    only_missing: onlyMissing,
+    dry_run: dryRun,
+    scanned,
+    updated,
+    skipped,
+    errors,
+    samples,
   };
 }
 
