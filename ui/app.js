@@ -908,7 +908,10 @@ function getTemplateById_(id) {
 
 function templateOptionsHtml_() {
   return (state.resumeTemplates || [])
-    .map((t) => `<option value="${escapeHtml(t.id)}"${t.id === state.activeTemplateId ? " selected" : ""}>${escapeHtml(t.name)}</option>`)
+    .map((t) => {
+      const label = (t.name && t.id && t.name !== t.id) ? `${t.name} (${t.id})` : (t.name || t.id);
+      return `<option value="${escapeHtml(t.id)}"${t.id === state.activeTemplateId ? " selected" : ""}>${escapeHtml(label)}</option>`;
+    })
     .join("");
 }
 
@@ -993,7 +996,22 @@ function applyTemplateToResumeUi_(templateId) {
 function saveResumeTemplateFromUi() {
   const selectedId = String($("appTemplateSelect")?.value || "").trim();
   const nameInput = String($("appTemplateName")?.value || "").trim();
-  const id = selectedId || slugify_(nameInput) || `template-${Date.now()}`;
+  const selectedTpl = getTemplateById_(selectedId);
+  const defaultIds = new Set(defaultResumeTemplates_().map((t) => t.id));
+  const editingDefaultWithNewName =
+    Boolean(selectedTpl) &&
+    defaultIds.has(selectedTpl.id) &&
+    Boolean(nameInput) &&
+    nameInput.toLowerCase() !== String(selectedTpl.name || "").toLowerCase();
+  let id = selectedId || slugify_(nameInput) || `template-${Date.now()}`;
+  if (editingDefaultWithNewName) {
+    const base = slugify_(nameInput) || "template";
+    id = base;
+    let n = 2;
+    while (state.resumeTemplates.some((t) => t.id === id)) {
+      id = `${base}-${n++}`;
+    }
+  }
   const template = normalizeTemplate_({
     id,
     name: nameInput || id,
@@ -1047,7 +1065,10 @@ function selectAtsKeywords(mode) {
 
 function resumeProfilesOptionsHtml() {
   return state.resumeProfiles
-    .map((p) => `<option value="${escapeHtml(p.id)}"${p.id === state.activeProfileId ? " selected" : ""}>${escapeHtml(p.name || p.id)}</option>`)
+    .map((p) => {
+      const label = (p.name && p.id && p.name !== p.id) ? `${p.name} (${p.id})` : (p.name || p.id);
+      return `<option value="${escapeHtml(p.id)}"${p.id === state.activeProfileId ? " selected" : ""}>${escapeHtml(label)}</option>`;
+    })
     .join("");
 }
 
