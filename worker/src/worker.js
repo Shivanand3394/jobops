@@ -1280,6 +1280,8 @@ function decorateJobRow_(row) {
   row.nice_to_have_keywords = safeJsonParseArray_(row.nice_to_have_keywords_json);
   row.reject_keywords = safeJsonParseArray_(row.reject_keywords_json);
   row.reject_reasons = safeJsonParseArray_(row.reject_reasons_json);
+  row.fetch_debug = safeJsonParse_(row.fetch_debug_json) || {};
+  row.jd_confidence = String(row.fetch_debug?.jd_confidence || "").trim().toLowerCase() || null;
   const display = computeDisplayFields_(row);
   row.display_title = display.display_title;
   row.display_company = display.display_company;
@@ -1746,7 +1748,7 @@ async function normalizeJobUrl_(rawUrl) {
  * ========================================================= */
 
 async function resolveJd_(jobUrl, { emailHtml, emailText, emailSubject, emailFrom }) {
-  const out = { jd_text_clean: "", jd_source: "none", fetch_status: "failed", debug: {} };
+  const out = { jd_text_clean: "", jd_source: "none", fetch_status: "failed", debug: { jd_confidence: "low", jd_length: 0 } };
   const sourceDomain = sourceDomainFromUrl_(jobUrl);
 
   // Try fetch first
@@ -1774,13 +1776,20 @@ async function resolveJd_(jobUrl, { emailHtml, emailText, emailSubject, emailFro
       if (isLowQualityJd_(cleaned, sourceDomain)) {
         out.fetch_status = "blocked";
         out.debug.low_quality = true;
+        out.debug.jd_confidence = "low";
+        out.debug.jd_length = cleaned.length;
       } else if (cleaned.length >= 260) {
+        const confidence = computeJdConfidence_(cleaned);
         out.jd_text_clean = cleaned.slice(0, 12000);
         out.jd_source = "fetched";
         out.fetch_status = "ok";
+        out.debug.jd_confidence = confidence;
+        out.debug.jd_length = cleaned.length;
         return out;
       } else {
         out.fetch_status = out.fetch_status === "blocked" ? "blocked" : "failed";
+        out.debug.jd_confidence = "low";
+        out.debug.jd_length = cleaned.length;
       }
     }
   } catch (e) {
@@ -1791,8 +1800,12 @@ async function resolveJd_(jobUrl, { emailHtml, emailText, emailSubject, emailFro
   // Email fallback
   const fallback = extractJdFromEmail_(emailHtml, emailText, emailSubject, emailFrom);
   if (fallback && fallback.length >= 180) {
+    const confidence = computeJdConfidence_(fallback);
     out.jd_text_clean = fallback.slice(0, 12000);
     out.jd_source = "email";
+    out.debug.used_email_fallback = true;
+    out.debug.jd_confidence = confidence;
+    out.debug.jd_length = fallback.length;
     return out;
   }
 
@@ -1824,9 +1837,38 @@ function isLowQualityJd_(text, sourceDomain) {
 }
 
 function shouldRequireManualJd_(resolved, jdText) {
+  const jdSource = String(resolved?.jd_source || "").toLowerCase();
+  const confidence = String(resolved?.debug?.jd_confidence || "").toLowerCase();
+  const jdLen = String(jdText || "").trim().length;
+
+  if (jdSource === "email" || jdSource === "fetched") {
+    if (jdLen < 220) return true;
+    if (confidence === "low") return true;
+    return false;
+  }
+
   const fetchStatus = String(resolved?.fetch_status || "").toLowerCase();
   if (fetchStatus === "blocked" || fetchStatus === "low_quality") return true;
-  return String(jdText || "").trim().length < 220;
+  return jdLen < 220;
+}
+
+function computeJdConfidence_(text) {
+  const t = cleanJdText_(text);
+  const low = t.toLowerCase();
+  const len = t.length;
+  if (len < 220) return "low";
+  if (isLowQualityJd_(t, "")) return "low";
+
+  let score = 0;
+  if (len >= 450) score += 1;
+  if (len >= 900) score += 1;
+  if (/\b(responsibilities|key responsibilities)\b/i.test(low)) score += 1;
+  if (/\b(qualifications|requirements|required skills)\b/i.test(low)) score += 1;
+  if (/\b(preferred|nice to have|good to have)\b/i.test(low)) score += 1;
+
+  if (score >= 4) return "high";
+  if (score >= 2) return "medium";
+  return "low";
 }
 
 function extractJdWindow_(t) {
