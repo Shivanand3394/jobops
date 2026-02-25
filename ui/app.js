@@ -232,11 +232,51 @@ function fmtNum(v) {
   return Number.isFinite(n) ? n.toLocaleString() : "0";
 }
 
+function fmtTsAbs(v) {
+  const n = Number(v || 0);
+  if (!n) return "-";
+  const d = new Date(n);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function fmtTs(v) {
   const n = Number(v || 0);
   if (!n) return "-";
   const d = new Date(n);
-  return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
+  if (Number.isNaN(d.getTime())) return "-";
+
+  const now = Date.now();
+  const diffMs = now - n;
+  if (!Number.isFinite(diffMs)) return fmtTsAbs(n);
+  if (diffMs < 0) return fmtTsAbs(n);
+
+  const min = 60 * 1000;
+  const hr = 60 * min;
+  const day = 24 * hr;
+  const month = 30 * day;
+  const year = 365 * day;
+
+  if (diffMs < min) return "just now";
+  if (diffMs < hr) return `${Math.floor(diffMs / min)}m ago`;
+  if (diffMs < day) return `${Math.floor(diffMs / hr)}h ago`;
+  if (diffMs < 2 * day) return "yesterday";
+  if (diffMs < month) return `${Math.floor(diffMs / day)}d ago`;
+  if (diffMs < year) return `${Math.floor(diffMs / month)}mo ago`;
+  return `${Math.floor(diffMs / year)}y ago`;
+}
+
+function fmtTsWithAbs(v) {
+  const rel = fmtTs(v);
+  const abs = fmtTsAbs(v);
+  if (rel === "-" || abs === "-") return rel;
+  return `${rel} (${abs})`;
 }
 
 function metricCard(label, value, sub = "") {
@@ -257,7 +297,7 @@ function renderMetrics() {
   const gmailLatest = m.gmail?.latest || {};
   const gmail24 = m.gmail?.last_24h || {};
 
-  $("metricsGeneratedAt").value = fmtTs(m.generated_at);
+  $("metricsGeneratedAt").value = fmtTsAbs(m.generated_at);
   $("metricsHint").textContent = `Jobs: ${fmtNum(totals.jobs_total)} | Gmail polls (24h): ${fmtNum(gmail24.poll_runs)} | Avg score: ${totals.avg_final_score ?? "-"}`;
 
   $("metricsCards").innerHTML = [
@@ -271,7 +311,7 @@ function renderMetrics() {
     metricCard("Skipped Existing (24h)", gmail24.skipped_existing || 0, "dedupe hits"),
     metricCard("Promo Rejected (24h)", gmail24.skipped_promotional || 0, "ads/premium/newsletters"),
     metricCard("Latest Scanned", gmailLatest.scanned || 0, `query: ${gmailLatest.query_used || "-"}`),
-    metricCard("Latest Processed", gmailLatest.processed || 0, `at ${fmtTs(gmailLatest.ts)}`),
+    metricCard("Latest Processed", gmailLatest.processed || 0, `at ${fmtTsWithAbs(gmailLatest.ts)}`),
     metricCard("Scored Jobs", totals.scored_jobs || 0, "jobs with final_score"),
   ].join("");
 
@@ -364,6 +404,8 @@ function jobCard(j) {
   const role = getDisplayTitle(j);
   const updatedAt = fmtTs(j.updated_at);
   const createdAt = fmtTs(j.created_at);
+  const updatedAtAbs = fmtTsAbs(j.updated_at);
+  const createdAtAbs = fmtTsAbs(j.created_at);
   const status = String(j.status || "").toUpperCase();
   const systemStatus = String(j.system_status || "").toUpperCase();
   const needsJdBadge = systemStatus === "NEEDS_MANUAL_JD"
@@ -377,7 +419,10 @@ function jobCard(j) {
         <div>
           <div class="title">${escapeHtml(role)}</div>
           <div class="sub">${escapeHtml(comp)} - ${escapeHtml(loc)}</div>
-          <div class="sub tiny">Updated: ${escapeHtml(updatedAt)} | Created: ${escapeHtml(createdAt)}</div>
+          <div class="sub tiny">
+            Updated: <span title="${escapeHtml(updatedAtAbs)}">${escapeHtml(updatedAt)}</span>
+            | Created: <span title="${escapeHtml(createdAtAbs)}">${escapeHtml(createdAt)}</span>
+          </div>
         </div>
         <div class="score" title="Final score">${escapeHtml(String(score))}</div>
       </div>
@@ -412,6 +457,7 @@ function trackingCard(j) {
   const company = getDisplayCompany(j) || "-";
   const score = (j.final_score === null || j.final_score === undefined) ? "-" : j.final_score;
   const updated = fmtTs(j.updated_at);
+  const updatedAbs = fmtTsAbs(j.updated_at);
   const status = String(j.status || "").toUpperCase();
   const needsAttention = isNeedsAttentionJob(j);
 
@@ -422,7 +468,7 @@ function trackingCard(j) {
         <div class="track-score">${escapeHtml(String(score))}</div>
       </div>
       <div class="track-sub">${escapeHtml(company)} - ${escapeHtml(j.source_domain || "-")}</div>
-      <div class="track-sub tiny">Updated: ${escapeHtml(updated)}</div>
+      <div class="track-sub tiny">Updated: <span title="${escapeHtml(updatedAbs)}">${escapeHtml(updated)}</span></div>
       <div class="track-meta">
         <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
         ${needsAttention ? `<span class="chip">Needs Attention</span>` : ""}
@@ -730,8 +776,8 @@ function renderDetail(j) {
       <div class="k">Location</div><div class="v">${escapeHtml(j.location || "-")}</div>
       <div class="k">Seniority</div><div class="v">${escapeHtml(j.seniority || "-")}</div>
       <div class="k">Source</div><div class="v">${escapeHtml(j.source_domain || "-")}</div>
-      <div class="k">Created</div><div class="v">${escapeHtml(fmtTs(j.created_at))}</div>
-      <div class="k">Updated</div><div class="v">${escapeHtml(fmtTs(j.updated_at))}</div>
+      <div class="k">Created</div><div class="v">${escapeHtml(fmtTsWithAbs(j.created_at))}</div>
+      <div class="k">Updated</div><div class="v">${escapeHtml(fmtTsWithAbs(j.updated_at))}</div>
     </div>
 
     <div class="kv">
