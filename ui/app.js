@@ -399,6 +399,14 @@ function bindWorkspaceTabs_(defaultTab = "jd") {
   activateWorkspaceTab_(defaultTab);
 }
 
+function preferredWorkspaceTab_(job, { hasPack = false } = {}) {
+  const needsManual = String(job?.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD";
+  if (needsManual) return "jd";
+  if (hasPack) return "resume";
+  const hasJd = String(job?.jd_text_clean || "").trim().length >= 200 || String(job?.role_title || "").trim().length > 0;
+  return hasJd ? "ats" : "jd";
+}
+
 function renderDetail(j) {
   state.activeJob = j;
   $("detailBody").classList.remove("empty");
@@ -448,14 +456,6 @@ function renderDetail(j) {
       <div class="k">Updated</div><div class="v">${escapeHtml(String(j.updated_at || ""))}</div>
     </div>
 
-    <div class="actions-grid">
-      <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','APPLIED')">Mark APPLIED</button>
-      <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','SHORTLISTED')">Mark SHORTLISTED</button>
-      <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','REJECTED')">Mark REJECTED</button>
-      <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','ARCHIVED')">Mark ARCHIVED</button>
-      <button class="btn" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
-    </div>
-
     <div class="kv">
       <div class="k">Must-have keywords</div><div class="v">${escapeHtml((j.must_have_keywords || []).join(", ") || "-")}</div>
       <div class="k">Nice-to-have</div><div class="v">${escapeHtml((j.nice_to_have_keywords || []).join(", ") || "-")}</div>
@@ -472,9 +472,10 @@ function renderDetail(j) {
 
     <div id="appPackSection" class="workspace-shell">
       <div class="workspace-tabbar">
-        <button class="btn btn-ghost active-tab" type="button" data-ws-tab="jd">JD</button>
-        <button class="btn btn-ghost" type="button" data-ws-tab="ats">ATS</button>
-        <button class="btn btn-ghost" type="button" data-ws-tab="resume">Resume</button>
+        <button class="btn btn-ghost active-tab" type="button" data-ws-tab="jd">1 JD</button>
+        <button class="btn btn-ghost" type="button" data-ws-tab="ats">2 ATS</button>
+        <button class="btn btn-ghost" type="button" data-ws-tab="resume">3 Resume</button>
+        <button class="btn btn-ghost" type="button" data-ws-tab="action">4 Action</button>
       </div>
 
       <div class="workspace-pane" data-ws-pane="jd">
@@ -579,11 +580,23 @@ function renderDetail(j) {
           </div>
         </div>
       </div>
+
+      <div class="workspace-pane hidden" data-ws-pane="action">
+        <div class="h3">Apply Workflow Actions</div>
+        <div class="muted tiny" style="margin-top:4px;">Use after JD/ATS/Resume review.</div>
+        <div class="actions-grid" style="margin-top:10px;">
+          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','APPLIED')">Mark APPLIED</button>
+          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','SHORTLISTED')">Mark SHORTLISTED</button>
+          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','REJECTED')">Mark REJECTED</button>
+          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','ARCHIVED')">Mark ARCHIVED</button>
+          <button class="btn" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
+        </div>
+      </div>
   `;
   if (window.location.hostname.includes("workers.dev")) {
     console.log("Rendering Application Pack", j.job_key);
   }
-  bindWorkspaceTabs_("jd");
+  bindWorkspaceTabs_(preferredWorkspaceTab_(j, { hasPack: false }));
   hydrateApplicationPack(j);
 }
 
@@ -1267,6 +1280,7 @@ async function hydrateApplicationPack(jobOrKey) {
     setEnabledBlocksUi_(Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks : getTemplateById_(state.activeTemplateId)?.enabled_blocks || []);
     state.selectedAtsKeywords = Array.isArray(controls.selected_keywords) ? controls.selected_keywords : [];
     renderKeywordPicker_(currentJob, d);
+    activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: true }));
   } catch (e) {
     $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
     $("appAtsScore").textContent = "-";
@@ -1277,6 +1291,7 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrJson = "{}";
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
+    activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: false }));
   }
 }
 
