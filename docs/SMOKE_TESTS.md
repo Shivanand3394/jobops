@@ -440,6 +440,31 @@ Expected:
 - fetch pack returns `rr_export_contract.id = "jobops.rr_export.v1"`
 - fetch pack returns `rr_export_contract.schema_version = 1`
 - fetch pack returns `rr_export_json.metadata.contract_valid = true`
+- fetch pack returns `rr_export_json.metadata.import_ready` (boolean)
+
+### Optional strict test: malformed profile JSON still returns deterministic RR payload
+
+#### curl: save malformed profile
+```bash
+curl -sS "$BASE_URL/resume/profiles" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"id":"broken-profile","name":"Broken Profile","profile_json":{"basics":"bad","experience":["oops"],"skills":[1,2],"summary":123}}'
+```
+
+#### PowerShell: save malformed profile
+```powershell
+$body = @{ id="broken-profile"; name="Broken Profile"; profile_json=@{ basics="bad"; experience=@("oops"); skills=@(1,2); summary=123 } } | ConvertTo-Json -Depth 10
+Invoke-WebRequest -Uri "$BASE_URL/resume/profiles" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Then generate + fetch using `profile_id=broken-profile`.
+
+Expected:
+- API stays `ok:true` with deterministic `rr_export_json`
+- `rr_export_json.metadata.import_ready` may be `false`
+- `rr_export_json.metadata.import_errors` lists strict import issues
 
 ## 20) If titles/company are missing
 1. Call `/jobs?limit=5` and confirm rows include `display_title` and `display_company`.

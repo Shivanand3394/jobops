@@ -98,17 +98,26 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
 export async function persistResumeDraft_({ env, jobKey, profileId, pack, force }) {
   const now = Date.now();
   const packSafe = pack && typeof pack === "object" ? pack : {};
+  const renderer = str_(packSafe?.pack_json?.renderer || "reactive_resume").toLowerCase() || "reactive_resume";
   const rrExport = ensureReactiveResumeExportContract_(packSafe.rr_export_json, {
     jobKey: str_(jobKey),
     templateId: str_(packSafe?.pack_json?.controls?.template_id) || "balanced",
   });
   const rrValidation = validateReactiveResumeExport_(rrExport);
+  const rrImport = validateReactiveResumeImportReadiness_(rrExport);
+  const hasRrIssues = !rrValidation.ok || !rrImport.ok;
   const statusFromPack = str_(packSafe.status) || "DRAFT_READY";
-  const statusSafe = rrValidation.ok
-    ? statusFromPack
-    : (statusFromPack === "NEEDS_AI" ? "NEEDS_AI" : "ERROR");
-  const errorPrefix = rrValidation.ok ? "" : `RR export contract invalid: ${rrValidation.errors.join("; ")}`;
-  const errorTextSafe = [errorPrefix, str_(packSafe.error_text)].filter(Boolean).join(" | ").slice(0, 1000);
+  const statusSafe =
+    statusFromPack === "NEEDS_AI"
+      ? "NEEDS_AI"
+      : (renderer === "reactive_resume" && hasRrIssues ? "ERROR" : statusFromPack);
+  const rrIssues = unique_([...(rrValidation.errors || []), ...(rrImport.errors || [])]);
+  const issuePrefix = rrIssues.length
+    ? (renderer === "reactive_resume"
+      ? `RR export invalid: ${rrIssues.join("; ")}`
+      : `RR warnings: ${rrIssues.join("; ")}`)
+    : "";
+  const errorTextSafe = [issuePrefix, str_(packSafe.error_text)].filter(Boolean).join(" | ").slice(0, 1000);
 
   const existing = await env.DB.prepare(
     `SELECT id, status FROM resume_drafts WHERE job_key = ? AND profile_id = ? LIMIT 1;`
@@ -324,8 +333,11 @@ export function ensureReactiveResumeExportContract_(value, ctx = {}) {
   };
 
   const validation = validateReactiveResumeExport_(out);
+  const importValidation = validateReactiveResumeImportReadiness_(out);
   out.metadata.contract_valid = validation.ok;
   if (!validation.ok) out.metadata.contract_errors = validation.errors.slice(0, 5);
+  out.metadata.import_ready = importValidation.ok;
+  if (!importValidation.ok) out.metadata.import_errors = importValidation.errors.slice(0, 10);
   return out;
 }
 
@@ -424,5 +436,53 @@ function validateReactiveResumeExport_(rr) {
   if (schemaVersion !== RR_EXPORT_SCHEMA_VERSION) errors.push("schema_version_mismatch");
   if (!str_(rr?.job_context?.job_key)) errors.push("missing_job_key");
   if (!rr?.sections || typeof rr.sections !== "object") errors.push("missing_sections");
+  return { ok: errors.length === 0, errors };
+}
+
+function validateReactiveResumeImportReadiness_(rr) {
+  const errors = [];
+  const basics = rr?.basics;
+  const sections = rr?.sections;
+  const jobContext = rr?.job_context;
+
+  if (!basics || typeof basics !== "object") {
+    errors.push("missing_basics");
+  } else {
+    const requiredBasics = ["name", "email", "phone", "location", "summary"];
+    for (const k of requiredBasics) {
+      if (typeof basics[k] !== "string") errors.push(`basics_${k}_not_string`);
+    }
+  }
+
+  if (!sections || typeof sections !== "object") {
+    errors.push("missing_sections_object");
+  } else {
+    if (!Array.isArray(sections.experience)) errors.push("experience_not_array");
+    if (!Array.isArray(sections.skills)) errors.push("skills_not_array");
+    if (!Array.isArray(sections.highlights)) errors.push("highlights_not_array");
+
+    const experience = Array.isArray(sections.experience) ? sections.experience : [];
+    for (let i = 0; i < experience.length; i += 1) {
+      const item = experience[i];
+      if (!item || typeof item !== "object") {
+        errors.push(`experience_item_invalid_${i}`);
+      }
+    }
+
+    const highlights = Array.isArray(sections.highlights) ? sections.highlights : [];
+    for (let i = 0; i < highlights.length; i += 1) {
+      const h = highlights[i];
+      if (!h || typeof h !== "object" || !str_(h.text)) {
+        errors.push(`highlight_item_invalid_${i}`);
+      }
+    }
+  }
+
+  if (!jobContext || typeof jobContext !== "object") {
+    errors.push("missing_job_context");
+  } else if (!str_(jobContext.job_key)) {
+    errors.push("missing_job_key");
+  }
+
   return { ok: errors.length === 0, errors };
 }

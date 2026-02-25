@@ -1051,6 +1051,7 @@ export default {
           ats_score: packData.ats_score,
           rr_export_contract_id: RR_EXPORT_CONTRACT_ID,
           rr_export_schema_version: RR_EXPORT_SCHEMA_VERSION,
+          rr_export_import_ready: Boolean(packData?.rr_export_json?.metadata?.import_ready),
           ts: Date.now(),
         });
 
@@ -1069,6 +1070,10 @@ export default {
               id: RR_EXPORT_CONTRACT_ID,
               schema_version: RR_EXPORT_SCHEMA_VERSION,
             },
+            rr_export_import_ready: Boolean(packData?.rr_export_json?.metadata?.import_ready),
+            rr_export_import_errors: Array.isArray(packData?.rr_export_json?.metadata?.import_errors)
+              ? packData.rr_export_json.metadata.import_errors
+              : [],
           }
         }, env, 200);
       }
@@ -1122,6 +1127,10 @@ export default {
               id: RR_EXPORT_CONTRACT_ID,
               schema_version: RR_EXPORT_SCHEMA_VERSION,
             },
+            rr_export_import_ready: Boolean(rrExportJson?.metadata?.import_ready),
+            rr_export_import_errors: Array.isArray(rrExportJson?.metadata?.import_errors)
+              ? rrExportJson.metadata.import_errors
+              : [],
             updated_at: row.updated_at,
           }
         }, env, 200);

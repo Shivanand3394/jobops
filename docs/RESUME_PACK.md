@@ -15,6 +15,7 @@ RR export contract (locked):
 Worker behavior:
 - normalizes RR payload on generate/save/fetch
 - validates contract fields and marks `metadata.contract_valid`
+- validates import readiness and marks `metadata.import_ready` + `metadata.import_errors`
 
 Reactive Resume is not a runtime dependency; it is an export format target.
 
@@ -103,6 +104,8 @@ Expected on fetch:
 - `data.rr_export_contract.id = "jobops.rr_export.v1"`
 - `data.rr_export_contract.schema_version = 1`
 - `data.rr_export_json.metadata.contract_valid = true`
+- `data.rr_export_json.metadata.import_ready` is present
+- `data.rr_export_json.metadata.import_errors` is present only when import checks fail
 
 ## Mobile usage
 From job detail in UI:
