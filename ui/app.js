@@ -287,6 +287,8 @@ function jobCard(j) {
   const loc = j.location || "-";
   const comp = getDisplayCompany(j) || "-";
   const role = getDisplayTitle(j);
+  const updatedAt = fmtTs(j.updated_at);
+  const createdAt = fmtTs(j.created_at);
   const status = String(j.status || "").toUpperCase();
   const systemStatus = String(j.system_status || "").toUpperCase();
   const needsJdBadge = systemStatus === "NEEDS_MANUAL_JD"
@@ -300,6 +302,7 @@ function jobCard(j) {
         <div>
           <div class="title">${escapeHtml(role)}</div>
           <div class="sub">${escapeHtml(comp)} - ${escapeHtml(loc)}</div>
+          <div class="sub tiny">Updated: ${escapeHtml(updatedAt)} | Created: ${escapeHtml(createdAt)}</div>
         </div>
         <div class="score" title="Final score">${escapeHtml(String(score))}</div>
       </div>
@@ -508,7 +511,8 @@ function renderDetail(j) {
       <div class="k">Location</div><div class="v">${escapeHtml(j.location || "-")}</div>
       <div class="k">Seniority</div><div class="v">${escapeHtml(j.seniority || "-")}</div>
       <div class="k">Source</div><div class="v">${escapeHtml(j.source_domain || "-")}</div>
-      <div class="k">Updated</div><div class="v">${escapeHtml(String(j.updated_at || ""))}</div>
+      <div class="k">Created</div><div class="v">${escapeHtml(fmtTs(j.created_at))}</div>
+      <div class="k">Updated</div><div class="v">${escapeHtml(fmtTs(j.updated_at))}</div>
     </div>
 
     <div class="kv">
