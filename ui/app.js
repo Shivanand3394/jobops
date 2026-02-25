@@ -407,6 +407,58 @@ function preferredWorkspaceTab_(job, { hasPack = false } = {}) {
   return hasJd ? "ats" : "jd";
 }
 
+function updateNextActionCard_(job, { hasPack = false } = {}) {
+  const section = $("appPackSection");
+  if (!section) return;
+  const titleEl = $("wsNextActionTitle");
+  const noteEl = $("wsNextActionNote");
+  const btnEl = $("wsNextActionBtn");
+  if (!titleEl || !noteEl || !btnEl) return;
+
+  const needsManual = String(job?.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD";
+  let title = "Generate application pack";
+  let note = "JD is ready. Build ATS + resume outputs for this role.";
+  let action = "generate_pack";
+  let btnLabel = "Generate pack";
+
+  if (needsManual) {
+    title = "Paste JD and rescore";
+    note = "This job is blocked by low-quality fetch. Add JD text first.";
+    action = "go_jd";
+    btnLabel = "Go to JD step";
+  } else if (hasPack) {
+    title = "Finalize application decision";
+    note = "Review output and mark status: SHORTLISTED, APPLIED, REJECTED, or ARCHIVED.";
+    action = "go_action";
+    btnLabel = "Open Action step";
+  }
+
+  section.dataset.nextAction = action;
+  titleEl.textContent = title;
+  noteEl.textContent = note;
+  btnEl.textContent = btnLabel;
+}
+
+async function runNextAction() {
+  const section = $("appPackSection");
+  const action = String(section?.dataset?.nextAction || "").trim().toLowerCase();
+  const jobKey = String(state.activeJob?.job_key || "").trim();
+  if (!action) return;
+  if (action === "go_jd") {
+    activateWorkspaceTab_("jd");
+    $("jdCurrentText")?.focus();
+    return;
+  }
+  if (action === "go_action") {
+    activateWorkspaceTab_("action");
+    return;
+  }
+  if (action === "generate_pack" && jobKey) {
+    await generateApplicationPack(jobKey, false);
+    return;
+  }
+}
+
 function renderDetail(j) {
   state.activeJob = j;
   $("detailBody").classList.remove("empty");
@@ -471,6 +523,13 @@ function renderDetail(j) {
     </div>
 
     <div id="appPackSection" class="workspace-shell">
+      <div class="next-action-card">
+        <div>
+          <div id="wsNextActionTitle" class="h3">Generate application pack</div>
+          <div id="wsNextActionNote" class="muted tiny">Build ATS + resume outputs for this job.</div>
+        </div>
+        <button id="wsNextActionBtn" class="btn" type="button" onclick="runNextAction()">Generate pack</button>
+      </div>
       <div class="workspace-tabbar">
         <button class="btn btn-ghost active-tab" type="button" data-ws-tab="jd">1 JD</button>
         <button class="btn btn-ghost" type="button" data-ws-tab="ats">2 ATS</button>
@@ -596,6 +655,7 @@ function renderDetail(j) {
   if (window.location.hostname.includes("workers.dev")) {
     console.log("Rendering Application Pack", j.job_key);
   }
+  updateNextActionCard_(j, { hasPack: false });
   bindWorkspaceTabs_(preferredWorkspaceTab_(j, { hasPack: false }));
   hydrateApplicationPack(j);
 }
@@ -1280,6 +1340,7 @@ async function hydrateApplicationPack(jobOrKey) {
     setEnabledBlocksUi_(Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks : getTemplateById_(state.activeTemplateId)?.enabled_blocks || []);
     state.selectedAtsKeywords = Array.isArray(controls.selected_keywords) ? controls.selected_keywords : [];
     renderKeywordPicker_(currentJob, d);
+    updateNextActionCard_(currentJob, { hasPack: true });
     activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: true }));
   } catch (e) {
     $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
@@ -1291,6 +1352,7 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrJson = "{}";
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
+    updateNextActionCard_(currentJob, { hasPack: false });
     activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: false }));
   }
 }
@@ -1600,6 +1662,7 @@ window.saveResumeProfileFromUi = saveResumeProfileFromUi;
 window.saveResumeTemplateFromUi = saveResumeTemplateFromUi;
 window.deleteResumeTemplateFromUi = deleteResumeTemplateFromUi;
 window.selectAtsKeywords = selectAtsKeywords;
+window.runNextAction = runNextAction;
 window.generateApplicationPack = generateApplicationPack;
 window.copyPackSummary = copyPackSummary;
 window.copyPackBullets = copyPackBullets;

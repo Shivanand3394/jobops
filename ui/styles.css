@@ -255,6 +255,18 @@ body{
   margin-bottom:10px;
 }
 
+.next-action-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border:1px solid rgba(37,99,235,.45);
+  border-radius:12px;
+  background: rgba(16,42,95,.35);
+  padding:10px;
+  margin-bottom:10px;
+}
+
 .workspace-pane{
   border:1px solid var(--line);
   border-radius:12px;
