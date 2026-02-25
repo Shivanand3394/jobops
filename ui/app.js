@@ -1981,7 +1981,7 @@ async function retryFetchMissingJd(limit = 60) {
   }
 }
 
-async function recoverMissingDetailsFromTracking(limit = 25) {
+async function recoverMissingDetailsFromTracking(limit = 10) {
   const ok = confirm("Run recovery now? This retries missing-details fetch and then rescoring.");
   if (!ok) return;
   try {
@@ -2122,7 +2122,7 @@ async function saveSettings() {
   $("trackingScope").onchange = () => renderTracking();
   $("trackingWindow").onchange = () => renderTracking();
   $("trackingLimit").onchange = () => renderTracking();
-  $("btnTrackingRecover").onclick = () => recoverMissingDetailsFromTracking(25);
+  $("btnTrackingRecover").onclick = () => recoverMissingDetailsFromTracking(10);
   $("btnTrackingFiltersToggle").onclick = () => {
     state.trackingFiltersOpen = !state.trackingFiltersOpen;
     syncTrackingControlsUi_();
