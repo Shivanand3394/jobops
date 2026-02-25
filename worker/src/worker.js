@@ -3323,6 +3323,7 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
       AND (
         COALESCE(TRIM(role_title), '') = ''
         OR COALESCE(TRIM(company), '') = ''
+        OR LENGTH(TRIM(COALESCE(company, ''))) > 55
       )
     ORDER BY updated_at ASC
     LIMIT ?;
