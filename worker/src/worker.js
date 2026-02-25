@@ -921,6 +921,20 @@ export default {
       // ============================
       // UI: Resume profiles
       // ============================
+      if (path === "/resume/rr/health" && request.method === "GET") {
+        const data = await probeReactiveResume_(env);
+        await logEvent_(env, "RR_HEALTH_CHECK", null, {
+          status: data?.status || "unknown",
+          configured: Boolean(data?.configured),
+          reachable: Boolean(data?.reachable),
+          authenticated: data?.authenticated === true,
+          http_status: Number.isFinite(Number(data?.http_status)) ? Number(data.http_status) : null,
+          path: data?.matched_path || null,
+          ts: Date.now(),
+        });
+        return json_({ ok: true, data }, env, 200);
+      }
+
       if (path === "/resume/profiles" && request.method === "GET") {
         await ensurePrimaryProfile_(env);
         const res = await env.DB.prepare(`
@@ -3980,6 +3994,119 @@ ${jsonString_(sample)}
   }
 
   return { reject: false, by: "none", reason: "job_alert_or_uncertain" };
+}
+
+async function probeReactiveResume_(env) {
+  const rrBase = String(env?.RR_BASE_URL || "").trim().replace(/\/+$/, "");
+  const rrKey = String(env?.RR_KEY || "").trim();
+  const timeoutMs = clampInt_(env?.RR_TIMEOUT_MS || 6000, 1000, 20000);
+  const configured = Boolean(rrBase) && Boolean(rrKey);
+  const out = {
+    configured,
+    rr_base_url: rrBase || null,
+    reachable: false,
+    authenticated: null,
+    status: "missing_config",
+    http_status: null,
+    attempted_paths: [],
+    matched_path: null,
+    checked_at: Date.now(),
+    note: "",
+  };
+
+  if (!rrBase || !rrKey) {
+    out.note = !rrBase && !rrKey
+      ? "Set RR_BASE_URL (var) and RR_KEY (secret)."
+      : (!rrBase ? "Set RR_BASE_URL (var)." : "Set RR_KEY (secret).");
+    return out;
+  }
+
+  if (!/^https?:\/\//i.test(rrBase)) {
+    out.note = "RR_BASE_URL must start with http:// or https://";
+    return out;
+  }
+
+  const customPath = String(env?.RR_HEALTH_PATH || "").trim();
+  const candidatePaths = unique_([customPath, "/api/health", "/health", "/api"])
+    .map((p) => normalizeHealthPath_(p))
+    .filter(Boolean);
+
+  const headers = {
+    "Accept": "application/json, text/plain, */*",
+    "Authorization": `Bearer ${rrKey}`,
+    "x-api-key": rrKey,
+  };
+
+  for (const relPath of candidatePaths) {
+    const url = `${rrBase}${relPath}`;
+    out.attempted_paths.push(relPath);
+    try {
+      const res = await fetchWithTimeout_(url, { method: "GET", headers }, timeoutMs);
+      const status = Number(res.status || 0);
+      out.http_status = status;
+      out.matched_path = relPath;
+      out.reachable = true;
+
+      if (res.ok) {
+        out.authenticated = true;
+        out.status = "ready";
+        out.note = "Reactive Resume reachable.";
+        return out;
+      }
+
+      if (status === 401 || status === 403) {
+        out.authenticated = false;
+        out.status = "unauthorized";
+        out.note = "RR_KEY rejected by Reactive Resume.";
+        return out;
+      }
+
+      if (status === 404) {
+        // Continue trying fallback health paths.
+        continue;
+      }
+
+      out.authenticated = null;
+      out.status = "http_error";
+      out.note = `Reactive Resume returned HTTP ${status}.`;
+      return out;
+    } catch (e) {
+      if (!out.reachable) out.reachable = false;
+      out.authenticated = null;
+      out.status = "unreachable";
+      out.note = String(e?.name || e?.message || e || "fetch_failed").slice(0, 120);
+    }
+  }
+
+  if (out.reachable && out.http_status === 404) {
+    out.status = "endpoint_not_found";
+    out.note = "Reactive Resume reachable but no health path matched. Set RR_HEALTH_PATH.";
+    return out;
+  }
+
+  if (!out.reachable) {
+    out.note = out.note || "Could not reach Reactive Resume from Worker.";
+    return out;
+  }
+
+  return out;
+}
+
+function normalizeHealthPath_(p) {
+  const s = String(p || "").trim();
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return "";
+  return s.startsWith("/") ? s : `/${s}`;
+}
+
+async function fetchWithTimeout_(url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
+  try {
+    return await fetch(url, { ...(init || {}), signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function routeModeFor_(path) {

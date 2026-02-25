@@ -29,6 +29,13 @@ Reactive Resume is not a runtime dependency; it is an export format target.
 - `POST /resume/profiles`
 - `POST /jobs/:job_key/generate-application-pack`
 - `GET /jobs/:job_key/application-pack`
+- `GET /resume/rr/health` (safe Reactive Resume connectivity probe)
+
+## Optional Reactive Resume runtime bridge vars
+- `RR_BASE_URL` (var): Reactive Resume API base URL (e.g. `https://rr.example.com`)
+- `RR_HEALTH_PATH` (var, optional): health probe path (default `/api/health`)
+- `RR_TIMEOUT_MS` (var, optional): probe timeout in ms (default `6000`)
+- `RR_KEY` (secret): API key used server-side by Worker only
 
 ## Example: list profiles
 PowerShell:
@@ -99,6 +106,22 @@ curl:
 ```bash
 curl -sS "$BASE_URL/jobs/$JOB_KEY/application-pack?profile_id=primary" -H "x-ui-key: $UI_KEY"
 ```
+
+## Example: probe Reactive Resume connectivity (safe)
+PowerShell:
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/resume/rr/health" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+curl:
+```bash
+curl -sS "$BASE_URL/resume/rr/health" -H "x-ui-key: $UI_KEY"
+```
+
+Expected:
+- `ok: true`
+- `data.status` one of: `ready`, `unauthorized`, `endpoint_not_found`, `unreachable`, `missing_config`
+- no secrets are returned
 
 Expected on fetch:
 - `data.rr_export_contract.id = "jobops.rr_export.v1"`

@@ -632,3 +632,26 @@ Expected:
 - backfill returns `picked`, `processed`, `inserted_or_updated`, `updated_count`, `link_only`, `source_summary`
 - rescore-existing-jd returns `picked`, `updated`, `jobs[]`
 - `fetch_status`
+
+## 25) Reactive Resume bridge health (UI key)
+Purpose: verify Worker can reach RR using server-side `RR_KEY` without exposing any secret.
+
+### curl
+```bash
+curl -sS "$BASE_URL/resume/rr/health" -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/resume/rr/health" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- `ok: true`
+- `data.configured` reflects whether `RR_BASE_URL` + `RR_KEY` are set
+- `data.status` is one of:
+  - `ready` (reachable + authenticated)
+  - `unauthorized` (RR reachable, key rejected)
+  - `endpoint_not_found` (RR reachable, health path mismatch; set `RR_HEALTH_PATH`)
+  - `unreachable` (network/DNS/connectivity)
+  - `missing_config` (missing `RR_BASE_URL` or `RR_KEY`)

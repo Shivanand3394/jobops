@@ -17,6 +17,9 @@ Source: `worker/wrangler.jsonc`
   - `RSS_MAX_PER_RUN`
   - `RSS_ALLOW_KEYWORDS`
   - `RSS_BLOCK_KEYWORDS`
+  - `RR_BASE_URL`
+  - `RR_HEALTH_PATH`
+  - `RR_TIMEOUT_MS`
   - `RECOVERY_ENABLED`
   - `RECOVER_BACKFILL_LIMIT`
   - `RECOVER_RESCORE_LIMIT`
@@ -32,6 +35,9 @@ Source: `worker/wrangler.jsonc`
 - `vars.RSS_MAX_PER_RUN`: should be present
 - `vars.RSS_ALLOW_KEYWORDS`: optional (comma/newline-separated keywords)
 - `vars.RSS_BLOCK_KEYWORDS`: optional (comma/newline-separated keywords)
+- `vars.RR_BASE_URL`: optional (required for Worker -> Reactive Resume bridge health checks)
+- `vars.RR_HEALTH_PATH`: optional (default `/api/health`)
+- `vars.RR_TIMEOUT_MS`: optional (default `6000`)
 - `vars.RECOVERY_ENABLED`: optional (`1` default, set `0` to disable cron recovery)
 - `vars.RECOVER_BACKFILL_LIMIT`: optional (default `30`)
 - `vars.RECOVER_RESCORE_LIMIT`: optional (default `30`)
@@ -61,6 +67,10 @@ Source files:
 | `RSS_MAX_PER_RUN` | Var | RSS poll item cap | Unexpected RSS ingest volume |
 | `RSS_ALLOW_KEYWORDS` | Var | RSS item allow filter (title/summary) | Too many irrelevant RSS items pass through |
 | `RSS_BLOCK_KEYWORDS` | Var | RSS item block filter (title/summary) | Promo/non-job RSS items still processed |
+| `RR_KEY` | Secret | Worker-side Reactive Resume probe (`/resume/rr/health`) | Probe returns `missing_config` / `unauthorized` |
+| `RR_BASE_URL` | Var | Reactive Resume base URL used by Worker probe | Probe returns `missing_config` / `unreachable` |
+| `RR_HEALTH_PATH` | Var | Optional RR health path override | Probe returns `endpoint_not_found` |
+| `RR_TIMEOUT_MS` | Var | Optional timeout for RR probe | Probe returns `unreachable` on slow/blocked network |
 | `RECOVERY_ENABLED` | Var | Enables/disables cron recovery sequence (backfill + rescore-existing-jd) | No periodic recovery events/counters if disabled |
 | `RECOVER_BACKFILL_LIMIT` | Var | Cron limit for `/jobs/backfill-missing` equivalent | Too few/too many jobs retried per run |
 | `RECOVER_RESCORE_LIMIT` | Var | Cron limit for `/jobs/recover/rescore-existing-jd` equivalent | Too few/too many rescored jobs per run |
@@ -182,6 +192,22 @@ Expected:
 - `data.feed_summaries[]` present with URL-only samples
 - `data.inserted_or_updated` and `data.source_summary[]` present
 
+### 7) Reactive Resume bridge health (UI auth)
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/resume/rr/health" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+```bash
+curl -i "$BASE_URL/resume/rr/health" -H "x-ui-key: $UI_KEY"
+```
+Expected:
+- `ok:true`
+- `data.status` is one of:
+  - `ready`
+  - `unauthorized`
+  - `endpoint_not_found`
+  - `unreachable`
+  - `missing_config`
+
 ## E) Troubleshooting table
 
 | Failure symptom | Likely cause | How to confirm | Fix |
@@ -195,6 +221,9 @@ Expected:
 | `/rss/poll` still ingests promo/news items | `RSS_BLOCK_KEYWORDS` not set or too weak | Inspect `items_filtered_block` and item sources | Add stronger block keywords (e.g., `premium,newsletter,upgrade,sponsored`) |
 | `/rss/diagnostics` shows high `unresolved_wrapper` | Wrapped links (e.g., Google News RSS) not resolving to canonical job URLs | Call `/rss/diagnostics` and inspect `data.reason_buckets` + `feed_summaries.sample_candidates` | Use cleaner feeds where possible, keep query-param redirects, and verify resolver behavior with small `max_per_run` test |
 | `/rss/diagnostics` shows high `normalize_ignored` or `unsupported_domain` | URLs are non-job pages or unsupported domains after normalization | Inspect `reason_buckets` and sample candidates | Tighten `RSS_ALLOW_KEYWORDS`, extend source feeds, or add domain support in normalization logic |
+| `/resume/rr/health` returns `missing_config` | `RR_BASE_URL` or `RR_KEY` missing | Call `/resume/rr/health` and inspect `data.configured` | Set `RR_BASE_URL` var + `RR_KEY` secret and redeploy |
+| `/resume/rr/health` returns `unauthorized` | RR key rejected by RR backend | Check `data.http_status` (`401/403`) | Rotate/reissue RR key and update Worker secret `RR_KEY` |
+| `/resume/rr/health` returns `endpoint_not_found` | Health path mismatch for RR deployment | Check `data.attempted_paths` | Set `RR_HEALTH_PATH` to a valid endpoint path and redeploy |
 | `/gmail/poll` returns `ok:true` but `scanned=0` | Query too narrow (label mismatch / mailbox visibility) | Inspect `data.query_used` in poll response | Temporarily set `GMAIL_QUERY` to `in:anywhere newer_than:7d`, or call `/gmail/poll` with body override `{ "query":"in:anywhere newer_than:7d","max_per_run":50 }` |
 | D1 errors / missing migrations | DB binding wrong or migrations not applied | Endpoint errors and `wrangler d1 list` | Bind D1 as `DB` and apply `001_init.sql` + `002_gmail.sql` |
 | CORS/origin failures | `ALLOW_ORIGIN` not set for UI origin | Check response headers and browser console | Set `ALLOW_ORIGIN` to Pages URL in prod (`https://getjobs.shivanand-shah94.workers.dev`) |
@@ -215,6 +244,8 @@ PRAGMA table_info(jobs);
 ## G) Verification checklist (5-10 min)
 1. Run `wrangler whoami`, `wrangler secret list`, `wrangler d1 list`.
 2. Confirm secret names exist: `API_KEY`, `UI_KEY`, `GMAIL_CLIENT_SECRET`, `TOKEN_ENC_KEY`.
-3. Confirm vars exist: `ALLOW_ORIGIN`, `GMAIL_CLIENT_ID`, `GMAIL_QUERY`, `GMAIL_MAX_PER_RUN`.
-4. Run `/health`, `/jobs?limit=1`, `/gmail/auth`, `/gmail/poll` checks.
-5. If failures occur, use troubleshooting table and retest.
+3. Confirm vars exist: `ALLOW_ORIGIN`, `GMAIL_CLIENT_ID`, `GMAIL_QUERY`, `GMAIL_MAX_PER_RUN` (and `RR_BASE_URL` if using RR bridge).
+4. Confirm secrets exist: `API_KEY`, `UI_KEY`, `GMAIL_CLIENT_SECRET`, `TOKEN_ENC_KEY` (and `RR_KEY` if using RR bridge).
+5. Run `/health`, `/jobs?limit=1`, `/gmail/auth`, `/gmail/poll` checks.
+6. If RR bridge is enabled, run `/resume/rr/health`.
+7. If failures occur, use troubleshooting table and retest.
