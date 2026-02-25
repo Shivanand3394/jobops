@@ -559,18 +559,23 @@ function renderDetail(j) {
 
           <div class="resume-step">
             <div class="h3">Profile</div>
-            <div class="muted tiny">Select and save the profile used for generation.</div>
+            <div class="muted tiny">Select the profile used for generation. Open advanced editor only when needed.</div>
             <label class="muted tiny">Profile</label>
             <select id="appProfileSelect" style="margin-top:6px;"></select>
-            <label class="muted tiny" style="margin-top:8px;">Profile ID</label>
-            <input id="appProfileId" placeholder="primary" style="margin-top:6px;" />
-            <label class="muted tiny" style="margin-top:8px;">Profile name</label>
-            <input id="appProfileName" placeholder="Primary" style="margin-top:6px;" />
-            <label class="muted tiny" style="margin-top:8px;">Profile JSON</label>
-            <textarea id="appProfileJson" rows="5" style="margin-top:6px;" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea>
-            <div class="row" style="justify-content:flex-start; margin-top:8px;">
-              <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
-            </div>
+            <details id="appProfileAdvanced" class="advanced-panel">
+              <summary>Advanced profile editor</summary>
+              <div class="advanced-body">
+                <label class="muted tiny" style="margin-top:8px;">Profile ID</label>
+                <input id="appProfileId" placeholder="primary" style="margin-top:6px;" />
+                <label class="muted tiny" style="margin-top:8px;">Profile name</label>
+                <input id="appProfileName" placeholder="Primary" style="margin-top:6px;" />
+                <label class="muted tiny" style="margin-top:8px;">Profile JSON</label>
+                <textarea id="appProfileJson" rows="6" style="margin-top:6px;" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea>
+                <div class="row" style="justify-content:flex-start; margin-top:8px;">
+                  <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>

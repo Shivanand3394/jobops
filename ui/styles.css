@@ -284,6 +284,25 @@ body{
   width:100%;
 }
 
+.advanced-panel{
+  margin-top:10px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background: rgba(15,26,48,.55);
+  padding:8px;
+}
+
+.advanced-panel summary{
+  cursor:pointer;
+  font-size:12px;
+  color:var(--muted);
+  user-select:none;
+}
+
+.advanced-body{
+  margin-top:6px;
+}
+
 .kw-grid{
   display:flex;
   flex-wrap:wrap;
