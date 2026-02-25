@@ -1051,6 +1051,13 @@ function resumeProfilesOptionsHtml() {
     .join("");
 }
 
+function syncResumeProfileSelectUi_() {
+  const profileSelect = $("appProfileSelect");
+  if (!profileSelect) return;
+  profileSelect.innerHTML = resumeProfilesOptionsHtml() || `<option value="primary">Primary</option>`;
+  profileSelect.value = state.activeProfileId || "primary";
+}
+
 async function loadResumeProfileDetail(profileId, { silent = false } = {}) {
   const id = String(profileId || "").trim();
   if (!id) return;
@@ -1094,6 +1101,8 @@ async function saveResumeProfileFromUi() {
     await loadResumeProfiles();
     state.activeProfileId = id;
     state.profileJsonDraftById[id] = JSON.stringify(profileObj, null, 2);
+    syncResumeProfileSelectUi_();
+    await loadResumeProfileDetail(id, { silent: true });
     toast("Profile saved");
   } catch (e) {
     toast("Profile save failed: " + e.message);
