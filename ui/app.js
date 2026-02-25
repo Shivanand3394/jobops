@@ -1,6 +1,7 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
+const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
 
 function getCfg() {
   return {
@@ -15,6 +16,25 @@ function setCfg({ apiBase, uiKey }) {
 }
 
 const $ = (id) => document.getElementById(id);
+
+function loadLastRecoveryRun_() {
+  try {
+    const raw = localStorage.getItem(TRACKING_RECOVERY_LAST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === "object") ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastRecoveryRun_(snapshot) {
+  try {
+    localStorage.setItem(TRACKING_RECOVERY_LAST_KEY, JSON.stringify(snapshot || {}));
+  } catch {
+    // ignore local storage write failure
+  }
+}
 
 const state = {
   view: "jobs",
@@ -32,6 +52,7 @@ const state = {
   selectedAtsKeywords: [],
   activeJob: null,
   trackingFiltersOpen: false,
+  lastRecoveryRun: loadLastRecoveryRun_(),
 };
 const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
@@ -611,6 +632,7 @@ function renderTracking() {
   const scopeLabel = scope === "active_only" ? "active statuses" : "all statuses";
   const windowLabel = windowMs ? `${windowDays}d` : "all time";
   $("trackingHint").textContent = `${filtered.length} jobs on board (${scopeLabel}, window ${windowLabel}, cap ${perColumn}/column)`;
+  renderTrackingRecoverySummary_();
 
   document.querySelectorAll("[data-track-action][data-track-key]").forEach((el) => {
     el.addEventListener("click", async (ev) => {
@@ -621,6 +643,33 @@ function renderTracking() {
       await handleTrackingAction(action, key);
     });
   });
+}
+
+function renderTrackingRecoverySummary_() {
+  const el = $("trackingRecoverySummary");
+  if (!el) return;
+
+  const last = state.lastRecoveryRun;
+  if (!last || !Number(last.ts)) {
+    el.textContent = "Recovery Snapshot: no manual recovery run in this browser yet.";
+    return;
+  }
+
+  const sourceSummary = Array.isArray(last.source_summary) ? last.source_summary : [];
+  const sourceText = sourceSummary.length
+    ? sourceSummary
+      .slice(0, 3)
+      .map((s) => {
+        const src = String(s.source_domain || "unknown");
+        const recovered = Number(s.recovered || 0);
+        const manual = Number(s.manual_needed || 0);
+        const needsAi = Number(s.needs_ai || 0);
+        return `${src}: rec ${recovered}, manual ${manual}, ai ${needsAi}`;
+      })
+      .join(" | ")
+    : "source summary unavailable";
+
+  el.textContent = `Recovery Snapshot (${fmtTsWithAbs(last.ts)}): fetch processed ${fmtNum(last.fetch_processed || 0)}, fetch updated ${fmtNum(last.fetch_updated || 0)}, rescore updated ${fmtNum(last.rescore_updated || 0)}/${fmtNum(last.rescore_picked || 0)}. ${sourceText}`;
 }
 
 async function loadJobs(opts = {}) {
@@ -1949,6 +1998,18 @@ async function recoverMissingDetailsFromTracking(limit = 60) {
     const b = backfillRes?.data || {};
     const r = rescoreRes?.data || {};
     const sourceSummary = Array.isArray(b.source_summary) ? b.source_summary : [];
+    const snapshot = {
+      ts: Date.now(),
+      fetch_processed: Number(b.processed || 0),
+      fetch_updated: Number(b.updated_count || 0),
+      rescore_updated: Number(r.updated || 0),
+      rescore_picked: Number(r.picked || 0),
+      source_summary: sourceSummary,
+    };
+    state.lastRecoveryRun = snapshot;
+    saveLastRecoveryRun_(snapshot);
+    renderTrackingRecoverySummary_();
+
     const sourceText = sourceSummary.length
       ? sourceSummary
         .slice(0, 4)

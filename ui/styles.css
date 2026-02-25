@@ -423,6 +423,14 @@ body{
   overflow:auto;
 }
 
+.tracking-summary{
+  margin: 0 12px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(17,28,51,.5);
+}
+
 .tracking-needs{
   border:1px solid rgba(245,158,11,.45);
   border-radius:14px;
