@@ -986,6 +986,7 @@ function renderDetail(j) {
               <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
               <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
               <button class="btn btn-secondary" id="btnDownloadRrJson" onclick="downloadRrJson()">Download RR JSON</button>
+              <button class="btn btn-secondary" id="btnPushRr" onclick="pushToReactiveResume('${escapeHtml(j.job_key)}')">Push to Reactive Resume</button>
             </div>
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn btn-ghost" onclick="copyPackSummary()">Copy tailored summary</button>
@@ -1764,7 +1765,8 @@ async function hydrateApplicationPack(jobOrKey) {
 
 function syncRrDownloadUi_() {
   const btn = $("btnDownloadRrJson");
-  if (!btn) return;
+  const pushBtn = $("btnPushRr");
+  if (!btn && !pushBtn) return;
   const section = $("appPackSection");
   const rrJson = String(section?.dataset?.rrJson || "{}").trim();
   const hasPack = rrJson && rrJson !== "{}";
@@ -1781,10 +1783,18 @@ function syncRrDownloadUi_() {
       : "RR import checks failed.";
   }
 
-  btn.disabled = disabled;
-  btn.style.opacity = disabled ? "0.6" : "1";
-  btn.style.pointerEvents = disabled ? "none" : "auto";
-  btn.title = disabled ? reason : "Download Reactive Resume JSON";
+  if (btn) {
+    btn.disabled = disabled;
+    btn.style.opacity = disabled ? "0.6" : "1";
+    btn.style.pointerEvents = disabled ? "none" : "auto";
+    btn.title = disabled ? reason : "Download Reactive Resume JSON";
+  }
+  if (pushBtn) {
+    pushBtn.disabled = disabled;
+    pushBtn.style.opacity = disabled ? "0.6" : "1";
+    pushBtn.style.pointerEvents = disabled ? "none" : "auto";
+    pushBtn.title = disabled ? reason : "Push RR payload to Reactive Resume";
+  }
 }
 
 async function copyPackSummary() {
@@ -1822,6 +1832,26 @@ function downloadRrJson() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+async function pushToReactiveResume(jobKey) {
+  try {
+    spin(true);
+    const profileId = String($("appProfileId")?.value || state.activeProfileId || "").trim();
+    const body = {};
+    if (profileId) body.profile_id = profileId;
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/push-reactive-resume`, {
+      method: "POST",
+      body,
+    });
+    const d = res?.data || {};
+    const rrId = String(d.rr_resume_id || "").trim();
+    toast(rrId ? `Pushed to Reactive Resume (${rrId})` : "Pushed to Reactive Resume");
+  } catch (e) {
+    toast("Push to Reactive Resume failed: " + e.message);
+  } finally {
+    spin(false);
+  }
 }
 
 async function updateStatus(jobKey, status) {
@@ -2270,3 +2300,4 @@ window.generateApplicationPack = generateApplicationPack;
 window.copyPackSummary = copyPackSummary;
 window.copyPackBullets = copyPackBullets;
 window.downloadRrJson = downloadRrJson;
+window.pushToReactiveResume = pushToReactiveResume;

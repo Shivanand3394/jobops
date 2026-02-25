@@ -1151,6 +1151,91 @@ export default {
       }
 
       // ============================
+      // UI: Push application pack to Reactive Resume
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/push-reactive-resume") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const body = await request.json().catch(() => ({}));
+        const profileId = String(body.profile_id || body.profileId || "").trim();
+        const row = profileId
+          ? await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ? AND profile_id = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey, profileId).first()
+          : await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey).first();
+
+        if (!row) {
+          return json_({ ok: false, error: "Application pack not found. Generate pack first." }, env, 404);
+        }
+
+        const packJson = safeJsonParse_(row.pack_json) || {};
+        const rrExport = ensureReactiveResumeExportContract_(
+          safeJsonParse_(row.rr_export_json) || {},
+          {
+            jobKey: row.job_key,
+            templateId: String(packJson?.controls?.template_id || ""),
+          }
+        );
+        if (!Boolean(rrExport?.metadata?.import_ready)) {
+          return json_({
+            ok: false,
+            error: "RR export is not import-ready",
+            data: {
+              rr_export_import_errors: Array.isArray(rrExport?.metadata?.import_errors)
+                ? rrExport.metadata.import_errors
+                : [],
+            }
+          }, env, 400);
+        }
+
+        const rrPush = await pushReactiveResumeImport_(env, {
+          rrExport,
+          titleHint: `${String(packJson?.extracted?.role_title || "").trim()} ${String(packJson?.extracted?.company || "").trim()}`.trim(),
+        });
+        if (!rrPush.ok) {
+          return json_({
+            ok: false,
+            error: rrPush.error || "Reactive Resume push failed",
+            data: {
+              http_status: rrPush.http_status,
+              import_path: rrPush.import_path || null,
+            },
+          }, env, rrPush.http_status && rrPush.http_status >= 400 ? rrPush.http_status : 502);
+        }
+
+        await logEvent_(env, "RR_PUSH", jobKey, {
+          profile_id: row.profile_id,
+          draft_id: row.id,
+          rr_resume_id: rrPush.resume_id || null,
+          import_path: rrPush.import_path,
+          http_status: rrPush.http_status,
+          ts: Date.now(),
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: row.job_key,
+            profile_id: row.profile_id,
+            draft_id: row.id,
+            rr_resume_id: rrPush.resume_id || null,
+            rr_import_path: rrPush.import_path,
+            rr_http_status: rrPush.http_status,
+            pushed_at: Date.now(),
+          }
+        }, env, 200);
+      }
+
+      // ============================
       // UI: Targets list
       // ============================
       if (path === "/targets" && request.method === "GET") {
@@ -4090,6 +4175,64 @@ async function probeReactiveResume_(env) {
   }
 
   return out;
+}
+
+async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {}) {
+  const rrBase = String(env?.RR_BASE_URL || "").trim().replace(/\/+$/, "");
+  const rrKey = String(env?.RR_KEY || "").trim();
+  const importPath = normalizeHealthPath_(String(env?.RR_IMPORT_PATH || "/api/openapi/resumes/import").trim() || "/api/openapi/resumes/import");
+  const timeoutMs = clampInt_(env?.RR_TIMEOUT_MS || 6000, 1000, 20000);
+  if (!rrBase || !rrKey) {
+    return { ok: false, error: "Reactive Resume is not configured (missing RR_BASE_URL or RR_KEY)." };
+  }
+
+  const payload = {
+    data: rrExport,
+  };
+  const safeTitle = String(titleHint || "").trim();
+  if (safeTitle) payload.name = safeTitle.slice(0, 120);
+
+  try {
+    const res = await fetchWithTimeout_(`${rrBase}${importPath}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "x-api-key": rrKey,
+      },
+      body: JSON.stringify(payload),
+    }, timeoutMs);
+
+    const rawText = await res.text();
+    let parsed = null;
+    try { parsed = rawText ? JSON.parse(rawText) : null; } catch { parsed = null; }
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        http_status: res.status,
+        import_path: importPath,
+        error: parsed?.message || parsed?.error || `Reactive Resume import failed (HTTP ${res.status})`,
+      };
+    }
+
+    const resumeId =
+      String(parsed?.id || parsed?.resumeId || parsed?.resume_id || parsed?.data?.id || parsed?.data?.resumeId || "").trim() ||
+      (typeof parsed === "string" ? parsed.trim() : "");
+
+    return {
+      ok: true,
+      http_status: res.status,
+      import_path: importPath,
+      resume_id: resumeId || null,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      import_path: importPath,
+      error: String(e?.message || e || "Reactive Resume request failed").slice(0, 200),
+    };
+  }
 }
 
 function normalizeHealthPath_(p) {

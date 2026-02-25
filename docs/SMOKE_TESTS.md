@@ -655,3 +655,26 @@ Expected:
   - `endpoint_not_found` (RR reachable, health path mismatch; set `RR_HEALTH_PATH`)
   - `unreachable` (network/DNS/connectivity)
   - `missing_config` (missing `RR_BASE_URL` or `RR_KEY`)
+
+## 26) Push application pack to Reactive Resume (UI key)
+Prerequisite: pack exists and `rr_export_import_ready=true`.
+
+### curl
+```bash
+curl -sS "$BASE_URL/jobs/$JOB_KEY/push-reactive-resume" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"profile_id":"primary"}'
+```
+
+### PowerShell
+```powershell
+$body = @{ profile_id = "primary" } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/push-reactive-resume" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- `ok:true`
+- `data.rr_http_status` is 2xx
+- `data.rr_import_path` matches configured import path

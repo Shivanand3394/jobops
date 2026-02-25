@@ -33,6 +33,7 @@
     "RSS_BLOCK_KEYWORDS": "",
     "RR_BASE_URL": "https://rxresu.me",
     "RR_HEALTH_PATH": "/api/health",
+    "RR_IMPORT_PATH": "/api/openapi/resumes/import",
     "RR_TIMEOUT_MS": "6000"
   },
   "triggers": {

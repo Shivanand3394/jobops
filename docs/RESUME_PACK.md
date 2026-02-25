@@ -30,10 +30,12 @@ Reactive Resume is not a runtime dependency; it is an export format target.
 - `POST /jobs/:job_key/generate-application-pack`
 - `GET /jobs/:job_key/application-pack`
 - `GET /resume/rr/health` (safe Reactive Resume connectivity probe)
+- `POST /jobs/:job_key/push-reactive-resume` (push RR payload to RR API)
 
 ## Optional Reactive Resume runtime bridge vars
 - `RR_BASE_URL` (var): Reactive Resume API base URL (e.g. `https://rr.example.com`)
 - `RR_HEALTH_PATH` (var, optional): health probe path (default `/api/health`)
+- `RR_IMPORT_PATH` (var, optional): import path (default `/api/openapi/resumes/import`)
 - `RR_TIMEOUT_MS` (var, optional): probe timeout in ms (default `6000`)
 - `RR_KEY` (secret): API key used server-side by Worker only
 
@@ -122,6 +124,27 @@ Expected:
 - `ok: true`
 - `data.status` one of: `ready`, `unauthorized`, `endpoint_not_found`, `unreachable`, `missing_config`
 - no secrets are returned
+
+## Example: push pack to Reactive Resume (safe server-side key use)
+PowerShell:
+```powershell
+$body = @{ profile_id = "primary" } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/push-reactive-resume" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+curl:
+```bash
+curl -sS "$BASE_URL/jobs/$JOB_KEY/push-reactive-resume" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"profile_id":"primary"}'
+```
+
+Expected:
+- `ok: true`
+- `data.rr_resume_id` present when RR returns an identifier
+- no RR secret exposed to UI
 
 Expected on fetch:
 - `data.rr_export_contract.id = "jobops.rr_export.v1"`

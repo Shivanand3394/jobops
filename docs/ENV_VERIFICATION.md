@@ -19,6 +19,7 @@ Source: `worker/wrangler.jsonc`
   - `RSS_BLOCK_KEYWORDS`
   - `RR_BASE_URL`
   - `RR_HEALTH_PATH`
+  - `RR_IMPORT_PATH`
   - `RR_TIMEOUT_MS`
   - `RECOVERY_ENABLED`
   - `RECOVER_BACKFILL_LIMIT`
@@ -37,6 +38,7 @@ Source: `worker/wrangler.jsonc`
 - `vars.RSS_BLOCK_KEYWORDS`: optional (comma/newline-separated keywords)
 - `vars.RR_BASE_URL`: optional (required for Worker -> Reactive Resume bridge health checks)
 - `vars.RR_HEALTH_PATH`: optional (default `/api/health`)
+- `vars.RR_IMPORT_PATH`: optional (default `/api/openapi/resumes/import`)
 - `vars.RR_TIMEOUT_MS`: optional (default `6000`)
 - `vars.RECOVERY_ENABLED`: optional (`1` default, set `0` to disable cron recovery)
 - `vars.RECOVER_BACKFILL_LIMIT`: optional (default `30`)
@@ -70,6 +72,7 @@ Source files:
 | `RR_KEY` | Secret | Worker-side Reactive Resume probe (`/resume/rr/health`) | Probe returns `missing_config` / `unauthorized` |
 | `RR_BASE_URL` | Var | Reactive Resume base URL used by Worker probe | Probe returns `missing_config` / `unreachable` |
 | `RR_HEALTH_PATH` | Var | Optional RR health path override | Probe returns `endpoint_not_found` |
+| `RR_IMPORT_PATH` | Var | Path used by push endpoint `/jobs/:job_key/push-reactive-resume` | Push returns endpoint/path error |
 | `RR_TIMEOUT_MS` | Var | Optional timeout for RR probe | Probe returns `unreachable` on slow/blocked network |
 | `RECOVERY_ENABLED` | Var | Enables/disables cron recovery sequence (backfill + rescore-existing-jd) | No periodic recovery events/counters if disabled |
 | `RECOVER_BACKFILL_LIMIT` | Var | Cron limit for `/jobs/backfill-missing` equivalent | Too few/too many jobs retried per run |
@@ -224,6 +227,7 @@ Expected:
 | `/resume/rr/health` returns `missing_config` | `RR_BASE_URL` or `RR_KEY` missing | Call `/resume/rr/health` and inspect `data.configured` | Set `RR_BASE_URL` var + `RR_KEY` secret and redeploy |
 | `/resume/rr/health` returns `unauthorized` | RR key rejected by RR backend | Check `data.http_status` (`401/403`) | Rotate/reissue RR key and update Worker secret `RR_KEY` |
 | `/resume/rr/health` returns `endpoint_not_found` | Health path mismatch for RR deployment | Check `data.attempted_paths` | Set `RR_HEALTH_PATH` to a valid endpoint path and redeploy |
+| `/jobs/:job_key/push-reactive-resume` returns import path error | RR import endpoint path mismatch | Inspect response `data.import_path` and HTTP status | Set `RR_IMPORT_PATH` var to the correct RR import route and redeploy |
 | `/gmail/poll` returns `ok:true` but `scanned=0` | Query too narrow (label mismatch / mailbox visibility) | Inspect `data.query_used` in poll response | Temporarily set `GMAIL_QUERY` to `in:anywhere newer_than:7d`, or call `/gmail/poll` with body override `{ "query":"in:anywhere newer_than:7d","max_per_run":50 }` |
 | D1 errors / missing migrations | DB binding wrong or migrations not applied | Endpoint errors and `wrangler d1 list` | Bind D1 as `DB` and apply `001_init.sql` + `002_gmail.sql` |
 | CORS/origin failures | `ALLOW_ORIGIN` not set for UI origin | Check response headers and browser console | Set `ALLOW_ORIGIN` to Pages URL in prod (`https://getjobs.shivanand-shah94.workers.dev`) |
