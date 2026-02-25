@@ -1138,6 +1138,18 @@ export default {
         const rrLastPushError = draftSchema.hasRrPushFields
           ? String(row.rr_last_push_error || "").trim()
           : "";
+        const rrPdfUrl = draftSchema.hasRrPdfFields
+          ? (String(row.rr_pdf_url || "").trim() || null)
+          : null;
+        const rrPdfLastExportedAt = draftSchema.hasRrPdfFields
+          ? numOrNull_(row.rr_pdf_last_exported_at)
+          : null;
+        const rrPdfLastExportStatus = draftSchema.hasRrPdfFields
+          ? (String(row.rr_pdf_last_export_status || "").trim() || null)
+          : null;
+        const rrPdfLastExportError = draftSchema.hasRrPdfFields
+          ? String(row.rr_pdf_last_export_error || "").trim()
+          : "";
 
         return json_({
           ok: true,
@@ -1162,6 +1174,10 @@ export default {
             rr_last_pushed_at: rrLastPushedAt,
             rr_last_push_status: rrLastPushStatus,
             rr_last_push_error: rrLastPushError,
+            rr_pdf_url: rrPdfUrl,
+            rr_pdf_last_exported_at: rrPdfLastExportedAt,
+            rr_pdf_last_export_status: rrPdfLastExportStatus,
+            rr_pdf_last_export_error: rrPdfLastExportError,
             rr_base_url: getReactiveResumeBaseUrl_(env),
             updated_at: row.updated_at,
           }
@@ -1288,6 +1304,184 @@ export default {
             rr_last_push_status: "SUCCESS",
             rr_base_url: getReactiveResumeBaseUrl_(env),
             pushed_at: pushedAt,
+          }
+        }, env, 200);
+      }
+
+      // ============================
+      // UI: Export Reactive Resume PDF
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/export-reactive-resume-pdf") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const draftSchema = await getResumeDraftSchema_(env);
+
+        const body = await request.json().catch(() => ({}));
+        const profileId = String(body.profile_id || body.profileId || "").trim();
+        const force = Boolean(body.force);
+        const row = profileId
+          ? await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ? AND profile_id = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey, profileId).first()
+          : await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey).first();
+
+        if (!row) {
+          return json_({ ok: false, error: "Application pack not found. Generate pack first." }, env, 404);
+        }
+
+        const packJson = safeJsonParse_(row.pack_json) || {};
+        const rrExport = ensureReactiveResumeExportContract_(
+          safeJsonParse_(row.rr_export_json) || {},
+          {
+            jobKey: row.job_key,
+            templateId: String(packJson?.controls?.template_id || ""),
+          }
+        );
+        if (!Boolean(rrExport?.metadata?.import_ready)) {
+          return json_({
+            ok: false,
+            error: "RR export is not import-ready",
+            data: {
+              rr_export_import_errors: Array.isArray(rrExport?.metadata?.import_errors)
+                ? rrExport.metadata.import_errors
+                : [],
+            }
+          }, env, 400);
+        }
+
+        let rrResumeId = draftSchema.hasRrPushFields
+          ? String(row.rr_resume_id || "").trim()
+          : "";
+        if (!rrResumeId || force) {
+          const rrPush = await pushReactiveResume_(env, {
+            rrExport,
+            titleHint: `${String(packJson?.extracted?.role_title || "").trim()} ${String(packJson?.extracted?.company || "").trim()}`.trim(),
+            resumeId: rrResumeId,
+          });
+          const pushTs = Date.now();
+          if (!rrPush.ok) {
+            if (draftSchema.hasRrPushFields) {
+              await env.DB.prepare(`
+                UPDATE resume_drafts
+                SET rr_last_pushed_at = ?, rr_last_push_status = ?, rr_last_push_error = ?, updated_at = ?
+                WHERE id = ?;
+              `.trim()).bind(
+                pushTs,
+                "ERROR",
+                String(rrPush.error || "Reactive Resume push failed").slice(0, 1000),
+                pushTs,
+                row.id
+              ).run();
+            }
+            if (draftSchema.hasRrPdfFields) {
+              await env.DB.prepare(`
+                UPDATE resume_drafts
+                SET rr_pdf_last_exported_at = ?, rr_pdf_last_export_status = ?, rr_pdf_last_export_error = ?, updated_at = ?
+                WHERE id = ?;
+              `.trim()).bind(
+                pushTs,
+                "ERROR",
+                String(rrPush.error || "Reactive Resume push failed before PDF export").slice(0, 1000),
+                pushTs,
+                row.id
+              ).run();
+            }
+            return json_({
+              ok: false,
+              error: rrPush.error || "Reactive Resume push failed",
+              data: {
+                rr_push_mode: rrPush.mode || null,
+                http_status: rrPush.http_status || null,
+              },
+            }, env, rrPush.http_status && rrPush.http_status >= 400 ? rrPush.http_status : 502);
+          }
+          rrResumeId = String(rrPush.resume_id || "").trim();
+          if (draftSchema.hasRrPushFields) {
+            await env.DB.prepare(`
+              UPDATE resume_drafts
+              SET rr_resume_id = ?, rr_last_pushed_at = ?, rr_last_push_status = ?, rr_last_push_error = NULL, updated_at = ?
+              WHERE id = ?;
+            `.trim()).bind(
+              rrResumeId || null,
+              pushTs,
+              "SUCCESS",
+              pushTs,
+              row.id
+            ).run();
+          }
+        }
+
+        if (!rrResumeId) {
+          return json_({ ok: false, error: "No Reactive Resume id available for PDF export." }, env, 400);
+        }
+
+        const rrPdf = await exportReactiveResumePdf_(env, { resumeId: rrResumeId });
+        const exportTs = Date.now();
+        if (!rrPdf.ok) {
+          if (draftSchema.hasRrPdfFields) {
+            await env.DB.prepare(`
+              UPDATE resume_drafts
+              SET rr_pdf_last_exported_at = ?, rr_pdf_last_export_status = ?, rr_pdf_last_export_error = ?, updated_at = ?
+              WHERE id = ?;
+            `.trim()).bind(
+              exportTs,
+              "ERROR",
+              String(rrPdf.error || "Reactive Resume PDF export failed").slice(0, 1000),
+              exportTs,
+              row.id
+            ).run();
+          }
+          return json_({
+            ok: false,
+            error: rrPdf.error || "Reactive Resume PDF export failed",
+            data: {
+              rr_resume_id: rrResumeId,
+              http_status: rrPdf.http_status || null,
+            },
+          }, env, rrPdf.http_status && rrPdf.http_status >= 400 ? rrPdf.http_status : 502);
+        }
+
+        if (draftSchema.hasRrPdfFields) {
+          await env.DB.prepare(`
+            UPDATE resume_drafts
+            SET rr_pdf_url = ?, rr_pdf_last_exported_at = ?, rr_pdf_last_export_status = ?, rr_pdf_last_export_error = NULL, updated_at = ?
+            WHERE id = ?;
+          `.trim()).bind(
+            String(rrPdf.pdf_url || "").trim() || null,
+            exportTs,
+            "SUCCESS",
+            exportTs,
+            row.id
+          ).run();
+        }
+
+        await logEvent_(env, "RR_PDF_EXPORTED", jobKey, {
+          profile_id: row.profile_id,
+          draft_id: row.id,
+          rr_resume_id: rrResumeId,
+          http_status: rrPdf.http_status || null,
+          ts: exportTs,
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: row.job_key,
+            profile_id: row.profile_id,
+            draft_id: row.id,
+            rr_resume_id: rrResumeId,
+            rr_pdf_url: String(rrPdf.pdf_url || "").trim() || null,
+            rr_pdf_last_exported_at: exportTs,
+            rr_pdf_last_export_status: "SUCCESS",
+            rr_base_url: getReactiveResumeBaseUrl_(env),
           }
         }, env, 200);
       }
@@ -1748,9 +1942,14 @@ async function getResumeDraftSchema_(env) {
         names.has("rr_last_pushed_at") &&
         names.has("rr_last_push_status") &&
         names.has("rr_last_push_error"),
+      hasRrPdfFields:
+        names.has("rr_pdf_url") &&
+        names.has("rr_pdf_last_exported_at") &&
+        names.has("rr_pdf_last_export_status") &&
+        names.has("rr_pdf_last_export_error"),
     };
   } catch {
-    return { hasRrPushFields: false };
+    return { hasRrPushFields: false, hasRrPdfFields: false };
   }
 }
 
@@ -4253,6 +4452,65 @@ async function probeReactiveResume_(env) {
 function getReactiveResumeBaseUrl_(env) {
   const rrBase = String(env?.RR_BASE_URL || "").trim().replace(/\/+$/, "");
   return rrBase || null;
+}
+
+async function exportReactiveResumePdf_(env, { resumeId } = {}) {
+  const rrBase = getReactiveResumeBaseUrl_(env);
+  const rrKey = String(env?.RR_KEY || "").trim();
+  const timeoutMs = clampInt_(env?.RR_TIMEOUT_MS || 6000, 1000, 20000);
+  const rid = String(resumeId || "").trim();
+  if (!rrBase || !rrKey) {
+    return { ok: false, error: "Reactive Resume is not configured (missing RR_BASE_URL or RR_KEY)." };
+  }
+  if (!rid) {
+    return { ok: false, error: "Missing resume id for PDF export." };
+  }
+
+  const pdfPath = normalizeHealthPath_(`/api/openapi/resumes/${encodeURIComponent(rid)}/pdf`);
+  try {
+    const res = await fetchWithTimeout_(`${rrBase}${pdfPath}`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json, text/plain, */*",
+        "x-api-key": rrKey,
+      },
+    }, timeoutMs);
+
+    const rawText = await res.text();
+    let parsed = null;
+    try { parsed = rawText ? JSON.parse(rawText) : null; } catch { parsed = null; }
+    if (!res.ok) {
+      return {
+        ok: false,
+        http_status: res.status,
+        error: parsed?.message || parsed?.error || `Reactive Resume PDF export failed (HTTP ${res.status})`,
+      };
+    }
+
+    const pdfUrl = String(
+      parsed?.url ||
+      parsed?.pdf_url ||
+      parsed?.data?.url ||
+      parsed?.data?.pdf_url ||
+      ""
+    ).trim();
+    if (!pdfUrl) {
+      return { ok: false, http_status: res.status, error: "Reactive Resume PDF URL missing in response." };
+    }
+
+    return {
+      ok: true,
+      http_status: res.status,
+      resume_id: rid,
+      pdf_url: pdfUrl,
+      export_path: pdfPath,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: String(e?.message || e || "Reactive Resume PDF export failed").slice(0, 200),
+    };
+  }
 }
 
 async function pushReactiveResume_(env, { rrExport, titleHint = "", resumeId = "" } = {}) {

@@ -934,6 +934,8 @@ function renderDetail(j) {
           <div class="k">RR push status</div><div class="v" id="appRrPushStatus">-</div>
           <div class="k">RR last pushed</div><div class="v" id="appRrLastPushed">-</div>
           <div class="k">RR dashboard</div><div class="v"><a class="muted" id="appRrDashboardLink" href="#" target="_blank" rel="noopener">-</a></div>
+          <div class="k">RR PDF status</div><div class="v" id="appRrPdfStatus">-</div>
+          <div class="k">RR PDF exported</div><div class="v" id="appRrPdfExported">-</div>
           <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
           <div class="k">Keyword selection</div><div class="v">
             <div class="row" style="justify-content:flex-start; margin-top:0;">
@@ -991,6 +993,8 @@ function renderDetail(j) {
               <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
               <button class="btn btn-secondary" id="btnDownloadRrJson" onclick="downloadRrJson()">Download RR JSON</button>
               <button class="btn btn-secondary" id="btnPushRr" onclick="pushToReactiveResume('${escapeHtml(j.job_key)}')">Push to Reactive Resume</button>
+              <button class="btn btn-secondary" id="btnGenerateRrPdf" onclick="exportReactiveResumePdf('${escapeHtml(j.job_key)}', false)">Generate PDF</button>
+              <button class="btn btn-secondary" id="btnDownloadRrPdf" onclick="downloadLatestRrPdf()">Download latest PDF</button>
             </div>
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn btn-ghost" onclick="copyPackSummary()">Copy tailored summary</button>
@@ -1714,6 +1718,10 @@ async function hydrateApplicationPack(jobOrKey) {
     const rrPushStatus = String(d?.rr_last_push_status || "").trim();
     const rrLastPushedAt = Number(d?.rr_last_pushed_at || 0);
     const rrLastPushError = String(d?.rr_last_push_error || "").trim();
+    const rrPdfUrl = String(d?.rr_pdf_url || "").trim();
+    const rrPdfExportedAt = Number(d?.rr_pdf_last_exported_at || 0);
+    const rrPdfStatus = String(d?.rr_pdf_last_export_status || "").trim();
+    const rrPdfError = String(d?.rr_pdf_last_export_error || "").trim();
     const rrBaseUrl = String(d?.rr_base_url || "").trim();
     $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
     $("appAtsScore").textContent = String(ats.score ?? "-");
@@ -1739,6 +1747,11 @@ async function hydrateApplicationPack(jobOrKey) {
         $("appRrDashboardLink").textContent = "-";
       }
     }
+    if ($("appRrPdfStatus")) {
+      const txt = rrPdfStatus || "-";
+      $("appRrPdfStatus").textContent = rrPdfError ? `${txt} (${rrPdfError})` : txt;
+    }
+    if ($("appRrPdfExported")) $("appRrPdfExported").textContent = rrPdfExportedAt ? fmtTsWithAbs(rrPdfExportedAt) : "-";
     $("appPackEmpty").textContent = rrImportReady
       ? "Application Pack loaded"
       : "Application Pack loaded with RR import warnings";
@@ -1747,6 +1760,7 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrJson = JSON.stringify(d?.rr_export_json || {}, null, 2);
     section.dataset.rrImportReady = rrImportReady ? "1" : "0";
     section.dataset.rrImportErrors = rrImportErrors.join(", ");
+    section.dataset.rrPdfUrl = rrPdfUrl;
 
     const controlTemplateId = String(controls.template_id || "").trim();
     if (controlTemplateId) state.activeTemplateId = controlTemplateId;
@@ -1780,12 +1794,15 @@ async function hydrateApplicationPack(jobOrKey) {
       $("appRrDashboardLink").href = "#";
       $("appRrDashboardLink").textContent = "-";
     }
+    if ($("appRrPdfStatus")) $("appRrPdfStatus").textContent = "-";
+    if ($("appRrPdfExported")) $("appRrPdfExported").textContent = "-";
     $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
     section.dataset.rrJson = "{}";
     section.dataset.rrImportReady = "0";
     section.dataset.rrImportErrors = "";
+    section.dataset.rrPdfUrl = "";
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
     syncRrDownloadUi_();
@@ -1797,9 +1814,12 @@ async function hydrateApplicationPack(jobOrKey) {
 function syncRrDownloadUi_() {
   const btn = $("btnDownloadRrJson");
   const pushBtn = $("btnPushRr");
-  if (!btn && !pushBtn) return;
+  const pdfBtn = $("btnDownloadRrPdf");
+  const genPdfBtn = $("btnGenerateRrPdf");
+  if (!btn && !pushBtn && !pdfBtn && !genPdfBtn) return;
   const section = $("appPackSection");
   const rrJson = String(section?.dataset?.rrJson || "{}").trim();
+  const rrPdfUrl = String(section?.dataset?.rrPdfUrl || "").trim();
   const hasPack = rrJson && rrJson !== "{}";
   const rrImportReady = String(section?.dataset?.rrImportReady || "") === "1";
   const rrImportErrors = String(section?.dataset?.rrImportErrors || "").trim();
@@ -1825,6 +1845,19 @@ function syncRrDownloadUi_() {
     pushBtn.style.opacity = disabled ? "0.6" : "1";
     pushBtn.style.pointerEvents = disabled ? "none" : "auto";
     pushBtn.title = disabled ? reason : "Push RR payload to Reactive Resume";
+  }
+  if (genPdfBtn) {
+    genPdfBtn.disabled = disabled;
+    genPdfBtn.style.opacity = disabled ? "0.6" : "1";
+    genPdfBtn.style.pointerEvents = disabled ? "none" : "auto";
+    genPdfBtn.title = disabled ? reason : "Generate Reactive Resume PDF";
+  }
+  if (pdfBtn) {
+    const pdfDisabled = !rrPdfUrl;
+    pdfBtn.disabled = pdfDisabled;
+    pdfBtn.style.opacity = pdfDisabled ? "0.6" : "1";
+    pdfBtn.style.pointerEvents = pdfDisabled ? "none" : "auto";
+    pdfBtn.title = pdfDisabled ? "Generate PDF first." : "Download latest exported PDF";
   }
 }
 
@@ -1863,6 +1896,36 @@ function downloadRrJson() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function downloadLatestRrPdf() {
+  const section = $("appPackSection");
+  const url = String(section?.dataset?.rrPdfUrl || "").trim();
+  if (!url) {
+    toast("No PDF yet. Generate PDF first.");
+    return;
+  }
+  window.open(url, "_blank", "noopener");
+}
+
+async function exportReactiveResumePdf(jobKey, force = false) {
+  try {
+    spin(true);
+    const profileId = String($("appProfileId")?.value || state.activeProfileId || "").trim();
+    const body = { force: Boolean(force) };
+    if (profileId) body.profile_id = profileId;
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/export-reactive-resume-pdf`, {
+      method: "POST",
+      body,
+    });
+    const d = res?.data || {};
+    toast(`PDF export ${d.rr_pdf_last_export_status || "SUCCESS"}`);
+    await hydrateApplicationPack(jobKey);
+  } catch (e) {
+    toast("PDF export failed: " + e.message);
+  } finally {
+    spin(false);
+  }
 }
 
 async function pushToReactiveResume(jobKey) {
@@ -2334,4 +2397,6 @@ window.generateApplicationPack = generateApplicationPack;
 window.copyPackSummary = copyPackSummary;
 window.copyPackBullets = copyPackBullets;
 window.downloadRrJson = downloadRrJson;
+window.downloadLatestRrPdf = downloadLatestRrPdf;
+window.exportReactiveResumePdf = exportReactiveResumePdf;
 window.pushToReactiveResume = pushToReactiveResume;

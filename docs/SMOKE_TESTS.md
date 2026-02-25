@@ -679,3 +679,49 @@ Expected:
 - `data.rr_http_status` is 2xx
 - `data.rr_import_path` matches configured import path
 - `data.rr_push_adapter` is `jobops_rr_export` or `rxresu_data_model_fallback`
+- `data.rr_push_mode` is:
+  - `updated_existing` when `rr_resume_id` already exists
+  - `imported_new` or `relinked_import` when a new import/relink was required
+
+## 27) Export Reactive Resume PDF (UI key)
+Purpose: export/download-ready PDF URL from Reactive Resume and persist metadata to `resume_drafts`.
+
+### curl
+```bash
+curl -sS "$BASE_URL/jobs/$JOB_KEY/export-reactive-resume-pdf" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-ui-key: $UI_KEY" \
+  -d '{"profile_id":"primary","force":false}'
+```
+
+### PowerShell
+```powershell
+$body = @{ profile_id = "primary"; force = $false } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/export-reactive-resume-pdf" -Method POST -ContentType "application/json" -Headers @{ "x-ui-key" = $UI_KEY } -Body $body | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- `ok:true`
+- `data.rr_pdf_url` is present (non-empty URL)
+- `data.rr_pdf_last_export_status = "SUCCESS"`
+
+## 28) Verify persisted RR linkage + PDF metadata (UI key)
+Purpose: ensure job pack now carries idempotent RR linkage + latest PDF export state.
+
+### curl
+```bash
+curl -sS "$BASE_URL/jobs/$JOB_KEY/application-pack?profile_id=primary" \
+  -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/application-pack?profile_id=primary" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- `data.rr_resume_id` populated
+- `data.rr_last_pushed_at` and `data.rr_last_push_status` populated after push
+- `data.rr_pdf_url` populated after PDF export
+- `data.rr_pdf_last_exported_at` and `data.rr_pdf_last_export_status` populated
