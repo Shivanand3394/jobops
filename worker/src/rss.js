@@ -1,4 +1,4 @@
-export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, normalizeFn }) {
+export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, normalizeFn, allowKeywords, blockKeywords }) {
   if (typeof ingestFn !== "function") throw new Error("ingestFn is required");
   if (typeof normalizeFn !== "function") throw new Error("normalizeFn is required");
 
@@ -10,12 +10,16 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
       .filter((x) => /^https?:\/\//i.test(x))
   );
   const maxItems = clampInt_(maxPerRun || env.RSS_MAX_PER_RUN || 25, 1, 200);
+  const allow = parseKeywordList_(allowKeywords ?? env.RSS_ALLOW_KEYWORDS);
+  const block = parseKeywordList_(blockKeywords ?? env.RSS_BLOCK_KEYWORDS);
 
   let feedsTotal = feedList.length;
   let feedsProcessed = 0;
   let feedsFailed = 0;
   let itemsListed = 0;
   let processed = 0;
+  let itemsFilteredAllow = 0;
+  let itemsFilteredBlock = 0;
   let skippedEmpty = 0;
   let blockedOrFailedFetch = 0;
   let insertedOrUpdated = 0;
@@ -64,6 +68,18 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
 
     for (const item of items) {
       if (processed >= maxItems) break;
+
+      const textForFilter = `${String(item?.title || "")}\n${String(item?.summary || "")}`.toLowerCase();
+      if (block.length && containsAnyKeyword_(textForFilter, block)) {
+        processed += 1;
+        itemsFilteredBlock += 1;
+        continue;
+      }
+      if (allow.length && !containsAnyKeyword_(textForFilter, allow)) {
+        processed += 1;
+        itemsFilteredAllow += 1;
+        continue;
+      }
 
       const rawUrls = collectItemUrls_(item);
       urlsFoundTotal += rawUrls.length;
@@ -118,6 +134,10 @@ export async function pollRssFeedsAndIngest_(env, { feeds, maxPerRun, ingestFn, 
     processed,
     skipped_empty: skippedEmpty,
     blocked_or_failed_fetch: blockedOrFailedFetch,
+    allow_keywords_count: allow.length,
+    block_keywords_count: block.length,
+    items_filtered_allow: itemsFilteredAllow,
+    items_filtered_block: itemsFilteredBlock,
     urls_found_total: urlsFoundTotal,
     urls_unique_total: urlsUnique.size,
     urls_job_domains_total: urlsJobDomainsTotal,
@@ -393,6 +413,31 @@ function normalizeSourceDomain_(value) {
   if (raw.includes("iimjobs")) return "iimjobs";
   if (raw.includes("naukri")) return "naukri";
   return raw.replace(/^www\./, "");
+}
+
+function parseKeywordList_(input) {
+  if (Array.isArray(input)) {
+    return unique_(
+      input
+        .map((x) => String(x || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+  }
+  return unique_(
+    String(input || "")
+      .split(/\r?\n|,/g)
+      .map((x) => String(x || "").trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function containsAnyKeyword_(text, keywords) {
+  const t = String(text || "").toLowerCase();
+  for (const kw of keywords || []) {
+    if (!kw) continue;
+    if (t.includes(String(kw))) return true;
+  }
+  return false;
 }
 
 function unique_(arr) {

@@ -186,8 +186,14 @@ export default {
         const feeds = Array.isArray(body.feed_urls)
           ? body.feed_urls.map((x) => String(x || "").trim()).filter(Boolean)
           : [];
+        const allowKeywords = Array.isArray(body.allow_keywords)
+          ? body.allow_keywords
+          : (typeof body.allow_keywords === "string" ? body.allow_keywords : undefined);
+        const blockKeywords = Array.isArray(body.block_keywords)
+          ? body.block_keywords
+          : (typeof body.block_keywords === "string" ? body.block_keywords : undefined);
         const maxPerRun = Number.isFinite(Number(maxPerRunRaw)) ? Number(maxPerRunRaw) : undefined;
-        const data = await runRssPoll_(env, { maxPerRun, feeds });
+        const data = await runRssPoll_(env, { maxPerRun, feeds, allowKeywords, blockKeywords });
         await logEvent_(env, "RSS_POLL", null, { source: isCron ? "cron" : "api", ...data, ts: Date.now() });
         return json_({ ok: true, data }, env, 200);
       }
@@ -2868,6 +2874,8 @@ async function runRssPoll_(env, opts = {}) {
   return pollRssFeedsAndIngest_(env, {
     feeds,
     maxPerRun,
+    allowKeywords: opts.allowKeywords,
+    blockKeywords: opts.blockKeywords,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
       return ingestRawUrls_(env, {
