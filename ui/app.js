@@ -394,6 +394,16 @@ function isNeedsAttentionJob(j) {
   return false;
 }
 
+function isMissingDetailsJob(j) {
+  const role = String(j.role_title || "").trim();
+  const company = String(j.company || "").trim();
+  const status = String(j.status || "").trim().toUpperCase();
+  const systemStatus = String(j.system_status || "").trim().toUpperCase();
+  if (status === "LINK_ONLY") return true;
+  if (systemStatus === "NEEDS_MANUAL_JD" || systemStatus === "AI_UNAVAILABLE") return true;
+  return !role || !company;
+}
+
 function filterJobs(jobs, status, q, queue) {
   let out = jobs;
   if (status) out = out.filter((j) => String(j.status || "").toUpperCase() === status);
@@ -572,6 +582,7 @@ async function handleTrackingAction(action, jobKey) {
 function renderTracking() {
   const q = String($("trackingSearch")?.value || "").trim().toLowerCase();
   const sort = String($("trackingSort")?.value || "updated_desc").trim();
+  const queue = String($("trackingQueue")?.value || "all").trim().toLowerCase();
   const scope = String($("trackingScope")?.value || "active_only").trim().toLowerCase();
   const windowDays = Number($("trackingWindow")?.value || 14);
   const perColumn = Math.max(1, Number($("trackingLimit")?.value || 20));
@@ -591,8 +602,12 @@ function renderTracking() {
     return ts >= (now - windowMs);
   });
 
-  const filtered = sortJobs(filterJobs(scoped, "", q, ""), sort);
+  let filtered = sortJobs(filterJobs(scoped, "", q, ""), sort);
+  if (queue === "needs_attention") filtered = filtered.filter(isNeedsAttentionJob);
+  if (queue === "missing_details") filtered = filtered.filter(isMissingDetailsJob);
+
   const needsAttentionAll = filtered.filter(isNeedsAttentionJob);
+  const missingDetailsAll = filtered.filter(isMissingDetailsJob);
   const needsAttention = needsAttentionAll.slice(0, perColumn);
   const byStatus = new Map(boardStatuses.map((s) => [s, []]));
   for (const j of filtered) {
@@ -602,6 +617,7 @@ function renderTracking() {
   }
 
   $("trackingNeedsCount").textContent = String(needsAttentionAll.length);
+  $("trackingMissingCount").textContent = String(missingDetailsAll.length);
   $("trackingNeedsList").innerHTML = needsAttention.length
     ? `
       ${needsAttention.map(trackingCard).join("")}
@@ -631,7 +647,11 @@ function renderTracking() {
 
   const scopeLabel = scope === "active_only" ? "active statuses" : "all statuses";
   const windowLabel = windowMs ? `${windowDays}d` : "all time";
-  $("trackingHint").textContent = `${filtered.length} jobs on board (${scopeLabel}, window ${windowLabel}, cap ${perColumn}/column)`;
+  const queueLabel =
+    queue === "needs_attention" ? "needs attention only" :
+    queue === "missing_details" ? "missing details only" :
+    "all queues";
+  $("trackingHint").textContent = `${filtered.length} jobs on board (${scopeLabel}, ${queueLabel}, window ${windowLabel}, cap ${perColumn}/column)`;
   renderTrackingRecoverySummary_();
 
   document.querySelectorAll("[data-track-action][data-track-key]").forEach((el) => {
@@ -1981,6 +2001,24 @@ async function retryFetchMissingJd(limit = 60) {
   }
 }
 
+async function recoverMissingFields(limit = 30) {
+  try {
+    spin(true);
+    const res = await api("/jobs/recover/missing-fields", {
+      method: "POST",
+      body: { limit },
+    });
+    const d = res?.data || {};
+    toast(`Missing fields recover - picked ${d.picked ?? "-"} - updated ${d.updated ?? "-"} - skipped ${d.skipped ?? "-"}`);
+    await loadJobs({ ignoreStatus: true });
+    if (state.activeKey) await setActive(state.activeKey);
+  } catch (e) {
+    toast("Recover missing fields failed: " + e.message);
+  } finally {
+    spin(false);
+  }
+}
+
 async function recoverMissingDetailsFromTracking(limit = 10) {
   const ok = confirm("Run recovery now? This retries missing-details fetch and then rescoring.");
   if (!ok) return;
@@ -2119,10 +2157,12 @@ async function saveSettings() {
   $("queueFilter").onchange = () => { renderJobs(); renderListMeta(); };
   $("trackingSearch").oninput = () => renderTracking();
   $("trackingSort").onchange = () => renderTracking();
+  $("trackingQueue").onchange = () => renderTracking();
   $("trackingScope").onchange = () => renderTracking();
   $("trackingWindow").onchange = () => renderTracking();
   $("trackingLimit").onchange = () => renderTracking();
   $("btnTrackingRecover").onclick = () => recoverMissingDetailsFromTracking(10);
+  $("btnTrackingRecoverFields").onclick = () => recoverMissingFields(30);
   $("btnTrackingFiltersToggle").onclick = () => {
     state.trackingFiltersOpen = !state.trackingFiltersOpen;
     syncTrackingControlsUi_();

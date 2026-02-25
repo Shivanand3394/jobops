@@ -84,6 +84,7 @@ export default {
         path === "/extract-jd" ||
         path === "/score-jd" ||
         path === "/score-pending" ||
+        path === "/jobs/recover/missing-fields" ||
         path === "/jobs/recover/rescore-existing-jd" ||
         (path.startsWith("/jobs/") && path.endsWith("/rescore"));
 
@@ -439,6 +440,25 @@ export default {
       }
 
       // ============================
+      // UI: Recovery - fill missing role/company from existing JD
+      // ============================
+      if (path === "/jobs/recover/missing-fields" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const limit = clampInt_(body.limit || 30, 1, 200);
+        const data = await runRecoverMissingFields_(env, ai, limit);
+
+        await logEvent_(env, "RECOVER_MISSING_FIELDS", null, {
+          limit,
+          picked: data?.picked || 0,
+          updated: data?.updated || 0,
+          skipped: data?.skipped || 0,
+          errors: data?.errors || 0,
+          ts: Date.now(),
+        });
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      // ============================
       // UI: Recovery - retry fetch for missing JD only
       // ============================
       if (path === "/jobs/recover/retry-fetch-missing-jd" && request.method === "POST") {
@@ -561,7 +581,15 @@ export default {
           }, env, 200);
         }
 
-        const extracted = sanitizeExtracted_(await extractJdWithModel_(aiForManual, jdText), jdText);
+        const extracted = sanitizeExtracted_(
+          await extractJdWithModel_(aiForManual, jdText),
+          jdText,
+          {
+            job_url: existing?.job_url,
+            source_domain: existing?.source_domain,
+            email_subject: "",
+          }
+        );
         const targets = await loadTargets_(env);
         if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
         const cfg = await loadSysCfg_(env);
@@ -684,7 +712,11 @@ export default {
         }
         if (jdClean.length >= 200) {
           extracted = await extractJdWithModel_(ai, jdClean)
-            .then((x) => sanitizeExtracted_(x, jdClean))
+            .then((x) => sanitizeExtracted_(x, jdClean, {
+              job_url: job?.job_url,
+              source_domain: job?.source_domain,
+              email_subject: "",
+            }))
             .catch(() => null);
           if (extracted) {
             roleTitle = String(extracted.role_title || roleTitle || "").trim();
@@ -1372,6 +1404,25 @@ export default {
             if (!aiRecovery) {
               console.warn("recovery rescore skipped: missing AI binding");
             } else {
+              if (await budgetExceeded_("recovery_missing_fields")) return;
+              const missingFieldsLimit = clampInt_(env.RECOVER_MISSING_FIELDS_LIMIT || 20, 1, 200);
+              const missingFieldsData = await runRecoverMissingFields_(env, aiRecovery, missingFieldsLimit);
+              await logEvent_(env, "RECOVERY_MISSING_FIELDS", null, {
+                source: "cron",
+                limit: missingFieldsLimit,
+                picked: missingFieldsData.picked,
+                updated: missingFieldsData.updated,
+                skipped: missingFieldsData.skipped,
+                errors: missingFieldsData.errors,
+                ts: Date.now(),
+              });
+              console.log("recovery missing fields cron", JSON.stringify({
+                picked: missingFieldsData.picked,
+                updated: missingFieldsData.updated,
+                skipped: missingFieldsData.skipped,
+                errors: missingFieldsData.errors,
+              }));
+
               if (await budgetExceeded_("recovery_rescore")) return;
               const recoveryBatch = await runScorePending_(
                 env,
@@ -1853,10 +1904,55 @@ ${text}
   return parsed;
 }
 
-function sanitizeExtracted_(raw, jdText) {
+function deriveRoleFromJobUrl_(jobUrl, sourceDomain = "") {
+  const source = normalizeSourceDomainName_(sourceDomain || sourceDomainFromUrl_(jobUrl));
+  const url = String(jobUrl || "").trim();
+  if (!url) return "";
+
+  try {
+    const u = new URL(url);
+    const path = String(u.pathname || "");
+    let slug = "";
+    if (source === "iimjobs") {
+      const m = path.match(/\/j\/([^/?#]+)/i);
+      slug = m && m[1] ? m[1] : "";
+    } else if (source === "naukri") {
+      const m = path.match(/\/job-listings-([^/?#]+)/i);
+      slug = m && m[1] ? m[1] : "";
+    }
+    if (!slug) return "";
+    slug = slug.replace(/-\d{4,}$/i, "");
+    slug = slug.replace(/\b\d+\s*-\s*\d+\s*yrs?\b/gi, "");
+    slug = slug.replace(/\b\d+\s*yrs?\b/gi, "");
+    slug = slug.replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+    return cleanHumanLabel_(slug);
+  } catch {
+    return "";
+  }
+}
+
+function deriveCompanyFromText_(text, emailSubject = "") {
+  const src = `${String(emailSubject || "")}\n${String(text || "")}`;
+  const lines = src.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 40);
+  for (const line of lines) {
+    let m =
+      line.match(/^\s*about\s+([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80})$/i) ||
+      line.match(/^\s*company\s*[:\-]\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80})/i) ||
+      line.match(/\bat\s+([A-Za-z][A-Za-z0-9&.,'()\- ]{2,60})\b/i);
+    if (!m || !m[1]) continue;
+    const cleaned = cleanHumanLabel_(String(m[1] || "").trim());
+    if (cleaned && cleaned.length >= 2) return cleaned;
+  }
+  return "";
+}
+
+function sanitizeExtracted_(raw, jdText, ctx = {}) {
   if (!raw || typeof raw !== "object") return null;
   const out = { ...raw };
   const txt = String(jdText || "");
+  const jobUrl = String(ctx?.job_url || "").trim();
+  const sourceDomain = String(ctx?.source_domain || sourceDomainFromUrl_(jobUrl)).trim();
+  const emailSubject = String(ctx?.email_subject || "").trim();
 
   const badLabels = new Set(["startup", "company", "organization", "introduction", "role", "job"]);
   const normalize = (v) => String(v || "").replace(/\s+/g, " ").trim();
@@ -1875,6 +1971,16 @@ function sanitizeExtracted_(raw, jdText) {
       txt.match(/as a\s+([^\n,]{3,140})[,.:]/i) ||
       txt.match(/role(?:\s+and\s+responsibilities)?\s*[:\-]\s*([^\n]{3,140})/i);
     if (m && m[1]) out.role_title = cleanHumanLabel_(normalize(m[1]));
+  }
+
+  if (!out.role_title || out.role_title.length < 3) {
+    const fromUrl = deriveRoleFromJobUrl_(jobUrl, sourceDomain);
+    if (fromUrl) out.role_title = fromUrl;
+  }
+
+  if (!out.company || out.company.length < 2) {
+    const fromText = deriveCompanyFromText_(txt, emailSubject);
+    if (fromText) out.company = fromText;
   }
 
   if (!Array.isArray(out.skills)) out.skills = [];
@@ -2607,7 +2713,11 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     let extracted = null;
     if (!needsManual && jdText && jdText.length >= 180) {
       extracted = await extractJdWithModel_(aiForIngest, jdText)
-        .then((x) => sanitizeExtracted_(x, jdText))
+        .then((x) => sanitizeExtracted_(x, jdText, {
+          job_url: norm?.job_url,
+          source_domain: norm?.source_domain,
+          email_subject: emailSubject,
+        }))
         .catch(() => null);
     }
 
@@ -2993,7 +3103,11 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
 
       if (jdClean.length >= 180) {
         extracted = await extractJdWithModel_(ai, jdClean)
-          .then((x) => sanitizeExtracted_(x, jdClean))
+          .then((x) => sanitizeExtracted_(x, jdClean, {
+            job_url: j?.job_url,
+            source_domain: j?.source_domain,
+            email_subject: "",
+          }))
           .catch(() => null);
         if (extracted) {
           roleTitle = String(extracted.role_title || roleTitle || "").trim();
@@ -3180,6 +3294,132 @@ async function runBackfillMissing_(env, limitIn = 30) {
     link_only: ingestData?.link_only || 0,
     source_summary: Array.isArray(ingestData?.source_summary) ? ingestData.source_summary : [],
     results: Array.isArray(ingestData?.results) ? ingestData.results : [],
+  };
+}
+
+async function runRecoverMissingFields_(env, ai, limitIn = 30) {
+  const limit = clampInt_(limitIn || 30, 1, 200);
+  if (!ai) return { picked: 0, updated: 0, skipped: 0, errors: 0, results: [] };
+
+  const rows = await env.DB.prepare(`
+    SELECT *
+    FROM jobs
+    WHERE
+      status NOT IN ('REJECTED', 'ARCHIVED')
+      AND COALESCE(TRIM(jd_text_clean), '') != ''
+      AND (
+        COALESCE(TRIM(role_title), '') = ''
+        OR COALESCE(TRIM(company), '') = ''
+      )
+    ORDER BY updated_at ASC
+    LIMIT ?;
+  `.trim()).bind(limit).all();
+
+  const jobs = Array.isArray(rows?.results) ? rows.results : [];
+  let updated = 0;
+  let skipped = 0;
+  let errors = 0;
+  const results = [];
+
+  for (const j of jobs) {
+    try {
+      const jd = String(j?.jd_text_clean || "").trim();
+      if (jd.length < 180) {
+        skipped += 1;
+        results.push({ job_key: j?.job_key, ok: false, reason: "jd_too_short" });
+        continue;
+      }
+
+      const extracted = await extractJdWithModel_(ai, jd)
+        .then((x) => sanitizeExtracted_(x, jd, {
+          job_url: j?.job_url,
+          source_domain: j?.source_domain,
+          email_subject: "",
+        }))
+        .catch(() => null);
+
+      if (!extracted) {
+        skipped += 1;
+        results.push({ job_key: j?.job_key, ok: false, reason: "extract_failed" });
+        continue;
+      }
+
+      const currentRole = String(j?.role_title || "").trim();
+      const currentCompany = String(j?.company || "").trim();
+      const currentLocation = String(j?.location || "").trim();
+      const currentWorkMode = String(j?.work_mode || "").trim();
+      const currentSeniority = String(j?.seniority || "").trim();
+
+      const nextRole = currentRole || String(extracted?.role_title || "").trim();
+      const nextCompany = currentCompany || String(extracted?.company || "").trim();
+      const nextLocation = currentLocation || String(extracted?.location || "").trim();
+      const nextWorkMode = currentWorkMode || String(extracted?.work_mode || "").trim();
+      const nextSeniority = currentSeniority || String(extracted?.seniority || "").trim();
+
+      const changed =
+        nextRole !== currentRole ||
+        nextCompany !== currentCompany ||
+        nextLocation !== currentLocation ||
+        nextWorkMode !== currentWorkMode ||
+        nextSeniority !== currentSeniority;
+
+      if (!changed) {
+        skipped += 1;
+        results.push({ job_key: j?.job_key, ok: false, reason: "no_changes" });
+        continue;
+      }
+
+      const now = Date.now();
+      await env.DB.prepare(`
+        UPDATE jobs SET
+          role_title = COALESCE(NULLIF(?, ''), role_title),
+          company = COALESCE(NULLIF(?, ''), company),
+          location = COALESCE(NULLIF(?, ''), location),
+          work_mode = COALESCE(NULLIF(?, ''), work_mode),
+          seniority = COALESCE(NULLIF(?, ''), seniority),
+          skills_json = CASE WHEN COALESCE(TRIM(skills_json), '') IN ('', '[]') AND ? != '[]' THEN ? ELSE skills_json END,
+          must_have_keywords_json = CASE WHEN COALESCE(TRIM(must_have_keywords_json), '') IN ('', '[]') AND ? != '[]' THEN ? ELSE must_have_keywords_json END,
+          nice_to_have_keywords_json = CASE WHEN COALESCE(TRIM(nice_to_have_keywords_json), '') IN ('', '[]') AND ? != '[]' THEN ? ELSE nice_to_have_keywords_json END,
+          reject_keywords_json = CASE WHEN COALESCE(TRIM(reject_keywords_json), '') IN ('', '[]') AND ? != '[]' THEN ? ELSE reject_keywords_json END,
+          updated_at = ?
+        WHERE job_key = ?;
+      `.trim()).bind(
+        nextRole,
+        nextCompany,
+        nextLocation,
+        nextWorkMode,
+        nextSeniority,
+        JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+        JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+        JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
+        JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
+        now,
+        j.job_key
+      ).run();
+
+      updated += 1;
+      results.push({
+        job_key: j?.job_key,
+        ok: true,
+        role_title: nextRole || null,
+        company: nextCompany || null,
+      });
+    } catch (e) {
+      errors += 1;
+      results.push({ job_key: j?.job_key, ok: false, reason: "error", error: String(e?.message || e) });
+    }
+  }
+
+  return {
+    picked: jobs.length,
+    updated,
+    skipped,
+    errors,
+    results,
   };
 }
 
