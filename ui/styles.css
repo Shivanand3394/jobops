@@ -266,6 +266,24 @@ body{
   margin-bottom:8px;
 }
 
+.resume-flow{
+  display:grid;
+  gap:10px;
+}
+
+.resume-step{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background: rgba(17,28,51,.55);
+  padding:10px;
+}
+
+.resume-step select,
+.resume-step input,
+.resume-step textarea{
+  width:100%;
+}
+
 .kw-grid{
   display:flex;
   flex-wrap:wrap;

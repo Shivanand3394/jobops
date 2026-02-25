@@ -508,15 +508,10 @@ function renderDetail(j) {
       </div>
 
       <div class="workspace-pane hidden" data-ws-pane="resume">
-        <div class="kv" style="margin-bottom:10px;">
-          <div class="k">Profile</div><div class="v">
-            <select id="appProfileSelect"></select>
-            <select id="appRenderer" style="margin-top:8px;">
-              <option value="reactive_resume">reactive_resume</option>
-              <option value="html_simple">html_simple</option>
-            </select>
-          </div>
-          <div class="k">Template</div><div class="v">
+        <div class="resume-flow">
+          <div class="resume-step">
+            <div class="h3">1) Choose template</div>
+            <div class="muted tiny">Pick your base format and save variants when needed.</div>
             <select id="appTemplateSelect"></select>
             <input id="appTemplateName" placeholder="Template name" style="margin-top:8px;" />
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
@@ -524,14 +519,22 @@ function renderDetail(j) {
               <button class="btn btn-ghost" type="button" onclick="deleteResumeTemplateFromUi()">Delete Template</button>
             </div>
           </div>
-          <div class="k">ATS mode</div><div class="v">
-            <select id="appAtsTargetMode">
+
+          <div class="resume-step">
+            <div class="h3">2) Configure output</div>
+            <div class="muted tiny">Choose renderer, keyword mode, and resume blocks.</div>
+            <label class="muted tiny">Renderer</label>
+            <select id="appRenderer" style="margin-top:6px;">
+              <option value="reactive_resume">reactive_resume</option>
+              <option value="html_simple">html_simple</option>
+            </select>
+            <label class="muted tiny" style="margin-top:8px;">ATS mode</label>
+            <select id="appAtsTargetMode" style="margin-top:6px;">
               <option value="all">Use all target keywords</option>
               <option value="selected_only">Use selected ATS keywords only</option>
             </select>
-          </div>
-          <div class="k">Resume blocks</div><div class="v">
-            <div class="block-checks">
+            <label class="muted tiny" style="margin-top:8px;">Resume blocks</label>
+            <div class="block-checks" style="margin-top:6px;">
               <label><input type="checkbox" id="blkSummary" checked /> Summary</label>
               <label><input type="checkbox" id="blkExperience" checked /> Experience</label>
               <label><input type="checkbox" id="blkSkills" checked /> Skills</label>
@@ -539,22 +542,38 @@ function renderDetail(j) {
               <label><input type="checkbox" id="blkBullets" checked /> Tailored bullets</label>
             </div>
           </div>
-          <div class="k">Profile ID</div><div class="v"><input id="appProfileId" placeholder="primary" /></div>
-          <div class="k">Profile Name</div><div class="v"><input id="appProfileName" placeholder="Primary" /></div>
-          <div class="k">Profile JSON</div><div class="v"><textarea id="appProfileJson" rows="5" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea></div>
-          <div class="k">Actions</div><div class="v">
-            <div class="row" style="justify-content:flex-start; margin-top:0;">
-              <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
+
+          <div class="resume-step">
+            <div class="h3">3) Generate and export</div>
+            <div class="muted tiny">Generate tailored content and export to Reactive Resume JSON.</div>
+            <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
               <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
-              <button class="btn btn-secondary" onclick="copyPackSummary()">Copy tailored summary</button>
-              <button class="btn btn-secondary" onclick="copyPackBullets()">Copy tailored bullets</button>
               <button class="btn btn-secondary" onclick="downloadRrJson()">Download RR JSON</button>
+            </div>
+            <div class="row" style="justify-content:flex-start; margin-top:8px;">
+              <button class="btn btn-ghost" onclick="copyPackSummary()">Copy tailored summary</button>
+              <button class="btn btn-ghost" onclick="copyPackBullets()">Copy tailored bullets</button>
+            </div>
+          </div>
+
+          <div class="resume-step">
+            <div class="h3">Profile</div>
+            <div class="muted tiny">Select and save the profile used for generation.</div>
+            <label class="muted tiny">Profile</label>
+            <select id="appProfileSelect" style="margin-top:6px;"></select>
+            <label class="muted tiny" style="margin-top:8px;">Profile ID</label>
+            <input id="appProfileId" placeholder="primary" style="margin-top:6px;" />
+            <label class="muted tiny" style="margin-top:8px;">Profile name</label>
+            <input id="appProfileName" placeholder="Primary" style="margin-top:6px;" />
+            <label class="muted tiny" style="margin-top:8px;">Profile JSON</label>
+            <textarea id="appProfileJson" rows="5" style="margin-top:6px;" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea>
+            <div class="row" style="justify-content:flex-start; margin-top:8px;">
+              <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
             </div>
           </div>
         </div>
       </div>
-    </div>
   `;
   if (window.location.hostname.includes("workers.dev")) {
     console.log("Rendering Application Pack", j.job_key);
