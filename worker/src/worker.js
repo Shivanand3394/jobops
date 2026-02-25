@@ -1,6 +1,7 @@
 ﻿// worker_jobops_v2_ui_plus_clean.js
 import { buildGmailAuthUrl_, handleGmailOAuthCallback_, pollGmailAndIngest_ } from "./gmail.js";
 import { ensurePrimaryProfile_, generateApplicationPack_, persistResumeDraft_ } from "./resume_pack.js";
+import { pollRssFeedsAndIngest_ } from "./rss.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -71,7 +72,8 @@ export default {
         path === "/score-pending" ||
         path === "/ingest" ||
         path === "/resolve-jd" ||
-        path.startsWith("/gmail/"); // gmail bridge requires D1 state
+        path.startsWith("/gmail/") ||
+        path.startsWith("/rss/"); // gmail/rss bridge requires D1 state
 
       if (needsDB && !env.DB) {
         return json_({ ok: false, error: "Missing D1 binding env.DB (bind your D1 as DB)" }, env, 500);
@@ -167,6 +169,26 @@ export default {
         const maxJobsPerPoll = Number.isFinite(Number(maxJobsPerPollRaw)) ? Number(maxJobsPerPollRaw) : undefined;
         const data = await runGmailPoll_(env, { query, maxPerRun, maxJobsPerEmail, maxJobsPerPoll });
         await logEvent_(env, "GMAIL_POLL", null, { source: isCron ? "cron" : "api", ...data, ts: Date.now() });
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      // ============================
+      // ADMIN/CRON: RSS poll
+      // ============================
+      if (path === "/rss/poll" && request.method === "POST") {
+        const isCron = isCronRequest_(request);
+        const apiAuthorized = isApiAuth_(request, env);
+        if (!isCron && !apiAuthorized) {
+          return json_({ ok: false, error: "Unauthorized" }, env, 401);
+        }
+        const body = await request.json().catch(() => ({}));
+        const maxPerRunRaw = body.max_per_run ?? body.maxPerRun;
+        const feeds = Array.isArray(body.feed_urls)
+          ? body.feed_urls.map((x) => String(x || "").trim()).filter(Boolean)
+          : [];
+        const maxPerRun = Number.isFinite(Number(maxPerRunRaw)) ? Number(maxPerRunRaw) : undefined;
+        const data = await runRssPoll_(env, { maxPerRun, feeds });
+        await logEvent_(env, "RSS_POLL", null, { source: isCron ? "cron" : "api", ...data, ts: Date.now() });
         return json_({ ok: true, data }, env, 200);
       }
 
@@ -1258,6 +1280,12 @@ export default {
           await logEvent_(env, "GMAIL_POLL", null, { source: "cron", ...data, ts: Date.now() });
           console.log("gmail poll ok", JSON.stringify(data));
 
+          const rssData = await runRssPoll_(env);
+          if (!rssData?.skipped) {
+            await logEvent_(env, "RSS_POLL", null, { source: "cron", ...rssData, ts: Date.now() });
+          }
+          console.log("rss poll", JSON.stringify(rssData));
+
           const ai = getAi_(env);
           if (!ai) {
             console.warn("score pending skipped: missing AI binding");
@@ -1972,6 +2000,7 @@ function summarizeRecoveryResultsBySource_(rows) {
       manual_needed: 0,
       needs_ai: 0,
       blocked: 0,
+      low_quality: 0,
       link_only: 0,
       ignored: 0,
       inserted: 0,
@@ -1983,14 +2012,22 @@ function summarizeRecoveryResultsBySource_(rows) {
     const status = String(row?.status || "").toUpperCase();
     const systemStatus = String(row?.system_status || "").toUpperCase();
     const fetchStatus = String(row?.fetch_status || "").toLowerCase();
+    const fallbackReason = String(row?.fallback_reason || "").toLowerCase();
 
     if (action === "inserted") item.inserted += 1;
     if (action === "updated") item.updated += 1;
     if (action === "ignored") item.ignored += 1;
-    if (status === "LINK_ONLY" || action === "link_only") item.link_only += 1;
-    if (systemStatus === "NEEDS_MANUAL_JD" || status === "LINK_ONLY") item.manual_needed += 1;
-    if (systemStatus === "AI_UNAVAILABLE" || fetchStatus === "ai_unavailable") item.needs_ai += 1;
-    if (fetchStatus === "blocked" || fetchStatus === "low_quality") item.blocked += 1;
+    const linkOnlyFlag = status === "LINK_ONLY" || action === "link_only";
+    const manualFlag = systemStatus === "NEEDS_MANUAL_JD" || linkOnlyFlag || fallbackReason === "manual_required";
+    const needsAiFlag = systemStatus === "AI_UNAVAILABLE" || fetchStatus === "ai_unavailable";
+    const blockedFlag = fetchStatus === "blocked" || fetchStatus === "low_quality" || fallbackReason === "blocked";
+    const lowQualityFlag = fetchStatus === "low_quality" || fallbackReason === "low_quality";
+
+    if (linkOnlyFlag) item.link_only += 1;
+    if (manualFlag) item.manual_needed += 1;
+    if (needsAiFlag) item.needs_ai += 1;
+    if (blockedFlag) item.blocked += 1;
+    if (lowQualityFlag) item.low_quality += 1;
     if (action !== "ignored" && status !== "LINK_ONLY") item.recovered += 1;
 
     summary.set(source, item);
@@ -2015,6 +2052,75 @@ function isLowQualityJd_(text, sourceDomain) {
   if ((cookieMentions + privacyMentions >= 6) || (linkedInShell && cookieMentions + privacyMentions >= 3)) return true;
 
   return false;
+}
+
+function getSourceFallbackPolicy_(sourceDomain) {
+  const source = normalizeSourceDomainName_(sourceDomain);
+  if (source === "linkedin") {
+    return {
+      source_domain: "linkedin",
+      min_chars: 280,
+      require_high_confidence_for_fetched: true,
+      label: "strict_linkedin",
+    };
+  }
+  if (source === "iimjobs") {
+    return {
+      source_domain: "iimjobs",
+      min_chars: 220,
+      require_high_confidence_for_fetched: false,
+      label: "standard_iimjobs",
+    };
+  }
+  if (source === "naukri") {
+    return {
+      source_domain: "naukri",
+      min_chars: 220,
+      require_high_confidence_for_fetched: false,
+      label: "standard_naukri",
+    };
+  }
+  return {
+    source_domain: source || "unknown",
+    min_chars: 220,
+    require_high_confidence_for_fetched: false,
+    label: "default",
+  };
+}
+
+function computeFallbackDecision_(sourceDomain, resolved, jdText, aiAvailable) {
+  const policy = getSourceFallbackPolicy_(sourceDomain);
+  const jdSource = String(resolved?.jd_source || "").toLowerCase();
+  const fetchStatus = String(resolved?.fetch_status || "").toLowerCase();
+  const confidence = String(resolved?.debug?.jd_confidence || "").toLowerCase();
+  const len = String(jdText || "").trim().length;
+
+  let reason = "none";
+  if (!aiAvailable) {
+    reason = "manual_required";
+  } else if (fetchStatus === "blocked") {
+    reason = "blocked";
+  } else if (fetchStatus === "low_quality") {
+    reason = "low_quality";
+  } else if (jdSource !== "email" && jdSource !== "fetched") {
+    reason = "manual_required";
+  } else if (len < policy.min_chars) {
+    reason = "low_quality";
+  } else if (confidence === "low") {
+    reason = "low_quality";
+  } else if (policy.require_high_confidence_for_fetched && jdSource === "fetched" && confidence !== "high") {
+    reason = "low_quality";
+  }
+
+  return {
+    needs_manual: reason !== "none",
+    reason,
+    policy,
+    jd_source: jdSource,
+    fetch_status: fetchStatus,
+    confidence,
+    jd_length: len,
+  };
 }
 
 function shouldRequireManualJd_(resolved, jdText) {
@@ -2277,7 +2383,8 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     const resolved = await resolveJd_(norm.job_url, { emailHtml, emailText, emailSubject, emailFrom });
 
     const jdText = String(resolved.jd_text_clean || "").trim();
-    const needsManual = !aiAvailable || shouldRequireManualJd_(resolved, jdText);
+    const fallbackDecision = computeFallbackDecision_(norm.source_domain, resolved, jdText, aiAvailable);
+    const needsManual = fallbackDecision.needs_manual;
     let extracted = null;
     if (!needsManual && jdText && jdText.length >= 180) {
       extracted = await extractJdWithModel_(aiForIngest, jdText)
@@ -2323,8 +2430,20 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       }
     }
 
-    const effectiveFetchStatus = aiAvailable ? String(resolved.fetch_status || "failed") : "ai_unavailable";
-    const fetchDebug = { ...(resolved.debug || {}), ai_available: aiAvailable };
+    let effectiveFetchStatus = aiAvailable ? String(resolved.fetch_status || "failed") : "ai_unavailable";
+    if (aiAvailable && fallbackDecision.reason === "low_quality" && effectiveFetchStatus !== "blocked") {
+      effectiveFetchStatus = "low_quality";
+    }
+    if (!aiAvailable) {
+      effectiveFetchStatus = "ai_unavailable";
+    }
+    const fetchDebug = {
+      ...(resolved.debug || {}),
+      ai_available: aiAvailable,
+      fallback_reason: fallbackDecision.reason,
+      fallback_policy: fallbackDecision.policy?.label || "default",
+      source_policy_domain: fallbackDecision.policy?.source_domain || normalizeSourceDomainName_(norm.source_domain),
+    };
     let transition = !aiAvailable
       ? applyStatusTransition_(null, "ingest_ai_unavailable")
       : (needsManual
@@ -2463,6 +2582,19 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     if (action === "inserted") insertedCount += 1;
     if (action === "updated") updatedCount += 1;
 
+    if (needsManual) {
+      await logEvent_(env, "INGEST_FALLBACK", norm.job_key, {
+        source_domain: normalizeSourceDomainName_(norm.source_domain),
+        fallback_reason: fallbackDecision.reason,
+        fallback_policy: fallbackDecision.policy?.label || "default",
+        fetch_status: effectiveFetchStatus,
+        jd_source: String(resolved.jd_source || "").trim().toLowerCase() || "none",
+        jd_confidence: String(resolved?.debug?.jd_confidence || "").trim().toLowerCase() || "low",
+        ai_available: aiAvailable,
+        ts: Date.now(),
+      });
+    }
+
     results.push({
       raw_url: rawUrl,
       job_key: norm.job_key,
@@ -2474,6 +2606,8 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       jd_source: resolved.jd_source,
       fetch_status: effectiveFetchStatus,
       system_status: transition.system_status,
+      fallback_reason: fallbackDecision.reason,
+      fallback_policy: fallbackDecision.policy?.label || "default",
       final_score: finalScore,
       primary_target_id: scoring?.primary_target_id || null
     });
@@ -2694,6 +2828,47 @@ async function runGmailPoll_(env, opts = {}) {
     maxJobsPerPoll,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     classifyMessageFn: async (msg) => classifyPromotionalGmailMessage_(env, aiForMailFilter, msg, { enabled: promoFilterEnabled }),
+    ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
+      return ingestRawUrls_(env, {
+        rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
+        emailText: typeof email_text === "string" ? email_text : "",
+        emailHtml: typeof email_html === "string" ? email_html : "",
+        emailSubject: typeof email_subject === "string" ? email_subject : "",
+        emailFrom: typeof email_from === "string" ? email_from : "",
+      });
+    },
+  });
+}
+
+async function runRssPoll_(env, opts = {}) {
+  const feeds = Array.isArray(opts.feeds) && opts.feeds.length
+    ? opts.feeds.map((x) => String(x || "").trim()).filter(Boolean)
+    : String(env.RSS_FEEDS || "")
+      .split(/\r?\n|,/g)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+
+  if (!feeds.length) {
+    return {
+      skipped: true,
+      reason: "no_feeds_configured",
+      feeds_total: 0,
+      items_listed: 0,
+      processed: 0,
+      inserted_or_updated: 0,
+      ignored: 0,
+      link_only: 0,
+    };
+  }
+
+  const maxPerRun = Number.isFinite(Number(opts.maxPerRun))
+    ? clampInt_(Number(opts.maxPerRun), 1, 200)
+    : clampInt_(env.RSS_MAX_PER_RUN || 25, 1, 200);
+
+  return pollRssFeedsAndIngest_(env, {
+    feeds,
+    maxPerRun,
+    normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
