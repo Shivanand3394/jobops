@@ -1901,9 +1901,10 @@ ${JSON.stringify(targets.map(t => ({
  * ========================================================= */
 
 async function normalizeJobUrl_(rawUrl) {
+  const normalizedInput = unwrapKnownTrackingUrl_(String(rawUrl || "").trim());
   let u;
   try {
-    u = new URL(rawUrl);
+    u = new URL(normalizedInput);
   } catch {
     return { ignored: true };
   }
@@ -1941,21 +1942,82 @@ async function normalizeJobUrl_(rawUrl) {
   }
 
   if (host.includes("iimjobs.com")) {
-    const canonical = strip(rawUrl);
+    if (!/^\/j\//i.test(path)) return { ignored: true };
+    const canonical = strip(normalizedInput).replace(/\.html$/i, "");
     const last = canonical.split("/").filter(Boolean).pop() || "";
-    const id = last.match(/-(\d+)$/)?.[1] || null;
-    return { ignored: false, source_domain: "iimjobs", job_id: id, job_url: canonical, job_key: await sha1Hex(id ? `iimjobs|${id}` : `url|${canonical}`) };
+    const id = last.match(/-(\d+)(?:\.html)?$/i)?.[1] || null;
+    return {
+      ignored: false,
+      source_domain: "iimjobs",
+      job_id: id,
+      job_url: canonical,
+      job_key: await sha1Hex(id ? `iimjobs|${id}` : `url|${canonical}`)
+    };
   }
 
   if (host.includes("naukri.com")) {
-    const canonical = strip(rawUrl);
+    if (!path.includes("/job-listings-")) return { ignored: true };
+    const canonical = strip(normalizedInput);
     const last = canonical.split("/").filter(Boolean).pop() || "";
-    const id = last.match(/-(\d+)$/)?.[1] || null;
-    return { ignored: false, source_domain: "naukri", job_id: id, job_url: canonical, job_key: await sha1Hex(id ? `naukri|${id}` : `url|${canonical}`) };
+    const id = last.match(/-(\d+)(?:$|[^0-9])/i)?.[1] || null;
+    return {
+      ignored: false,
+      source_domain: "naukri",
+      job_id: id,
+      job_url: canonical,
+      job_key: await sha1Hex(id ? `naukri|${id}` : `url|${canonical}`)
+    };
   }
 
-  const canonical = strip(rawUrl);
+  const canonical = strip(normalizedInput);
   return { ignored: false, source_domain: host, job_id: null, job_url: canonical, job_key: await sha1Hex(`url|${canonical}`) };
+}
+
+function unwrapKnownTrackingUrl_(rawUrl) {
+  const input = String(rawUrl || "").trim();
+  if (!input) return "";
+
+  // IIMJobs postoffice wrapper format:
+  // https://postoffice.iimjobs.com/CL0/<encoded-target-url>/<...>
+  const cl0Match = input.match(/\/CL0\/(https?:%2F%2F.*?)(?:\/\d+\/|$)/i);
+  if (cl0Match?.[1]) {
+    const decoded = decodeUrlSafely_(cl0Match[1]);
+    if (/^https?:\/\//i.test(decoded)) return decoded;
+  }
+
+  let u;
+  try {
+    u = new URL(input);
+  } catch {
+    return input;
+  }
+
+  const redirectParams = [
+    "url",
+    "u",
+    "q",
+    "redirect",
+    "redirect_url",
+    "redirectUrl",
+    "target",
+    "dest",
+    "destination",
+    "to",
+    "r",
+    "href",
+    "next",
+  ];
+
+  for (const key of redirectParams) {
+    const val = u.searchParams.get(key);
+    if (!val) continue;
+    const decoded = decodeUrlSafely_(val);
+    const decodedTwice = decodeUrlSafely_(decoded);
+    if (/^https?:\/\//i.test(decodedTwice)) return decodedTwice;
+    if (/^https?:\/\//i.test(decoded)) return decoded;
+  }
+
+  return input;
 }
 
 /* =========================================================
@@ -3151,6 +3213,7 @@ function routeModeFor_(path) {
   if (path === "/health" || path === "/") return "public";
 
   if (
+    path === "/gmail/auth" ||
     path === "/jobs" ||
     path === "/metrics" ||
     path.startsWith("/jobs/") ||
