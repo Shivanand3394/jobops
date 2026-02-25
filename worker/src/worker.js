@@ -1852,6 +1852,18 @@ function cleanHumanLabel_(value) {
   return txt.length > 140 ? `${txt.slice(0, 137)}...` : txt;
 }
 
+function isLikelyCompanyName_(value) {
+  const s = String(value || "").replace(/\s+/g, " ").trim();
+  if (!s) return false;
+  if (s.length < 2 || s.length > 80) return false;
+  const words = s.split(" ").filter(Boolean);
+  if (words.length > 8) return false;
+  if (!/[a-z]/i.test(s)) return false;
+  if (/\b(we|you|our|your|role|job|opportunity|responsibilities|requirements|experience|team|pace|defined|work|skills)\b/i.test(s)) return false;
+  if (/[:;{}<>/=]/.test(s)) return false;
+  return true;
+}
+
 /* =========================================================
  * AI helpers
  * ========================================================= */
@@ -1938,10 +1950,10 @@ function deriveCompanyFromText_(text, emailSubject = "") {
     let m =
       line.match(/^\s*about\s+([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80})$/i) ||
       line.match(/^\s*company\s*[:\-]\s*([A-Za-z][A-Za-z0-9&.,'()\- ]{2,80})/i) ||
-      line.match(/\bat\s+([A-Za-z][A-Za-z0-9&.,'()\- ]{2,60})\b/i);
+      line.match(/(?:^|\s)at\s+([A-Za-z][A-Za-z0-9&.,'()\- ]{2,50})(?:\s*[\-|]|$)/i);
     if (!m || !m[1]) continue;
     const cleaned = cleanHumanLabel_(String(m[1] || "").trim());
-    if (cleaned && cleaned.length >= 2) return cleaned;
+    if (isLikelyCompanyName_(cleaned)) return cleaned;
   }
   return "";
 }
@@ -1965,6 +1977,7 @@ function sanitizeExtracted_(raw, jdText, ctx = {}) {
 
   if (badLabels.has(out.company.toLowerCase())) out.company = "";
   if (badLabels.has(out.role_title.toLowerCase())) out.role_title = "";
+  if (out.company && !isLikelyCompanyName_(out.company)) out.company = "";
 
   if (!out.role_title || out.role_title.length < 3) {
     const m =
@@ -3349,16 +3362,22 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
       const currentLocation = String(j?.location || "").trim();
       const currentWorkMode = String(j?.work_mode || "").trim();
       const currentSeniority = String(j?.seniority || "").trim();
+      const currentCompanyValid = isLikelyCompanyName_(currentCompany);
+      const extractedCompany = String(extracted?.company || "").trim();
 
       const nextRole = currentRole || String(extracted?.role_title || "").trim();
-      const nextCompany = currentCompany || String(extracted?.company || "").trim();
+      const nextCompany = currentCompanyValid
+        ? currentCompany
+        : (isLikelyCompanyName_(extractedCompany) ? extractedCompany : "");
       const nextLocation = currentLocation || String(extracted?.location || "").trim();
       const nextWorkMode = currentWorkMode || String(extracted?.work_mode || "").trim();
       const nextSeniority = currentSeniority || String(extracted?.seniority || "").trim();
+      const clearInvalidCompany = !currentCompanyValid && !nextCompany;
 
       const changed =
         nextRole !== currentRole ||
         nextCompany !== currentCompany ||
+        clearInvalidCompany ||
         nextLocation !== currentLocation ||
         nextWorkMode !== currentWorkMode ||
         nextSeniority !== currentSeniority;
@@ -3373,7 +3392,10 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
       await env.DB.prepare(`
         UPDATE jobs SET
           role_title = COALESCE(NULLIF(?, ''), role_title),
-          company = COALESCE(NULLIF(?, ''), company),
+          company = CASE
+            WHEN ? = 1 THEN NULLIF(?, '')
+            ELSE COALESCE(NULLIF(?, ''), company)
+          END,
           location = COALESCE(NULLIF(?, ''), location),
           work_mode = COALESCE(NULLIF(?, ''), work_mode),
           seniority = COALESCE(NULLIF(?, ''), seniority),
@@ -3385,6 +3407,8 @@ async function runRecoverMissingFields_(env, ai, limitIn = 30) {
         WHERE job_key = ?;
       `.trim()).bind(
         nextRole,
+        clearInvalidCompany ? 1 : 0,
+        nextCompany,
         nextCompany,
         nextLocation,
         nextWorkMode,
