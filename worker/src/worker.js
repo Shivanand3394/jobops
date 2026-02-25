@@ -1230,6 +1230,7 @@ export default {
             rr_resume_id: rrPush.resume_id || null,
             rr_import_path: rrPush.import_path,
             rr_http_status: rrPush.http_status,
+            rr_push_adapter: rrPush.adapter || "jobops_rr_export",
             pushed_at: Date.now(),
           }
         }, env, 200);
@@ -4192,6 +4193,28 @@ async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {})
   const safeTitle = String(titleHint || "").trim();
   if (safeTitle) payload.name = safeTitle.slice(0, 120);
 
+  const first = await postReactiveResumeImportRequest_(rrBase, importPath, rrKey, payload, timeoutMs);
+  if (first.ok) {
+    return { ...first, adapter: "jobops_rr_export" };
+  }
+
+  // Fallback adapter: convert to JSON Resume style if target RR deployment rejects custom schema.
+  if (Number(first.http_status) === 400) {
+    const fallbackPayload = {
+      data: toJsonResumeFromRr_(rrExport),
+    };
+    if (safeTitle) fallbackPayload.name = safeTitle.slice(0, 120);
+    const second = await postReactiveResumeImportRequest_(rrBase, importPath, rrKey, fallbackPayload, timeoutMs);
+    if (second.ok) {
+      return { ...second, adapter: "json_resume_fallback" };
+    }
+    return second;
+  }
+
+  return first;
+}
+
+async function postReactiveResumeImportRequest_(rrBase, importPath, rrKey, payload, timeoutMs) {
   try {
     const res = await fetchWithTimeout_(`${rrBase}${importPath}`, {
       method: "POST",
@@ -4200,7 +4223,7 @@ async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {})
         "Accept": "application/json, text/plain, */*",
         "x-api-key": rrKey,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload || {}),
     }, timeoutMs);
 
     const rawText = await res.text();
@@ -4233,6 +4256,78 @@ async function pushReactiveResumeImport_(env, { rrExport, titleHint = "" } = {})
       error: String(e?.message || e || "Reactive Resume request failed").slice(0, 200),
     };
   }
+}
+
+function toJsonResumeFromRr_(rr) {
+  const basicsIn = rr && typeof rr === "object" ? (rr.basics || {}) : {};
+  const sections = rr && typeof rr === "object" ? (rr.sections || {}) : {};
+  const workIn = Array.isArray(sections.experience) ? sections.experience : [];
+  const skillsIn = Array.isArray(sections.skills) ? sections.skills : [];
+  const highlightsIn = Array.isArray(sections.highlights) ? sections.highlights : [];
+
+  const work = workIn.map((w) => {
+    const item = w && typeof w === "object" ? w : {};
+    const name = String(item.name || item.company || item.organization || "").trim();
+    const position = String(item.position || item.title || "").trim();
+    const summary = String(item.summary || "").trim();
+    const startDate = String(item.startDate || item.start || "").trim();
+    const endDate = String(item.endDate || item.end || "").trim();
+    const highlights = Array.isArray(item.highlights)
+      ? item.highlights.map((x) => String(x || "").trim()).filter(Boolean)
+      : [];
+    return {
+      name: name || "Unknown",
+      position: position || "Role",
+      startDate,
+      endDate,
+      summary,
+      highlights,
+    };
+  });
+
+  const skillKeywords = [];
+  const skills = skillsIn.map((s) => {
+    if (typeof s === "string") {
+      const name = String(s || "").trim();
+      if (name) skillKeywords.push(name);
+      return { name: name || "Skill", keywords: [] };
+    }
+    const item = s && typeof s === "object" ? s : {};
+    const name = String(item.name || item.label || "").trim();
+    const keywords = Array.isArray(item.keywords)
+      ? item.keywords.map((x) => String(x || "").trim()).filter(Boolean)
+      : [];
+    if (name) skillKeywords.push(name);
+    return { name: name || "Skill", keywords };
+  }).filter((x) => x && x.name);
+
+  const fallbackSummary = highlightsIn
+    .map((h) => String(h?.text || h || "").trim())
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(" ");
+
+  const locationRaw = String(basicsIn.location || "").trim();
+  return {
+    basics: {
+      name: String(basicsIn.name || "").trim(),
+      email: String(basicsIn.email || "").trim(),
+      phone: String(basicsIn.phone || "").trim(),
+      location: {
+        address: locationRaw,
+      },
+      summary: String(basicsIn.summary || fallbackSummary || "").trim(),
+    },
+    work,
+    skills: skills.length ? skills : (skillKeywords.length ? [{ name: "Core Skills", keywords: unique_(skillKeywords) }] : []),
+    projects: [],
+    education: [],
+    certificates: [],
+    publications: [],
+    languages: [],
+    interests: [],
+    references: [],
+  };
 }
 
 function normalizeHealthPath_(p) {

@@ -144,6 +144,7 @@ curl -sS "$BASE_URL/jobs/$JOB_KEY/push-reactive-resume" \
 Expected:
 - `ok: true`
 - `data.rr_resume_id` present when RR returns an identifier
+- `data.rr_push_adapter` is `jobops_rr_export` or `json_resume_fallback`
 - no RR secret exposed to UI
 
 Expected on fetch:
