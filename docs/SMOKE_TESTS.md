@@ -515,6 +515,8 @@ Expected keys under `data`:
   - `duplicate_candidate`
   - `no_url_in_item`
   - `ingested`
+- `unsupported_domain_by_host` (host -> count)
+- `rejected_url_samples[]` (capped URL-only samples with `reason` + `url`)
 - `feed_summaries[]` with `sample_candidates[]` (URL-only)
 - `source_summary[]`
 

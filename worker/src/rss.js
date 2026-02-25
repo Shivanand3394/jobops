@@ -55,6 +55,8 @@ async function runRssFeedsAndIngest_(env, opts = {}) {
   const urlsUnique = new Set();
   const resultsSample = [];
   const sourceSummary = new Map();
+  const unsupportedDomainByHost = {};
+  const rejectedUrlSamples = [];
   const feedSummaries = [];
 
   if (!feedList.length) {
@@ -86,6 +88,8 @@ async function runRssFeedsAndIngest_(env, opts = {}) {
       ignored: 0,
       link_only: 0,
       reason_buckets: reasonBuckets,
+      unsupported_domain_by_host: {},
+      rejected_url_samples: [],
       feed_summaries: [],
       source_summary: [],
       results_sample: [],
@@ -103,6 +107,8 @@ async function runRssFeedsAndIngest_(env, opts = {}) {
       items_listed: 0,
       processed: 0,
       reason_buckets: feedBucket,
+      unsupported_domain_by_host: {},
+      rejected_url_samples: [],
       sample_candidates: [],
     };
 
@@ -175,6 +181,10 @@ async function runRssFeedsAndIngest_(env, opts = {}) {
       ignoredDomainsCount += numOr0_(classified.ignored_domains_count);
       mergeReasonBuckets_(reasonBuckets, classified.reason_buckets);
       mergeReasonBuckets_(feedBucket, classified.reason_buckets);
+      mergeCountMap_(unsupportedDomainByHost, classified.unsupported_domain_by_host);
+      mergeCountMap_(feedSummary.unsupported_domain_by_host, classified.unsupported_domain_by_host);
+      pushRejectedSamples_(rejectedUrlSamples, classified.rejected_url_samples, sampleLimit);
+      pushRejectedSamples_(feedSummary.rejected_url_samples, classified.rejected_url_samples, sampleLimit);
       pushUniqueLimited_(feedSummary.sample_candidates, classified.sample_candidates, sampleLimit);
 
       let ingestData = null;
@@ -251,6 +261,8 @@ async function runRssFeedsAndIngest_(env, opts = {}) {
     ignored,
     link_only: linkOnly,
     reason_buckets: reasonBuckets,
+    unsupported_domain_by_host: unsupportedDomainByHost,
+    rejected_url_samples: rejectedUrlSamples,
     feed_summaries: feedSummaries,
     source_summary: Array.from(sourceSummary.values()).sort((a, b) => (b.total || 0) - (a.total || 0)),
     results_sample: resultsSample,
@@ -266,6 +278,8 @@ async function classifyRssJobUrlsDetailed_(urls, normalizeFn, opts = {}) {
   const allowedDomains = new Set(["linkedin", "iimjobs", "naukri"]);
   const sampleLimit = clampInt_(opts.sampleLimit || 5, 1, 20);
   const reasonBuckets = createReasonBuckets_();
+  const unsupportedDomainByHost = {};
+  const rejectedUrlSamples = [];
   let ignoredDomains = 0;
 
   for (const raw of unique_(urls)) {
@@ -283,12 +297,15 @@ async function classifyRssJobUrlsDetailed_(urls, normalizeFn, opts = {}) {
 
       if (!norm || norm.ignored || !norm.job_url) {
         reasonBuckets.normalize_ignored += 1;
+        pushRejectedSample_(rejectedUrlSamples, "normalize_ignored", candidate, sampleLimit);
         continue;
       }
 
       const sourceDomain = normalizeSourceDomain_(norm.source_domain);
       if (!allowedDomains.has(sourceDomain)) {
         reasonBuckets.unsupported_domain += 1;
+        incrMapCount_(unsupportedDomainByHost, hostFromUrl_(norm.job_url) || hostFromUrl_(candidate) || "unknown");
+        pushRejectedSample_(rejectedUrlSamples, "unsupported_domain", norm.job_url || candidate, sampleLimit);
         continue;
       }
 
@@ -303,6 +320,7 @@ async function classifyRssJobUrlsDetailed_(urls, normalizeFn, opts = {}) {
     if (!accepted || !accepted.job_url) {
       if (resolved.wrapper_detected && !resolved.wrapper_resolved) {
         reasonBuckets.unresolved_wrapper += 1;
+        pushRejectedSample_(rejectedUrlSamples, "unresolved_wrapper", raw, sampleLimit);
       }
       ignoredDomains += 1;
       continue;
@@ -311,12 +329,14 @@ async function classifyRssJobUrlsDetailed_(urls, normalizeFn, opts = {}) {
     if (accepted.job_key) {
       if (seenByKey.has(accepted.job_key)) {
         reasonBuckets.duplicate_candidate += 1;
+        pushRejectedSample_(rejectedUrlSamples, "duplicate_candidate", accepted.job_url, sampleLimit);
         continue;
       }
       seenByKey.add(accepted.job_key);
     } else {
       if (seenByUrl.has(accepted.job_url)) {
         reasonBuckets.duplicate_candidate += 1;
+        pushRejectedSample_(rejectedUrlSamples, "duplicate_candidate", accepted.job_url, sampleLimit);
         continue;
       }
       seenByUrl.add(accepted.job_url);
@@ -332,6 +352,8 @@ async function classifyRssJobUrlsDetailed_(urls, normalizeFn, opts = {}) {
     supported,
     ignored_domains_count: ignoredDomains,
     reason_buckets: reasonBuckets,
+    unsupported_domain_by_host: unsupportedDomainByHost,
+    rejected_url_samples: rejectedUrlSamples,
     sample_candidates: sampleCandidates,
   };
 }
@@ -406,6 +428,46 @@ function pushUniqueLimited_(target, values, limit) {
     if (target.length >= max) break;
     target.push(s);
   }
+}
+
+function pushRejectedSamples_(target, values, limit) {
+  const max = clampInt_(limit || 5, 1, 20);
+  const arr = Array.isArray(values) ? values : [];
+  for (const row of arr) {
+    if (target.length >= max) break;
+    const reason = String(row?.reason || "").trim();
+    const url = String(row?.url || "").trim();
+    if (!reason || !/^https?:\/\//i.test(url)) continue;
+    const exists = target.some((x) => String(x?.reason || "") === reason && String(x?.url || "") === url);
+    if (exists) continue;
+    target.push({ reason, url });
+  }
+}
+
+function pushRejectedSample_(target, reason, url, limit) {
+  const max = clampInt_(limit || 5, 1, 20);
+  if (!Array.isArray(target) || target.length >= max) return;
+  const r = String(reason || "").trim();
+  const u = String(url || "").trim();
+  if (!r || !/^https?:\/\//i.test(u)) return;
+  const exists = target.some((x) => String(x?.reason || "") === r && String(x?.url || "") === u);
+  if (exists) return;
+  target.push({ reason: r, url: u });
+}
+
+function mergeCountMap_(target, source) {
+  if (!target || !source) return;
+  for (const [k, v] of Object.entries(source)) {
+    const key = String(k || "").trim().toLowerCase();
+    if (!key) continue;
+    target[key] = numOr0_(target[key]) + numOr0_(v);
+  }
+}
+
+function incrMapCount_(target, key, by = 1) {
+  const k = String(key || "").trim().toLowerCase();
+  if (!k) return;
+  target[k] = numOr0_(target[k]) + numOr0_(by);
 }
 
 function parseFeedItems_(xml) {

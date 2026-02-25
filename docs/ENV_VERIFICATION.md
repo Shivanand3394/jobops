@@ -168,6 +168,8 @@ curl -i -X POST "$BASE_URL/rss/diagnostics" -H "x-api-key: $API_KEY" -H "Content
 Expected:
 - `ok:true`
 - `data.reason_buckets` present with deterministic keys
+- `data.unsupported_domain_by_host` present
+- `data.rejected_url_samples` present (URL-only, capped)
 - `data.feed_summaries[]` present with URL-only samples
 - `data.inserted_or_updated` and `data.source_summary[]` present
 
