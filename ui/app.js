@@ -462,14 +462,15 @@ async function runNextAction() {
 function renderDetail(j) {
   state.activeJob = j;
   $("detailBody").classList.remove("empty");
+  const jdConfidence = String(j.jd_confidence || j.fetch_debug?.jd_confidence || "").trim().toLowerCase();
   const headerTitle = getDisplayTitle(j);
   const headerCompany = getDisplayCompany(j) || "-";
   const missingCore = !String(j.role_title || "").trim() && !String(j.company || "").trim();
   const fetchedLowQuality =
-    String(j.jd_source || "").toLowerCase() === "fetched" &&
     (
       String(j.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD" ||
-      ["blocked", "low_quality", "failed"].includes(String(j.fetch_status || "").toLowerCase())
+      ["blocked", "low_quality", "failed"].includes(String(j.fetch_status || "").toLowerCase()) ||
+      jdConfidence === "low"
     );
   const headerHint = (missingCore && fetchedLowQuality) ? " Paste JD and Save & Rescore." : "";
   $("dRole").textContent = headerTitle;
@@ -491,7 +492,9 @@ function renderDetail(j) {
   };
 
   const status = String(j.status || "").toUpperCase();
-  const needsManualJd = String(j.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD" || !String(j.role_title || "").trim();
+  const needsManualJd =
+    String(j.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD" ||
+    jdConfidence === "low";
   const jdText = String(j.jd_text_clean || "").trim();
   const jdHint = needsManualJd
     ? "This job needs manual JD to improve extraction/scoring."
@@ -518,6 +521,7 @@ function renderDetail(j) {
     <div class="kv">
       <div class="k">JD source</div><div class="v">${escapeHtml(j.jd_source || "-")}</div>
       <div class="k">Fetch status</div><div class="v">${escapeHtml(j.fetch_status || "-")}</div>
+      <div class="k">JD confidence</div><div class="v">${escapeHtml(jdConfidence || "-")}</div>
       <div class="k">System status</div><div class="v">${escapeHtml(j.system_status || j.next_status || "-")}</div>
       <div class="k">Job URL</div><div class="v"><a class="muted" href="${escapeHtml(j.job_url || "#")}" target="_blank" rel="noopener">${escapeHtml(j.job_url || "-")}</a></div>
     </div>
