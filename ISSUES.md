@@ -137,3 +137,19 @@ When a user generates a resume/application pack, persist the generated RR JSON b
 
 **Notes:**
 Use versioned profile snapshots (append-only strategy preferred) to avoid accidental data loss from iterative generation.
+
+## Risk: Reactive Resume API key exposure and rotation
+
+**Risk statement:**
+An RR API key was shared in plaintext during setup/testing. Treat this key as compromised.
+
+**Required actions:**
+1. Rotate/revoke the exposed RR key in Reactive Resume immediately.
+2. Update Worker secret `RR_KEY` with the newly issued key.
+3. Verify bridge health via `GET /resume/rr/health` (UI auth).
+4. Confirm no RR key values are present in repo files, docs, or command history snapshots.
+
+**Acceptance criteria:**
+- Old key no longer works against RR.
+- Worker `RR_KEY` is updated and `/resume/rr/health` returns `ready`.
+- This risk remains open until rotation is verified in production.

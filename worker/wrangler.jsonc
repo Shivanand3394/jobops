@@ -31,7 +31,7 @@
     "RSS_MAX_PER_RUN": "25",
     "RSS_ALLOW_KEYWORDS": "",
     "RSS_BLOCK_KEYWORDS": "",
-    "RR_BASE_URL": "",
+    "RR_BASE_URL": "https://rxresu.me",
     "RR_HEALTH_PATH": "/api/health",
     "RR_TIMEOUT_MS": "6000"
   },
