@@ -2020,6 +2020,16 @@ function unwrapKnownTrackingUrl_(rawUrl) {
   return input;
 }
 
+function decodeUrlSafely_(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  try {
+    return decodeURIComponent(s.replace(/\+/g, "%20"));
+  } catch {
+    return s;
+  }
+}
+
 /* =========================================================
  * JD resolution (fetch + email fallback + window extraction)
  * ========================================================= */
