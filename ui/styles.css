@@ -565,6 +565,12 @@ textarea, input{
   box-shadow: var(--shadow);
   overflow:hidden;
 }
+.modal-card-wide{
+  width: min(1100px, 100%);
+  max-height: min(90vh, 920px);
+  display:flex;
+  flex-direction:column;
+}
 .modal-head{
   display:flex;
   align-items:center;
@@ -594,6 +600,43 @@ textarea, input{
   font-size: 12px;
 }
 .result-box.hidden{display:none}
+
+.modal-body-split{
+  display:grid;
+  grid-template-columns: minmax(260px, 40%) minmax(360px, 60%);
+  gap:12px;
+  align-items:stretch;
+}
+
+.review-panel{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+  background: rgba(17,28,51,.55);
+  min-height: 220px;
+}
+
+.review-scroll{
+  margin-top:8px;
+  max-height: 52vh;
+  overflow:auto;
+  padding-right:4px;
+}
+
+.review-evidence-row{
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  margin-bottom:8px;
+  background: rgba(8, 15, 35, 0.45);
+}
+
+.review-evidence-row blockquote{
+  margin:8px 0 0 0;
+  padding:8px 10px;
+  border-left:3px solid var(--line);
+  background:rgba(255,255,255,.02);
+}
 
 .toast{
   position: fixed;
@@ -652,6 +695,12 @@ textarea, input{
   .metrics-grid{grid-template-columns: 1fr 1fr;}
   .tracking-needs-list{grid-template-columns: 1fr 1fr;}
   .tracking-board{grid-auto-columns:minmax(85vw, 1fr);}
+  .modal-body-split{
+    grid-template-columns: 1fr;
+  }
+  .review-scroll{
+    max-height: 28vh;
+  }
   .toolbar{
     align-items:stretch;
     gap:8px;

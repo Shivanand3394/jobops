@@ -1613,6 +1613,7 @@ export default {
         const body = await request.json().catch(() => ({}));
         const profileId = String(body.profile_id || body.profileId || "").trim();
         const summaryRaw = String(body.summary || "").trim();
+        const coverLetterRaw = String(body.cover_letter || body.coverLetter || "").trim();
         const bulletsInput = Array.isArray(body.bullets)
           ? body.bullets
           : String(body.bullets_text || body.bulletsText || "")
@@ -1671,6 +1672,7 @@ export default {
           ...(packJson.tailoring && typeof packJson.tailoring === "object" ? packJson.tailoring : {}),
           summary: enabledBlocks.includes("summary") ? capped.summary : "",
           bullets: enabledBlocks.includes("bullets") ? capped.bullets : [],
+          cover_letter: coverLetterRaw || String(packJson?.tailoring?.cover_letter || "").trim(),
         };
         packJson.controls = {
           ...controlsPrev,
@@ -1771,6 +1773,174 @@ export default {
             profile_id: row.profile_id,
             draft_id: row.id,
             status: reviewedStatus,
+            ats_score: numOrNull_(atsJson?.score),
+            pdf_readiness: pdfReadiness,
+            version_id: versionMeta?.id || null,
+            version_no: versionMeta?.version_no || null,
+          },
+        }, env, 200);
+      }
+
+      if (path.startsWith("/jobs/") && path.endsWith("/approve-pack") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const body = await request.json().catch(() => ({}));
+        const profileId = String(body.profile_id || body.profileId || "").trim();
+
+        const row = profileId
+          ? await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ? AND profile_id = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey, profileId).first()
+          : await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey).first();
+
+        if (!row) {
+          return json_({ ok: false, error: "Application pack not found. Generate pack first." }, env, 404);
+        }
+
+        const packJson = safeJsonParse_(row.pack_json) || {};
+        const atsJsonPrev = safeJsonParse_(row.ats_json) || {};
+        const rrJsonPrev = safeJsonParse_(row.rr_export_json) || {};
+        const controlsPrev = (packJson?.controls && typeof packJson.controls === "object") ? packJson.controls : {};
+        const tailoringPrev = (packJson?.tailoring && typeof packJson.tailoring === "object") ? packJson.tailoring : {};
+
+        const summaryRaw = String(body.summary || tailoringPrev.summary || "").trim();
+        const coverLetterRaw = String(body.cover_letter || body.coverLetter || tailoringPrev.cover_letter || "").trim();
+        const bulletsInput = Array.isArray(body.bullets)
+          ? body.bullets
+          : (Array.isArray(tailoringPrev.bullets) ? tailoringPrev.bullets : []);
+        const bulletsRaw = Array.isArray(bulletsInput)
+          ? bulletsInput.map((x) => String(x || "").trim()).filter(Boolean)
+          : [];
+
+        if (!summaryRaw) return json_({ ok: false, error: "summary is required" }, env, 400);
+        if (!coverLetterRaw) return json_({ ok: false, error: "cover_letter is required" }, env, 400);
+
+        const onePageMode = normalizeOnePageMode_(body.one_page_mode ?? body.onePageMode)
+          || normalizeOnePageMode_(controlsPrev.one_page_mode)
+          || resolveDefaultOnePageMode_(packJson?.job || {});
+        const onePagerStrict = (body.one_pager_strict !== undefined || body.onePagerStrict !== undefined)
+          ? toBool_(body.one_pager_strict ?? body.onePagerStrict, onePageMode === "hard")
+          : (onePageMode === "hard");
+
+        const capped = applyOnePageCaps_(summaryRaw, bulletsRaw);
+        packJson.tailoring = {
+          ...tailoringPrev,
+          summary: capped.summary,
+          bullets: capped.bullets,
+          cover_letter: coverLetterRaw,
+        };
+        packJson.controls = {
+          ...controlsPrev,
+          one_page_mode: onePageMode,
+          one_pager_strict: onePagerStrict,
+          content_review_required: false,
+          approved_at: Date.now(),
+        };
+
+        let rrExport = ensureReactiveResumeExportContract_(rrJsonPrev, {
+          jobKey: row.job_key,
+          templateId: String(packJson?.controls?.template_id || ""),
+        });
+        rrExport.basics = {
+          ...(rrExport.basics && typeof rrExport.basics === "object" ? rrExport.basics : {}),
+          summary: String(packJson.tailoring.summary || ""),
+        };
+        rrExport.sections = {
+          ...(rrExport.sections && typeof rrExport.sections === "object" ? rrExport.sections : {}),
+          highlights: Array.isArray(packJson.tailoring.bullets)
+            ? packJson.tailoring.bullets.map((x) => ({ text: String(x || "").trim() })).filter((x) => x.text).slice(0, onePagerStrict ? 4 : 8)
+            : [],
+        };
+        rrExport.metadata = {
+          ...(rrExport.metadata && typeof rrExport.metadata === "object" ? rrExport.metadata : {}),
+          one_page_mode: onePageMode,
+          one_pager_strict: onePagerStrict,
+        };
+        rrExport = ensureReactiveResumeExportContract_(rrExport, {
+          jobKey: row.job_key,
+          templateId: String(packJson?.controls?.template_id || ""),
+        });
+
+        const atsJson = recomputeReviewedAts_(packJson, atsJsonPrev);
+        const jobRow = await env.DB.prepare(`
+          SELECT job_key, role_title, company, status, system_status, jd_text_clean, fetch_debug_json
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(row.job_key).first();
+        const pdfReadiness = evaluatePdfReadiness_(env, {
+          job: jobRow || {},
+          packJson,
+          atsJson,
+          rrExportJson: rrExport,
+        });
+
+        const approvedStatus = "READY_FOR_SUBMISSION";
+        const now = Date.now();
+        await env.DB.prepare(`
+          UPDATE resume_drafts
+          SET pack_json = ?, ats_json = ?, rr_export_json = ?, status = ?, error_text = NULL, updated_at = ?
+          WHERE id = ?;
+        `.trim()).bind(
+          JSON.stringify(packJson),
+          JSON.stringify(atsJson),
+          JSON.stringify(rrExport),
+          approvedStatus,
+          now,
+          row.id
+        ).run();
+
+        await env.DB.prepare(`
+          UPDATE jobs
+          SET system_status = ?, updated_at = ?
+          WHERE job_key = ?;
+        `.trim()).bind(
+          approvedStatus,
+          now,
+          row.job_key
+        ).run();
+
+        const versionMeta = await insertDraftVersion_(env, {
+          jobKey: row.job_key,
+          profileId: row.profile_id,
+          draftId: row.id,
+          sourceAction: "approve",
+          packJson,
+          atsJson,
+          rrExportJson: rrExport,
+          controlsJson: packJson.controls || {},
+          status: approvedStatus,
+          errorText: "",
+          createdAt: now,
+        });
+
+        await logEvent_(env, "APPLICATION_PACK_APPROVED", jobKey, {
+          profile_id: row.profile_id,
+          draft_id: row.id,
+          version_id: versionMeta?.id || null,
+          version_no: versionMeta?.version_no || null,
+          ats_score: numOrNull_(atsJson?.score),
+          pdf_ready: Boolean(pdfReadiness?.ready),
+          hard_gate_applied: Boolean(pdfReadiness?.hard_gate_applied),
+          ts: now,
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: row.job_key,
+            profile_id: row.profile_id,
+            draft_id: row.id,
+            status: approvedStatus,
             ats_score: numOrNull_(atsJson?.score),
             pdf_readiness: pdfReadiness,
             version_id: versionMeta?.id || null,
@@ -2921,6 +3091,18 @@ function applyOnePageCaps_(summaryIn, bulletsIn) {
     .filter(Boolean)
     .slice(0, 4);
   return { summary, bullets };
+}
+
+function trimTextToMaxChars_(text, maxChars = 320) {
+  const s = String(text || "").trim();
+  const max = Number.isFinite(Number(maxChars)) ? Math.max(80, Number(maxChars)) : 320;
+  if (!s || s.length <= max) return s;
+  const clipped = s.slice(0, max);
+  const lastSentence = Math.max(clipped.lastIndexOf(". "), clipped.lastIndexOf("! "), clipped.lastIndexOf("? "));
+  if (lastSentence >= 120) return clipped.slice(0, lastSentence + 1).trim();
+  const lastSpace = clipped.lastIndexOf(" ");
+  if (lastSpace >= 80) return `${clipped.slice(0, lastSpace).trim()}...`;
+  return `${clipped.trim()}...`;
 }
 
 function recomputeReviewedAts_(packJson, prevAts) {

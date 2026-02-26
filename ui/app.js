@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
+const UI_BUILD_ID = "2026-02-26-resume-wizard-v2";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -65,6 +66,8 @@ const state = {
   activeJob: null,
   trackingFiltersOpen: false,
   lastRecoveryRun: loadLastRecoveryRun_(),
+  workerVersion: "-",
+  reviewContext: null,
 };
 const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
@@ -1005,6 +1008,8 @@ function renderDetail(j) {
           <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
+          <div class="k">Evidence map</div><div class="v"><div id="evidence-container" class="evidence-container"><div class="muted tiny">Loading evidence...</div></div></div>
+          <div class="k">Evidence actions</div><div class="v"><button class="btn btn-ghost" type="button" onclick="rebuildEvidence('${escapeHtml(j.job_key)}')">Rebuild Evidence</button></div>
           <div class="k">Target rubric score</div><div class="v" id="appTargetRubricScore">-</div>
           <div class="k">Target evidence gaps</div><div class="v" id="appTargetRubricGaps">-</div>
           <div class="k">RR import</div><div class="v" id="appRrImportStatus">-</div>
@@ -1077,6 +1082,7 @@ function renderDetail(j) {
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
               <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
+              <button class="btn btn-secondary" onclick="openReviewModal('${escapeHtml(j.job_key)}')">Review & Approve</button>
               <button class="btn btn-secondary" id="btnDownloadRrJson" onclick="downloadRrJson()">Download RR JSON</button>
               <button class="btn btn-secondary" id="btnPushRr" onclick="pushToReactiveResume('${escapeHtml(j.job_key)}')">Push to Reactive Resume</button>
               <button class="btn btn-secondary" id="btnGenerateRrPdf" onclick="exportReactiveResumePdf('${escapeHtml(j.job_key)}', false)">Generate PDF</button>
@@ -1129,6 +1135,7 @@ function renderDetail(j) {
   updateNextActionCard_(j, { hasPack: false });
   bindWorkspaceTabs_(preferredWorkspaceTab_(j, { hasPack: false }));
   hydrateApplicationPack(j);
+  fetchAndRenderEvidence(j.job_key);
 }
 
 function getTargetDisplay(t) {
@@ -1985,6 +1992,235 @@ async function hydrateApplicationPack(jobOrKey) {
   }
 }
 
+function renderEvidenceRowsHtml_(rows, { emptyMsg = "No evidence rows found." } = {}) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return `<div class="muted tiny">${escapeHtml(emptyMsg)}</div>`;
+  return list.map((row) => {
+    const matched = Boolean(row?.matched);
+    const icon = matched ? "CHECK" : "X";
+    const color = matched ? "#23c16b" : "#e44f4f";
+    const requirementType = String(row?.requirement_type || "-").trim() || "-";
+    const requirementText = String(row?.requirement_text || "-").trim() || "-";
+    const source = String(row?.evidence_source || "none").trim() || "none";
+    const confidence = Number.isFinite(Number(row?.confidence_score)) ? Number(row.confidence_score) : 0;
+    const evidenceText = String(row?.evidence_text || "").trim();
+    return `
+      <div class="review-evidence-row">
+        <div class="row" style="justify-content:space-between; gap:8px; margin-top:0;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:700; color:${color};">${icon}</span>
+            <span><b>${escapeHtml(requirementType)}</b>: ${escapeHtml(requirementText)}</span>
+          </div>
+          <span class="muted tiny">confidence ${escapeHtml(String(confidence))}</span>
+        </div>
+        <div class="muted tiny" style="margin-top:4px;">source: ${escapeHtml(source)}</div>
+        ${evidenceText ? `<blockquote>${escapeHtml(evidenceText)}</blockquote>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+async function fetchAndRenderEvidence(jobKey) {
+  const host = $("evidence-container");
+  if (!host) return;
+  const key = String(jobKey || "").trim();
+  if (!key) {
+    host.innerHTML = `<div class="muted tiny">Select a job to view evidence.</div>`;
+    return;
+  }
+  host.innerHTML = `<div class="muted tiny">Loading evidence...</div>`;
+
+  try {
+    const res = await api(`/jobs/${encodeURIComponent(key)}/evidence`);
+    const rows = Array.isArray(res?.data) ? res.data : [];
+    host.innerHTML = renderEvidenceRowsHtml_(rows);
+    return;
+    if (!rows.length) {
+      host.innerHTML = `<div class="muted tiny">No evidence rows found.</div>`;
+      return;
+    }
+
+    host.innerHTML = rows.map((row) => {
+      const matched = Boolean(row?.matched);
+      const icon = matched ? "✔" : "✖";
+      const color = matched ? "#23c16b" : "#e44f4f";
+      const requirementType = String(row?.requirement_type || "-").trim() || "-";
+      const requirementText = String(row?.requirement_text || "-").trim() || "-";
+      const source = String(row?.evidence_source || "none").trim() || "none";
+      const confidence = Number.isFinite(Number(row?.confidence_score)) ? Number(row.confidence_score) : 0;
+      const evidenceText = String(row?.evidence_text || "").trim();
+
+      return `
+        <div style="padding:8px 10px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px;">
+          <div class="row" style="justify-content:space-between; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:${color};">${icon}</span>
+              <span><b>${escapeHtml(requirementType)}</b>: ${escapeHtml(requirementText)}</span>
+            </div>
+            <span class="muted tiny">confidence ${escapeHtml(String(confidence))}</span>
+          </div>
+          <div class="muted tiny" style="margin-top:4px;">source: ${escapeHtml(source)}</div>
+          ${evidenceText ? `<blockquote style="margin:8px 0 0 0; padding:8px 10px; border-left:3px solid var(--line); background:rgba(255,255,255,0.02);">${escapeHtml(evidenceText)}</blockquote>` : ""}
+        </div>
+      `;
+    }).join("");
+  } catch (e) {
+    if (e?.httpStatus === 404) {
+      host.innerHTML = `<div class="muted tiny">No evidence yet. Run rescore or manual JD save first.</div>`;
+      return;
+    }
+    host.innerHTML = `<div class="muted tiny">Evidence load failed: ${escapeHtml(String(e?.message || e || "unknown error"))}</div>`;
+  }
+}
+
+function updateReviewSummaryMeta_() {
+  const summary = String($("reviewSummary")?.value || "");
+  const meta = $("reviewSummaryMeta");
+  if (!meta) return;
+  const n = summary.length;
+  const stateLabel = (n >= 180 && n <= 250) ? "OK" : "Need 180-250";
+  meta.textContent = `${n} / 250 (${stateLabel})`;
+}
+
+async function openReviewModal(jobKey) {
+  const key = String(jobKey || state.activeJob?.job_key || "").trim();
+  if (!key) return;
+  const profileId = String(state.activeProfileId || "primary").trim() || "primary";
+
+  $("reviewJobKey").textContent = key;
+  $("reviewSummary").value = "";
+  $("reviewCoverLetter").value = "";
+  $("reviewEvidenceList").innerHTML = `<div class="muted tiny">Loading...</div>`;
+  state.reviewContext = { jobKey: key, profileId, bullets: [] };
+  updateReviewSummaryMeta_();
+  openModal("modalReview");
+
+  try {
+    spin(true);
+    const evidencePromise = api(`/jobs/${encodeURIComponent(key)}/evidence?limit=200`)
+      .then((r) => Array.isArray(r?.data) ? r.data : [])
+      .catch((e) => (e?.httpStatus === 404 ? [] : Promise.reject(e)));
+    const packPromise = api(`/jobs/${encodeURIComponent(key)}/application-pack?profile_id=${encodeURIComponent(profileId)}`);
+    const [evidenceRows, packRes] = await Promise.all([evidencePromise, packPromise]);
+    const draft = packRes?.data || {};
+    const tailoring = draft?.pack_json?.tailoring && typeof draft.pack_json.tailoring === "object"
+      ? draft.pack_json.tailoring
+      : {};
+    const bullets = Array.isArray(tailoring.bullets) ? tailoring.bullets.map((x) => String(x || "").trim()).filter(Boolean) : [];
+    state.reviewContext = {
+      jobKey: key,
+      profileId: String(draft.profile_id || profileId).trim() || profileId,
+      bullets,
+    };
+
+    $("reviewSummary").value = String(tailoring.summary || "");
+    $("reviewCoverLetter").value = String(tailoring.cover_letter || "");
+    $("reviewEvidenceList").innerHTML = renderEvidenceRowsHtml_(evidenceRows, {
+      emptyMsg: "No matched evidence yet. Rebuild evidence for stronger auditability.",
+    });
+    updateReviewSummaryMeta_();
+
+    if (window.location.hostname.includes("workers.dev")) {
+      console.log("Draft response", {
+        job_key: key,
+        status: draft.status || null,
+        evidence_rows: evidenceRows.length,
+      });
+    }
+  } catch (e) {
+    $("reviewEvidenceList").innerHTML = `<div class="muted tiny">Load failed: ${escapeHtml(String(e?.message || e || "unknown error"))}</div>`;
+    toast("Review load failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function saveDraft() {
+  const ctx = state.reviewContext || {};
+  const jobKey = String(ctx.jobKey || "").trim();
+  if (!jobKey) return toast("Select a job first");
+  const profileId = String(ctx.profileId || state.activeProfileId || "primary").trim() || "primary";
+  const summary = String($("reviewSummary")?.value || "").trim();
+  const coverLetter = String($("reviewCoverLetter")?.value || "").trim();
+  const bullets = Array.isArray(ctx.bullets) ? ctx.bullets : [];
+  if (!summary) return toast("Summary is required");
+  if (!bullets.length) return toast("Draft has no bullets; generate pack first");
+
+  try {
+    spin(true);
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/application-pack/review`, {
+      method: "POST",
+      body: {
+        profile_id: profileId,
+        summary,
+        bullets,
+        cover_letter: coverLetter,
+      },
+    });
+    toast(`Draft saved (${res?.data?.status || "ok"})`);
+    if (state.activeKey === jobKey) await setActive(jobKey);
+  } catch (e) {
+    toast("Save failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function approvePack() {
+  const ctx = state.reviewContext || {};
+  const jobKey = String(ctx.jobKey || "").trim();
+  if (!jobKey) return toast("Select a job first");
+  const profileId = String(ctx.profileId || state.activeProfileId || "primary").trim() || "primary";
+  const summary = String($("reviewSummary")?.value || "").trim();
+  const coverLetter = String($("reviewCoverLetter")?.value || "").trim();
+  const bullets = Array.isArray(ctx.bullets) ? ctx.bullets : [];
+  if (!summary) return toast("Summary is required");
+  if (!coverLetter) return toast("Cover letter is required");
+
+  try {
+    spin(true);
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/approve-pack`, {
+      method: "POST",
+      body: {
+        profile_id: profileId,
+        summary,
+        cover_letter: coverLetter,
+        bullets,
+      },
+    });
+    try {
+      await navigator.clipboard.writeText(coverLetter);
+      toast(`Approved (${res?.data?.status || "READY_FOR_SUBMISSION"}). Cover letter copied.`);
+    } catch {
+      toast(`Approved (${res?.data?.status || "READY_FOR_SUBMISSION"}). Copy cover letter manually.`);
+    }
+    closeModal("modalReview");
+    await loadJobs({ ignoreStatus: true });
+    if (state.activeKey === jobKey) await setActive(jobKey);
+  } catch (e) {
+    toast("Approve failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function rebuildEvidence(jobKey) {
+  const key = String(jobKey || state.activeJob?.job_key || "").trim();
+  if (!key) return;
+  try {
+    spin(true);
+    const res = await api(`/jobs/${encodeURIComponent(key)}/evidence/rebuild`, { method: "POST" });
+    const d = res?.data || {};
+    toast(`Evidence rebuilt (${d.rows_written ?? 0} rows, ${d.matched_count ?? 0} matched)`);
+    await fetchAndRenderEvidence(key);
+    await hydrateApplicationPack(key);
+  } catch (e) {
+    toast("Evidence rebuild failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
 function syncRrDownloadUi_() {
   const btn = $("btnDownloadRrJson");
   const pushBtn = $("btnPushRr");
@@ -2526,6 +2762,10 @@ async function saveSettings() {
   $("btnBatchRescoreScored").onclick = async () => { closeModal("modalBatch"); await rescorePending("SCORED"); };
   $("btnBatchRescoreExistingJd").onclick = async () => { closeModal("modalBatch"); await rescoreExistingJd(60); };
   $("btnBatchRetryFetchMissingJd").onclick = async () => { closeModal("modalBatch"); await retryFetchMissingJd(60); };
+  $("btnCloseReview").onclick = () => closeModal("modalReview");
+  $("btnReviewSave").onclick = saveDraft;
+  $("btnReviewApprove").onclick = approvePack;
+  $("reviewSummary").oninput = updateReviewSummaryMeta_;
 
   $("btnTargetsRefresh").onclick = loadTargets;
   $("btnTargetNew").onclick = createNewTarget;
@@ -2574,9 +2814,13 @@ window.deleteResumeTemplateFromUi = deleteResumeTemplateFromUi;
 window.selectAtsKeywords = selectAtsKeywords;
 window.runNextAction = runNextAction;
 window.generateApplicationPack = generateApplicationPack;
+window.openReviewModal = openReviewModal;
+window.saveDraft = saveDraft;
+window.approvePack = approvePack;
 window.copyPackSummary = copyPackSummary;
 window.copyPackBullets = copyPackBullets;
 window.downloadRrJson = downloadRrJson;
 window.downloadLatestRrPdf = downloadLatestRrPdf;
 window.exportReactiveResumePdf = exportReactiveResumePdf;
 window.pushToReactiveResume = pushToReactiveResume;
+window.rebuildEvidence = rebuildEvidence;

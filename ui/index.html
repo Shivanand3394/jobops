@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- ui-version: 2026-02-25T20:15:00Z phase1-workspace-ats-template-controls -->
+<!-- ui-version: 2026-02-26T22:40:00Z resume-wizard-v2 -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -315,6 +315,7 @@
           <button class="btn" id="btnSaveSettings">Save</button>
           <button class="btn btn-ghost" id="btnCancelSettings">Cancel</button>
         </div>
+        <div class="muted tiny" id="settingsBuildInfo">UI: - | Worker: -</div>
         <div class="muted tiny">We store these in your browser localStorage.</div>
       </div>
     </div>
@@ -335,6 +336,36 @@
           <button class="btn btn-secondary" id="btnBatchRescoreExistingJd">Rescore Existing JD</button>
           <button class="btn btn-secondary" id="btnBatchRetryFetchMissingJd">Retry Fetch Missing JD</button>
           <button class="btn btn-ghost" id="btnBatchCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review & Approve Modal -->
+  <div id="modalReview" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-head">
+        <div class="h3">Review Application Pack: <span id="reviewJobKey">-</span></div>
+        <button class="btn btn-ghost" id="btnCloseReview">Close</button>
+      </div>
+      <div class="modal-body modal-body-split">
+        <section class="review-panel review-evidence-panel">
+          <div class="h3">Verified Evidence</div>
+          <div id="reviewEvidenceList" class="review-scroll muted tiny">Loading...</div>
+        </section>
+        <section class="review-panel review-draft-panel">
+          <div class="h3">Tailored Content</div>
+          <label class="muted tiny" for="reviewSummary">Summary (180-250 chars)</label>
+          <textarea id="reviewSummary" maxlength="250" rows="4" placeholder="Summary..."></textarea>
+          <div id="reviewSummaryMeta" class="muted tiny">0 / 250</div>
+          <label class="muted tiny" for="reviewCoverLetter" style="margin-top:10px;">Cover Letter</label>
+          <textarea id="reviewCoverLetter" rows="12" placeholder="Cover letter..."></textarea>
+        </section>
+      </div>
+      <div class="modal-body">
+        <div class="row" style="justify-content:flex-start;">
+          <button class="btn btn-secondary" id="btnReviewSave">Save Progress</button>
+          <button class="btn" id="btnReviewApprove">Approve & Copy</button>
         </div>
       </div>
     </div>
