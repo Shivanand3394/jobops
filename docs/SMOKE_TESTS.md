@@ -18,6 +18,42 @@ $API_KEY = "<your-api-key>"
 $JOB_KEY = "<job_key>"
 ```
 
+## Scripted Smoke Pack (Sprint E)
+Runs a single scripted pack that validates:
+- `GET /health`
+- `GET /jobs?limit=1`
+- `POST /gmail/poll`
+- `POST /rss/diagnostics`
+- Wizard happy path (`generate -> review -> approve -> verify`)
+
+Defaults:
+- output report file: `docs/artifacts/smoke_pack_latest.json`
+- profile id: `primary`
+- timeout: `45000ms` per call
+
+### Node (cross-platform)
+```bash
+BASE_URL="https://get-job.shivanand-shah94.workers.dev" \
+UI_KEY="<your-ui-key>" \
+API_KEY="<your-api-key>" \
+JOB_KEY="<optional-job-key>" \
+node scripts/smoke_pack.mjs
+```
+
+### PowerShell
+```powershell
+$env:BASE_URL = "https://get-job.shivanand-shah94.workers.dev"
+$env:UI_KEY = "<your-ui-key>"
+$env:API_KEY = "<your-api-key>"
+$env:JOB_KEY = "<optional-job-key>" # optional: first job from /jobs?limit=1 is used if empty
+node scripts/smoke_pack.mjs
+```
+
+Optional envs:
+- `PROFILE_ID` (default `primary`)
+- `SMOKE_TIMEOUT_MS` (default `45000`)
+- `SMOKE_OUT_FILE` (default `docs/artifacts/smoke_pack_latest.json`)
+
 ## 1) GET /health (public)
 ### curl
 ```bash
