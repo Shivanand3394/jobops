@@ -9,6 +9,26 @@ const DEFAULT_OUTPUT_FILE = "docs/artifacts/smoke_pack_latest.json";
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_PROFILE_ID = "primary";
 const DEFAULT_WHATSAPP_WEBHOOK_PATH = "/ingest/whatsapp/vonage";
+const SMOKE_MANUAL_JD_FALLBACK = `
+Business Program Manager - Platform Operations
+Company: Smoke Systems
+Location: Remote
+
+We are hiring a Business Program Manager to lead cross-functional delivery, KPI tracking, and stakeholder communication across product, operations, and engineering teams.
+
+Must have:
+- Program management experience owning delivery plans and roadmap milestones.
+- Cross-functional collaboration with product, engineering, design, and operations.
+- Strong SQL skills for reporting and analytics.
+- KPI tracking and executive-ready status communication.
+- Stakeholder management across multiple workstreams.
+
+Nice to have:
+- Process optimization and workflow automation.
+- Experience with business strategy and operational planning.
+
+The role requires clear written communication, execution ownership, and measurable outcomes.
+`;
 
 function asString(value, maxLen = 4000) {
   return String(value ?? "").trim().slice(0, maxLen);
@@ -35,6 +55,10 @@ function shorten(value, maxLen = 6000) {
 
 function failValidation(message) {
   return asString(message || "validation failed", 500);
+}
+
+function normalizeWhitespace(value) {
+  return asString(value, 20_000).replace(/\s+/g, " ").trim();
 }
 
 function toBoolEnv(value, fallback = false) {
@@ -174,6 +198,7 @@ async function runStep({
   let response;
   let text = "";
   let json = null;
+  let contentType = "";
   let failure = "";
 
   try {
@@ -183,6 +208,7 @@ async function runStep({
       body: body === null ? undefined : JSON.stringify(body),
       signal: controller.signal,
     });
+    contentType = asString(response.headers.get("content-type"), 400).toLowerCase();
     text = await response.text();
     json = parseJsonSafe(text);
   } catch (err) {
@@ -203,6 +229,7 @@ async function runStep({
     duration_ms: durationMs,
     ok: false,
     error: null,
+    response_content_type: contentType || null,
     response_json: json,
     response_text: json ? null : shorten(text),
   };
@@ -222,7 +249,7 @@ async function runStep({
   }
 
   if (typeof validate === "function") {
-    const verdict = validate({ status: response.status, json, text });
+    const verdict = validate({ status: response.status, json, text, contentType });
     if (verdict !== true) {
       step.error = failValidation(verdict);
       pushStep(step);
@@ -249,7 +276,11 @@ function buildReviewPayload(packPayload) {
     "Used data and stakeholder feedback loops to improve execution quality and decision speed.",
   ];
 
-  const summary = asString(tailoring.summary || summaryDefault, 1800);
+  const summarySeed = asString(tailoring.summary || summaryDefault, 1500);
+  const summary = asString(
+    `${summarySeed} Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.`,
+    1800
+  );
   const coverLetter = asString(tailoring.cover_letter || coverLetterDefault, 2500);
   let bullets = Array.isArray(tailoring.bullets)
     ? tailoring.bullets.map((x) => asString(x, 500)).filter(Boolean)
@@ -377,10 +408,20 @@ async function main() {
       id: cfg.profileId,
       name: "Smoke Profile",
       profile_json: {
-        basics: { name: "Smoke User" },
-        summary: "Execution-focused operator with product and delivery ownership experience.",
-        experience: [],
-        skills: [],
+        basics: { name: "Smoke User", email: "smoke.user@example.com", location: "Remote" },
+        summary: "Execution-focused operator with product and delivery ownership experience across cross-functional programs.",
+        experience: [
+          {
+            company: "Smoke Co",
+            role: "Program Manager",
+            date_range: "2022 - Present",
+            bullets: [
+              "Led cross-functional delivery programs with KPI tracking and stakeholder alignment.",
+              "Built SQL-backed reporting loops to improve execution visibility and decision quality.",
+            ],
+          },
+        ],
+        skills: ["Program Management", "Cross-functional Collaboration", "SQL", "KPI Tracking", "Operations"],
       },
     },
     validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
@@ -395,10 +436,20 @@ async function main() {
       id: secondaryProfileId,
       name: "Smoke Profile Alt",
       profile_json: {
-        basics: { name: "Smoke User Alt" },
+        basics: { name: "Smoke User Alt", email: "smoke.user.alt@example.com", location: "Remote" },
         summary: "Alternate profile for per-job preference verification.",
-        experience: [],
-        skills: [],
+        experience: [
+          {
+            company: "Alt Smoke Co",
+            role: "Business Program Manager",
+            date_range: "2021 - Present",
+            bullets: [
+              "Owned roadmap execution for program increments spanning product, ops, and engineering teams.",
+              "Established SLA and weekly KPI review cadence to improve delivery consistency.",
+            ],
+          },
+        ],
+        skills: ["Business Program Management", "Roadmap", "Delivery", "KPI", "Stakeholder Management"],
       },
     },
     validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
@@ -522,6 +573,126 @@ async function main() {
       return profileId === effectiveProfileId
         ? true
         : `Expected final pack profile_id "${effectiveProfileId}", got "${profileId || "EMPTY"}"`;
+    },
+  });
+
+  const evidenceRebuildInitial = await runStep({
+    name: "wizard.evidence.rebuild",
+    method: "POST",
+    path: `/jobs/${encodedJobKey}/evidence/rebuild`,
+    auth: "ui",
+    expectedStatus: [200, 400],
+    validate: ({ json }) => {
+      if (json?.ok !== true) {
+        const err = asString(json?.error, 300).toLowerCase();
+        if (err.includes("no extracted requirements available")) return true;
+        return "Expected { ok: true }";
+      }
+      const count = Number(json?.data?.requirement_count || 0);
+      return count > 0
+        ? true
+        : "Expected requirement_count > 0 after evidence rebuild.";
+    },
+  });
+  if (evidenceRebuildInitial.status === 400) {
+    await runStep({
+      name: "wizard.rescore.for.evidence",
+      method: "POST",
+      path: `/jobs/${encodedJobKey}/rescore`,
+      auth: "ui",
+      body: {},
+      validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
+    });
+
+    const evidenceRebuildAfterRescore = await runStep({
+      name: "wizard.evidence.rebuild.after_rescore",
+      method: "POST",
+      path: `/jobs/${encodedJobKey}/evidence/rebuild`,
+      auth: "ui",
+      expectedStatus: [200, 400],
+      validate: ({ json }) => {
+        if (json?.ok !== true) {
+          const err = asString(json?.error, 300).toLowerCase();
+          if (err.includes("no extracted requirements available")) return true;
+          return "Expected { ok: true }";
+        }
+        const count = Number(json?.data?.requirement_count || 0);
+        return count > 0
+          ? true
+          : "Expected requirement_count > 0 after rescore rebuild.";
+      },
+    });
+
+    if (evidenceRebuildAfterRescore.status === 400) {
+      await runStep({
+        name: "wizard.manual_jd.seed",
+        method: "POST",
+        path: `/jobs/${encodedJobKey}/manual-jd`,
+        auth: "ui",
+        body: {
+          jd_text_clean: SMOKE_MANUAL_JD_FALLBACK,
+        },
+        validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
+      });
+
+      await runStep({
+        name: "wizard.evidence.rebuild.after_manual_jd",
+        method: "POST",
+        path: `/jobs/${encodedJobKey}/evidence/rebuild`,
+        auth: "ui",
+        validate: ({ json }) => {
+          if (json?.ok !== true) return "Expected { ok: true }";
+          const count = Number(json?.data?.requirement_count || 0);
+          return count > 0
+            ? true
+            : "Expected requirement_count > 0 after manual-jd rebuild.";
+        },
+      });
+    }
+  }
+
+  let matchedEvidenceNeedle = "";
+  const evidenceStep = await runStep({
+    name: "wizard.evidence.fetch",
+    method: "GET",
+    path: `/jobs/${encodedJobKey}/evidence?limit=60`,
+    auth: "ui",
+    validate: ({ json }) => {
+      if (json?.ok !== true) return "Expected { ok: true }";
+      const rows = Array.isArray(json?.data) ? json.data : [];
+      if (!rows.length) return "Expected evidence rows for selected job.";
+      const matched = rows.filter((row) => row?.matched === true || Number(row?.matched) === 1);
+      if (!matched.length) return "Expected at least one matched evidence row.";
+      const rawNeedle = normalizeWhitespace(
+        matched
+          .map((row) => asString(row?.evidence_text || row?.requirement_text, 300))
+          .find(Boolean)
+      );
+      const needle = rawNeedle.toLowerCase().split(" ").filter(Boolean).slice(0, 8).join(" ");
+      if (needle.length < 12) return "Matched evidence text too short for resume verification.";
+      matchedEvidenceNeedle = needle;
+      return true;
+    },
+  });
+  runLog.config.resume_html_evidence_rows = Array.isArray(evidenceStep?.json?.data) ? evidenceStep.json.data.length : 0;
+  runLog.config.resume_html_evidence_needle = matchedEvidenceNeedle || null;
+
+  await runStep({
+    name: "wizard.resume.html",
+    method: "GET",
+    path: `/jobs/${encodedJobKey}/resume/html?profile_id=${encodeURIComponent(effectiveProfileId)}&evidence_limit=12`,
+    auth: "ui",
+    validate: ({ text, contentType }) => {
+      const ct = asString(contentType, 200).toLowerCase();
+      if (!ct.includes("text/html")) return `Expected content-type text/html, got "${ct || "EMPTY"}"`;
+      const html = normalizeWhitespace(text).toLowerCase();
+      if (!html.includes("<html")) return "Expected HTML document response.";
+      if (!/targeted impact/i.test(text)) return "Missing 'Targeted Impact' section in resume HTML.";
+      if (!matchedEvidenceNeedle) return "Missing matched evidence verification needle.";
+      if (!html.includes(matchedEvidenceNeedle)) {
+        return `Expected matched evidence snippet in resume HTML: "${matchedEvidenceNeedle}"`;
+      }
+      return true;
     },
   });
 
