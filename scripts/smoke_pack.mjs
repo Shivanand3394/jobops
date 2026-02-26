@@ -37,12 +37,21 @@ function failValidation(message) {
   return asString(message || "validation failed", 500);
 }
 
+function toBoolEnv(value, fallback = false) {
+  const raw = asString(value, 50).toLowerCase();
+  if (!raw) return fallback;
+  if (["1", "true", "yes", "y", "on"].includes(raw)) return true;
+  if (["0", "false", "no", "n", "off"].includes(raw)) return false;
+  return fallback;
+}
+
 const cfg = {
   baseUrl: asString(process.env.BASE_URL || DEFAULT_BASE_URL, 2000).replace(/\/+$/g, ""),
   uiKey: asString(process.env.UI_KEY, 500),
   apiKey: asString(process.env.API_KEY, 500),
   jobKey: asString(process.env.JOB_KEY, 200),
   profileId: asString(process.env.PROFILE_ID || DEFAULT_PROFILE_ID, 80),
+  requireOutreach: toBoolEnv(process.env.SMOKE_REQUIRE_OUTREACH, false),
   timeoutMs: clampInt(process.env.SMOKE_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, 5_000, 180_000),
   outFileRaw: asString(process.env.SMOKE_OUT_FILE || DEFAULT_OUTPUT_FILE, 2000),
   whatsappWebhookPath: asString(process.env.WHATSAPP_WEBHOOK_PATH || DEFAULT_WHATSAPP_WEBHOOK_PATH, 300) || DEFAULT_WHATSAPP_WEBHOOK_PATH,
@@ -63,6 +72,7 @@ const runLog = {
     profile_id: cfg.profileId,
     job_key_input: cfg.jobKey || null,
     output_file: cfg.outFileRaw,
+    require_outreach: cfg.requireOutreach,
     whatsapp_sim_enabled: Boolean(cfg.whatsappWebhookKey),
     whatsapp_webhook_path: cfg.whatsappWebhookPath,
   },
@@ -522,99 +532,109 @@ async function main() {
     auth: "ui",
     validate: ({ json }) => {
       if (json?.ok !== true) return "Expected { ok: true }";
-      const list = Array.isArray(json?.data) ? json.data : [];
-      return list.length > 0
+      return Array.isArray(json?.data)
         ? true
-        : "Expected at least 1 outreach contact. Use a JOB_KEY with harvested contacts.";
+        : "Expected contacts data[] array";
     },
   });
 
-  const outreachContactId = asString(outreachContacts?.json?.data?.[0]?.id, 200);
+  const outreachList = Array.isArray(outreachContacts?.json?.data) ? outreachContacts.json.data : [];
+  const outreachContactId = asString(outreachList?.[0]?.id, 200);
   if (!outreachContactId) {
-    throw new Error("Outreach contacts list returned no contact id.");
+    const msg = "Outreach contacts list is empty for selected JOB_KEY.";
+    runLog.config.outreach_contact_id = null;
+    runLog.config.outreach_skipped = true;
+    if (cfg.requireOutreach) {
+      throw new Error(`${msg} Set JOB_KEY to a contact-backed job or SMOKE_REQUIRE_OUTREACH=0.`);
+    }
+    pushSkippedStep("outreach.draft.linkedin", `${msg} Skipped (SMOKE_REQUIRE_OUTREACH=0).`);
+    pushSkippedStep("outreach.status.sent", `${msg} Skipped (SMOKE_REQUIRE_OUTREACH=0).`);
+    pushSkippedStep("outreach.status.replied", `${msg} Skipped (SMOKE_REQUIRE_OUTREACH=0).`);
+    pushSkippedStep("outreach.contacts.verify.replied", `${msg} Skipped (SMOKE_REQUIRE_OUTREACH=0).`);
+  } else {
+    runLog.config.outreach_contact_id = outreachContactId;
+
+    const outreachLinkedin = await runStep({
+      name: "outreach.draft.linkedin",
+      method: "POST",
+      path: `/jobs/${encodedJobKey}/contacts/${encodeURIComponent(outreachContactId)}/draft`,
+      auth: "ui",
+      body: {
+        profile_id: effectiveProfileId,
+        channel: "LINKEDIN",
+        use_ai: true,
+      },
+      validate: ({ json }) => {
+        if (json?.ok !== true) return "Expected { ok: true }";
+        const draft = asString(json?.data?.draft, 6000);
+        const len = draft.length;
+        if (len < 180) return `LinkedIn draft too short (${len}).`;
+        if (len > 900) return `LinkedIn draft too long (${len}).`;
+        const tpStatus = asString(json?.data?.touchpoint?.status, 50).toUpperCase();
+        if (tpStatus !== "DRAFT") return `Expected touchpoint status DRAFT, got "${tpStatus || "EMPTY"}"`;
+        const tpChannel = asString(json?.data?.touchpoint?.channel, 50).toUpperCase();
+        if (tpChannel !== "LINKEDIN") return `Expected touchpoint channel LINKEDIN, got "${tpChannel || "EMPTY"}"`;
+        return true;
+      },
+    });
+    runLog.config.outreach_linkedin_draft_len = asString(outreachLinkedin?.json?.data?.draft, 6000).length;
+
+    await runStep({
+      name: "outreach.status.sent",
+      method: "POST",
+      path: `/jobs/${encodedJobKey}/contacts/${encodeURIComponent(outreachContactId)}/touchpoint-status`,
+      auth: "ui",
+      body: {
+        channel: "LINKEDIN",
+        status: "SENT",
+      },
+      validate: ({ json }) => {
+        if (json?.ok !== true) return "Expected { ok: true }";
+        const status = asString(json?.data?.status, 50).toUpperCase();
+        return status === "SENT"
+          ? true
+          : `Expected SENT from touchpoint-status, got "${status || "EMPTY"}"`;
+      },
+    });
+
+    await runStep({
+      name: "outreach.status.replied",
+      method: "POST",
+      path: `/jobs/${encodedJobKey}/contacts/${encodeURIComponent(outreachContactId)}/touchpoint-status`,
+      auth: "ui",
+      body: {
+        channel: "LINKEDIN",
+        status: "REPLIED",
+      },
+      validate: ({ json }) => {
+        if (json?.ok !== true) return "Expected { ok: true }";
+        const status = asString(json?.data?.status, 50).toUpperCase();
+        return status === "REPLIED"
+          ? true
+          : `Expected REPLIED from touchpoint-status, got "${status || "EMPTY"}"`;
+      },
+    });
+
+    await runStep({
+      name: "outreach.contacts.verify.replied",
+      method: "GET",
+      path: `/jobs/${encodedJobKey}/contacts`,
+      auth: "ui",
+      validate: ({ json }) => {
+        if (json?.ok !== true) return "Expected { ok: true }";
+        const list = Array.isArray(json?.data) ? json.data : [];
+        const row = list.find((x) => asString(x?.id, 200) === outreachContactId);
+        if (!row) return "Selected contact missing from contacts list.";
+        const statuses = (row?.channel_statuses && typeof row.channel_statuses === "object")
+          ? row.channel_statuses
+          : {};
+        const linkedInStatus = asString(statuses?.LINKEDIN || row?.status, 50).toUpperCase();
+        return linkedInStatus === "REPLIED"
+          ? true
+          : `Expected LinkedIn status REPLIED, got "${linkedInStatus || "EMPTY"}"`;
+      },
+    });
   }
-  runLog.config.outreach_contact_id = outreachContactId;
-
-  const outreachLinkedin = await runStep({
-    name: "outreach.draft.linkedin",
-    method: "POST",
-    path: `/jobs/${encodedJobKey}/contacts/${encodeURIComponent(outreachContactId)}/draft`,
-    auth: "ui",
-    body: {
-      profile_id: effectiveProfileId,
-      channel: "LINKEDIN",
-      use_ai: true,
-    },
-    validate: ({ json }) => {
-      if (json?.ok !== true) return "Expected { ok: true }";
-      const draft = asString(json?.data?.draft, 6000);
-      const len = draft.length;
-      if (len < 180) return `LinkedIn draft too short (${len}).`;
-      if (len > 900) return `LinkedIn draft too long (${len}).`;
-      const tpStatus = asString(json?.data?.touchpoint?.status, 50).toUpperCase();
-      if (tpStatus !== "DRAFT") return `Expected touchpoint status DRAFT, got "${tpStatus || "EMPTY"}"`;
-      const tpChannel = asString(json?.data?.touchpoint?.channel, 50).toUpperCase();
-      if (tpChannel !== "LINKEDIN") return `Expected touchpoint channel LINKEDIN, got "${tpChannel || "EMPTY"}"`;
-      return true;
-    },
-  });
-  runLog.config.outreach_linkedin_draft_len = asString(outreachLinkedin?.json?.data?.draft, 6000).length;
-
-  await runStep({
-    name: "outreach.status.sent",
-    method: "POST",
-    path: `/jobs/${encodedJobKey}/contacts/${encodeURIComponent(outreachContactId)}/touchpoint-status`,
-    auth: "ui",
-    body: {
-      channel: "LINKEDIN",
-      status: "SENT",
-    },
-    validate: ({ json }) => {
-      if (json?.ok !== true) return "Expected { ok: true }";
-      const status = asString(json?.data?.status, 50).toUpperCase();
-      return status === "SENT"
-        ? true
-        : `Expected SENT from touchpoint-status, got "${status || "EMPTY"}"`;
-    },
-  });
-
-  await runStep({
-    name: "outreach.status.replied",
-    method: "POST",
-    path: `/jobs/${encodedJobKey}/contacts/${encodeURIComponent(outreachContactId)}/touchpoint-status`,
-    auth: "ui",
-    body: {
-      channel: "LINKEDIN",
-      status: "REPLIED",
-    },
-    validate: ({ json }) => {
-      if (json?.ok !== true) return "Expected { ok: true }";
-      const status = asString(json?.data?.status, 50).toUpperCase();
-      return status === "REPLIED"
-        ? true
-        : `Expected REPLIED from touchpoint-status, got "${status || "EMPTY"}"`;
-    },
-  });
-
-  await runStep({
-    name: "outreach.contacts.verify.replied",
-    method: "GET",
-    path: `/jobs/${encodedJobKey}/contacts`,
-    auth: "ui",
-    validate: ({ json }) => {
-      if (json?.ok !== true) return "Expected { ok: true }";
-      const list = Array.isArray(json?.data) ? json.data : [];
-      const row = list.find((x) => asString(x?.id, 200) === outreachContactId);
-      if (!row) return "Selected contact missing from contacts list.";
-      const statuses = (row?.channel_statuses && typeof row.channel_statuses === "object")
-        ? row.channel_statuses
-        : {};
-      const linkedInStatus = asString(statuses?.LINKEDIN || row?.status, 50).toUpperCase();
-      return linkedInStatus === "REPLIED"
-        ? true
-        : `Expected LinkedIn status REPLIED, got "${linkedInStatus || "EMPTY"}"`;
-    },
-  });
 
   if (health?.json?.ok !== true) {
     throw new Error("Health endpoint returned unexpected payload.");

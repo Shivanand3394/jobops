@@ -53,6 +53,30 @@ Optional envs:
 - `PROFILE_ID` (default `primary`)
 - `SMOKE_TIMEOUT_MS` (default `45000`)
 - `SMOKE_OUT_FILE` (default `docs/artifacts/smoke_pack_latest.json`)
+- `SMOKE_REQUIRE_OUTREACH` (default `0`; set `1` to fail when no contact-backed outreach path exists)
+- `WHATSAPP_VONAGE_KEY` / `WHATSAPP_WEBHOOK_KEY` (optional; enables webhook simulation step)
+- `WHATSAPP_VONAGE_SIGNATURE_SECRET` or `WHATSAPP_VONAGE_JWT` (optional for signed webhook simulation)
+
+### GitHub Actions smoke workflow
+Repo workflow: `.github/workflows/smoke-pack.yml`
+
+Required GitHub Secrets:
+- `UI_KEY`
+- `API_KEY`
+
+Optional GitHub Secrets:
+- `WHATSAPP_VONAGE_KEY`
+- `WHATSAPP_VONAGE_SIGNATURE_SECRET`
+- `WHATSAPP_VONAGE_JWT`
+
+Optional GitHub Variables:
+- `SMOKE_BASE_URL`
+- `SMOKE_JOB_KEY`
+- `SMOKE_PROFILE_ID`
+- `SMOKE_REQUIRE_OUTREACH`
+- `WHATSAPP_TEST_SENDER`
+
+The workflow uploads `docs/artifacts/smoke_pack_latest.json` as an artifact on every run (`workflow_dispatch` and nightly schedule).
 
 ## 1) GET /health (public)
 ### curl

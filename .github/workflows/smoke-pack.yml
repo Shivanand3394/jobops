@@ -1,0 +1,85 @@
+name: Smoke Pack
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Worker base URL"
+        required: false
+        default: "https://get-job.shivanand-shah94.workers.dev"
+      job_key:
+        description: "Optional JOB_KEY override"
+        required: false
+        default: ""
+      profile_id:
+        description: "Profile id for wizard path"
+        required: false
+        default: "primary"
+      require_outreach:
+        description: "Fail when no outreach contacts are found"
+        required: false
+        default: "0"
+  schedule:
+    - cron: "15 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          UI_KEY: ${{ secrets.UI_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -z "${UI_KEY:-}" ]; then
+            echo "Missing GitHub secret: UI_KEY"
+            missing=1
+          fi
+          if [ -z "${API_KEY:-}" ]; then
+            echo "Missing GitHub secret: API_KEY"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Run smoke pack
+        shell: bash
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || vars.SMOKE_BASE_URL || 'https://get-job.shivanand-shah94.workers.dev' }}
+          JOB_KEY: ${{ github.event.inputs.job_key || vars.SMOKE_JOB_KEY || '' }}
+          PROFILE_ID: ${{ github.event.inputs.profile_id || vars.SMOKE_PROFILE_ID || 'primary' }}
+          SMOKE_REQUIRE_OUTREACH: ${{ github.event.inputs.require_outreach || vars.SMOKE_REQUIRE_OUTREACH || '0' }}
+          UI_KEY: ${{ secrets.UI_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
+          WHATSAPP_VONAGE_KEY: ${{ secrets.WHATSAPP_VONAGE_KEY }}
+          WHATSAPP_VONAGE_SIGNATURE_SECRET: ${{ secrets.WHATSAPP_VONAGE_SIGNATURE_SECRET }}
+          WHATSAPP_VONAGE_JWT: ${{ secrets.WHATSAPP_VONAGE_JWT }}
+          WHATSAPP_TEST_SENDER: ${{ vars.WHATSAPP_TEST_SENDER || '+14155550100' }}
+        run: |
+          node --check scripts/smoke_pack.mjs
+          node scripts/smoke_pack.mjs
+
+      - name: Upload smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-pack-${{ github.run_id }}
+          path: docs/artifacts/smoke_pack_latest.json
+          retention-days: 14
