@@ -9,7 +9,10 @@ import {
   persistResumeDraft_,
 } from "./resume_pack.js";
 import { diagnoseRssFeedsAndIngest_, pollRssFeedsAndIngest_ } from "./rss.js";
-import { processIngest as processDomainIngest_ } from "./domains/ingest/index.js";
+import {
+  processIngest as processDomainIngest_,
+  sourceHealthCheck as checkIngestSourceHealth_,
+} from "./domains/ingest/index.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -2937,6 +2940,11 @@ export default {
       if (path === "/ingest" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
         const processed = processDomainIngest_(body, "MANUAL");
+        const sourceHealth = checkIngestSourceHealth_(processed);
+        await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
+          route: "/ingest",
+          source: "MANUAL",
+        });
         const rawUrls = Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [];
         const emailText = typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "";
         const emailHtml = typeof processed?.ingest_input?.email_html === "string" ? processed.ingest_input.email_html : "";
@@ -6489,6 +6497,11 @@ async function runGmailPoll_(env, opts = {}) {
         email_subject,
         email_from,
       }, "GMAIL");
+      const sourceHealth = checkIngestSourceHealth_(processed);
+      await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
+        route: "/gmail/poll",
+        source: "GMAIL",
+      });
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [],
         emailText: typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "",
@@ -6498,6 +6511,25 @@ async function runGmailPoll_(env, opts = {}) {
         ingestChannel: "gmail",
       });
     },
+  });
+}
+
+async function logIngestSourceHealthIfNeeded_(env, sourceHealth, meta = {}) {
+  const health = (sourceHealth && typeof sourceHealth === "object") ? sourceHealth : null;
+  if (!health) return;
+  const status = String(health.status || "").trim().toLowerCase();
+  if (!status || status === "healthy") return;
+  await logEvent_(env, "INGEST_SOURCE_HEALTH", null, {
+    source: String(health.source || meta.source || "").trim().toUpperCase() || "UNKNOWN",
+    status,
+    reasons: Array.isArray(health.reasons) ? health.reasons.slice(0, 8) : [],
+    total: Number(health.total || 0),
+    valid: Number(health.valid || 0),
+    invalid: Number(health.invalid || 0),
+    valid_ratio: Number.isFinite(Number(health.valid_ratio)) ? Number(health.valid_ratio) : 0,
+    min_valid_ratio: Number.isFinite(Number(health.min_valid_ratio)) ? Number(health.min_valid_ratio) : 0.6,
+    route: String(meta.route || "").trim() || null,
+    ts: Date.now(),
   });
 }
 
@@ -6540,6 +6572,11 @@ async function runRssPoll_(env, opts = {}) {
         email_subject,
         email_from,
       }, "RSS");
+      const sourceHealth = checkIngestSourceHealth_(processed);
+      await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
+        route: "/rss/poll",
+        source: "RSS",
+      });
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [],
         emailText: typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "",
@@ -6582,6 +6619,11 @@ async function runRssDiagnostics_(env, opts = {}) {
         email_subject,
         email_from,
       }, "RSS");
+      const sourceHealth = checkIngestSourceHealth_(processed);
+      await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
+        route: "/rss/diagnostics",
+        source: "RSS",
+      });
       return ingestRawUrls_(env, {
         rawUrls: Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [],
         emailText: typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "",

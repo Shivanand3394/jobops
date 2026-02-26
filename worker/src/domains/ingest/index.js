@@ -42,6 +42,14 @@ function uniqStrings_(arr) {
   return out;
 }
 
+function clampRatio_(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  if (n < 0) return 0;
+  if (n > 1) return 1;
+  return n;
+}
+
 export function processIngest(payload = {}, source = "MANUAL") {
   const normalizedSource = normalizeIngestSource_(source);
   const adapter = pickAdapter_(normalizedSource);
@@ -82,6 +90,46 @@ export function processIngest(payload = {}, source = "MANUAL") {
       email_subject: typeof passthrough.email_subject === "string" ? passthrough.email_subject : "",
       email_from: typeof passthrough.email_from === "string" ? passthrough.email_from : "",
     },
+  };
+}
+
+export function sourceHealthCheck(processed = {}, opts = {}) {
+  const minValidRatio = clampRatio_(opts.min_valid_ratio ?? 0.6);
+  const source = normalizeIngestSource_(processed.source || "MANUAL");
+  const counts = (processed.counts && typeof processed.counts === "object") ? processed.counts : {};
+  const total = Number.isFinite(Number(counts.total)) ? Number(counts.total) : 0;
+  const valid = Number.isFinite(Number(counts.valid)) ? Number(counts.valid) : 0;
+  const invalid = Math.max(0, total - valid);
+  const validRatio = total > 0 ? (valid / total) : 0;
+  const reasons = [];
+  let status = "healthy";
+
+  if (total === 0) {
+    status = "failing";
+    reasons.push("no_candidates");
+  } else if (valid === 0) {
+    status = "failing";
+    reasons.push("no_valid_candidates");
+  } else if (validRatio < minValidRatio) {
+    status = "degraded";
+    reasons.push("low_valid_ratio");
+  }
+
+  if ((processed?.ingest_input?.raw_urls || []).length === 0) {
+    reasons.push("no_canonical_job_urls");
+    if (status === "healthy") status = "degraded";
+  }
+
+  return {
+    source,
+    status,
+    min_valid_ratio: minValidRatio,
+    total,
+    valid,
+    invalid,
+    valid_ratio: Number(validRatio.toFixed(4)),
+    reasons,
+    checked_at: Date.now(),
   };
 }
 
