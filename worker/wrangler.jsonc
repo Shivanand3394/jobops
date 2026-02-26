@@ -12,6 +12,12 @@
   "ai": {
     "binding": "AI"
   },
+  "services": [
+    {
+      "binding": "EXTRACTOR",
+      "service": "jobops-whatsapp-extractor"
+    }
+  ],
   "vars": {
     "ALLOW_ORIGIN": "https://jobops-ui.pages.dev",
     "GMAIL_CLIENT_ID": "773808649704-l0re7bam051sb2e7kg5e5nqjt1ijpqnf.apps.googleusercontent.com",

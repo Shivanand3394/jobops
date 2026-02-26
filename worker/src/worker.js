@@ -3484,6 +3484,8 @@ export default {
                   media_mime_type: mediaMimeType || null,
                   media_file_name: mediaFileName || null,
                   media_url_host: sourceDomainFromUrl_(mediaUrl) || null,
+                  extractor_url: String(extracted.extractor_url || "").trim() || null,
+                  extractor_url_host: sourceDomainFromUrl_(extracted.extractor_url) || null,
                   error: String(extracted.error || "extract_failed").slice(0, 500),
                   source_health: sourceHealth,
                   ts: Date.now(),
@@ -9804,6 +9806,16 @@ async function fetchWithTimeout_(url, init, timeoutMs) {
   }
 }
 
+async function fetchWithTimeoutUsingFetcher_(fetcher, url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort("timeout"), timeoutMs);
+  try {
+    return await fetcher(url, { ...(init || {}), signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function sleepMs_(ms) {
   const wait = clampInt_(ms, 0, 60000);
   if (!wait) return Promise.resolve();
@@ -10179,41 +10191,59 @@ function resolveExtractorResponse_(obj) {
 }
 
 async function extractWhatsAppMediaText_(env, input = {}) {
-  const extractorUrl = String(env?.WHATSAPP_MEDIA_EXTRACTOR_URL || "").trim();
-  if (!extractorUrl) return { ok: false, error: "extractor_not_configured" };
-
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(extractorUrl);
-  } catch {
-    return { ok: false, error: "invalid_extractor_url" };
+  const extractorService = (env?.EXTRACTOR && typeof env.EXTRACTOR.fetch === "function")
+    ? env.EXTRACTOR
+    : null;
+  const configuredExtractorUrl = String(env?.WHATSAPP_MEDIA_EXTRACTOR_URL || "").trim();
+  const fallbackExtractorUrl = String(
+    env?.WHATSAPP_MEDIA_EXTRACTOR_URL_FALLBACK ||
+    "https://jobops-whatsapp-extractor.shivanand-shah94.workers.dev/extract/whatsapp-media"
+  ).trim();
+  const extractorUrl = chooseExtractorUrl_(configuredExtractorUrl, fallbackExtractorUrl);
+  if (!extractorService && !extractorUrl) {
+    return { ok: false, error: "extractor_not_configured", extractor_url: "" };
   }
+  const extractorRequestUrl = extractorService
+    ? "https://extractor.internal/extract/whatsapp-media"
+    : extractorUrl;
+  const extractorLogUrl = extractorService
+    ? `service:EXTRACTOR:${String(extractorUrl || "").trim() || "inline"}`
+    : extractorUrl;
 
-  const isLocal = parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1";
-  if (parsedUrl.protocol !== "https:" && !isLocal) {
-    return { ok: false, error: "extractor_url_must_be_https" };
-  }
+  if (!extractorService) {
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(extractorRequestUrl);
+    } catch {
+      return { ok: false, error: "invalid_extractor_url", extractor_url: extractorRequestUrl };
+    }
 
-  const allowHostsRaw = String(env?.WHATSAPP_MEDIA_EXTRACTOR_ALLOW_HOSTS || "").trim();
-  if (allowHostsRaw) {
-    const allowed = allowHostsRaw
-      .split(/[\r\n,]+/g)
-      .map((x) => String(x || "").trim().toLowerCase())
-      .filter(Boolean);
-    if (allowed.length && !allowed.includes(parsedUrl.hostname.toLowerCase())) {
-      return { ok: false, error: "extractor_host_not_allowed" };
+    const isLocal = parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1";
+    if (parsedUrl.protocol !== "https:" && !isLocal) {
+      return { ok: false, error: "extractor_url_must_be_https", extractor_url: extractorRequestUrl };
+    }
+
+    const allowHostsRaw = String(env?.WHATSAPP_MEDIA_EXTRACTOR_ALLOW_HOSTS || "").trim();
+    if (allowHostsRaw) {
+      const allowed = allowHostsRaw
+        .split(/[\r\n,]+/g)
+        .map((x) => String(x || "").trim().toLowerCase())
+        .filter(Boolean);
+      if (allowed.length && !allowed.includes(parsedUrl.hostname.toLowerCase())) {
+        return { ok: false, error: "extractor_host_not_allowed", extractor_url: extractorRequestUrl };
+      }
     }
   }
 
   const mediaUrl = String(input?.media_url || "").trim();
-  if (!mediaUrl) return { ok: false, error: "missing_media_url" };
+  if (!mediaUrl) return { ok: false, error: "missing_media_url", extractor_url: extractorLogUrl };
   try {
     const mediaParsed = new URL(mediaUrl);
     if (mediaParsed.protocol !== "http:" && mediaParsed.protocol !== "https:") {
-      return { ok: false, error: "unsupported_media_url_protocol" };
+      return { ok: false, error: "unsupported_media_url_protocol", extractor_url: extractorLogUrl };
     }
   } catch {
-    return { ok: false, error: "invalid_media_url" };
+    return { ok: false, error: "invalid_media_url", extractor_url: extractorLogUrl };
   }
 
   const timeoutMs = clampInt_(env?.WHATSAPP_MEDIA_EXTRACTOR_TIMEOUT_MS || 12000, 2000, 60000);
@@ -10250,15 +10280,26 @@ async function extractWhatsAppMediaText_(env, input = {}) {
 
   let res;
   try {
-    res = await fetchWithTimeout_(extractorUrl, {
+    const requestInit = {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
-    }, timeoutMs);
+    };
+    if (extractorService) {
+      res = await fetchWithTimeoutUsingFetcher_(
+        extractorService.fetch.bind(extractorService),
+        extractorRequestUrl,
+        requestInit,
+        timeoutMs
+      );
+    } else {
+      res = await fetchWithTimeout_(extractorRequestUrl, requestInit, timeoutMs);
+    }
   } catch (e) {
     return {
       ok: false,
       error: `extractor_request_failed:${String(e?.message || e || "unknown").slice(0, 180)}`,
+      extractor_url: extractorLogUrl,
     };
   }
 
@@ -10271,7 +10312,7 @@ async function extractWhatsAppMediaText_(env, input = {}) {
       rawText ||
       `status_${res.status}`
     ).trim().slice(0, 300);
-    return { ok: false, error: `extractor_http_${res.status}:${detail}` };
+    return { ok: false, error: `extractor_http_${res.status}:${detail}`, extractor_url: extractorLogUrl };
   }
 
   const obj = (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ? parsed : {};
@@ -10284,7 +10325,25 @@ async function extractWhatsAppMediaText_(env, input = {}) {
     company: resolved.company,
     urls: resolved.urls,
     response: obj,
+    extractor_url: extractorLogUrl,
   };
+}
+
+function chooseExtractorUrl_(configured, fallback) {
+  const c = String(configured || "").trim();
+  const f = String(fallback || "").trim();
+  if (!c) return f;
+  try {
+    const u = new URL(c);
+    const host = String(u.hostname || "").toLowerCase();
+    const path = String(u.pathname || "").toLowerCase();
+    const looksLikeVonageApi = host.includes("nexmo.com") || host.includes("vonage.com");
+    const looksLikeMediaPath = path.includes("/v3/media");
+    if (looksLikeVonageApi || looksLikeMediaPath) return f || c;
+  } catch {
+    return f || c;
+  }
+  return c;
 }
 
 function pickVonageWebhookSender_(payload = {}) {

@@ -65,12 +65,16 @@ export default {
     const forwardedVonageAuth = String(request.headers.get("x-vonage-authorization") || "").trim();
     const staticVonageAuth = String(env.VONAGE_MEDIA_AUTH_BEARER || "").trim();
     const generatedVonageAuth = await buildVonageMediaAuthorization_(env);
+    let mediaAuthMode = "none";
     if (generatedVonageAuth) {
       mediaHeaders.Authorization = generatedVonageAuth;
+      mediaAuthMode = "jwt";
     } else if (staticVonageAuth) {
       mediaHeaders.Authorization = staticVonageAuth;
+      mediaAuthMode = "basic";
     } else if (forwardedVonageAuth) {
       mediaHeaders.Authorization = forwardedVonageAuth;
+      mediaAuthMode = "forwarded";
     }
 
     const mediaRes = await fetchWithTimeout_(mediaUrl, {
@@ -78,13 +82,13 @@ export default {
       headers: mediaHeaders,
     }, mediaFetchTimeoutMs).catch((e) => ({ __error: String(e?.message || e || "media_fetch_failed") }));
     if (mediaRes?.__error) {
-      return json_({ ok: false, error: `Media fetch failed: ${mediaRes.__error}` }, env, 502);
+      return json_({ ok: false, error: `Media fetch failed (${mediaAuthMode}): ${mediaRes.__error}` }, env, 502);
     }
     if (!mediaRes.ok) {
       const bodyText = await mediaRes.text().catch(() => "");
       return json_({
         ok: false,
-        error: `Media fetch http_${mediaRes.status}`,
+        error: `Media fetch (${mediaAuthMode}) http_${mediaRes.status}`,
         detail: String(bodyText || "").trim().slice(0, 400),
       }, env, 502);
     }

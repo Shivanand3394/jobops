@@ -1,6 +1,6 @@
 {
-  "run_id": "5b59a8d1-48bb-42d1-8e90-dcf8cd86f517",
-  "started_at": "2026-02-26T18:48:35.970Z",
+  "run_id": "7a948ace-b9f4-46da-b1ac-6d1a22745e27",
+  "started_at": "2026-02-26T19:35:44.028Z",
   "base_url": "https://get-job.shivanand-shah94.workers.dev",
   "script": "scripts/smoke_pack.mjs",
   "config": {
@@ -13,12 +13,12 @@
     "whatsapp_webhook_path": "/ingest/whatsapp/vonage",
     "whatsapp_sim_http_status": 200,
     "whatsapp_media_sim_http_status": 200,
-    "job_key_resolved": "705f7c063eb7bd67752995c9993cf7af24429291",
+    "job_key_resolved": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
     "profile_id_effective": "primary-alt",
     "resume_html_evidence_rows": 9,
-    "resume_html_evidence_needle": "business program management: delivering measurable impact through structured",
-    "outreach_contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
-    "outreach_linkedin_draft_len": 433
+    "resume_html_evidence_needle": "...ed execution. i deliver measurable impact with clear",
+    "outreach_contact_id": null,
+    "outreach_skipped": true
   },
   "steps": [
     {
@@ -31,13 +31,13 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 121,
+      "duration_ms": 134,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
-        "ts": 1772131716637,
+        "ts": 1772134544724,
         "worker_version": "dev"
       },
       "response_text": null
@@ -50,7 +50,7 @@
       "request_body": {
         "from": "+14155550100",
         "text": "Smoke test lead https://get-job.shivanand-shah94.workers.dev/health",
-        "message_uuid": "smoke-wa-1772131716093"
+        "message_uuid": "smoke-wa-1772134544164"
       },
       "expected_status": [
         200,
@@ -68,7 +68,7 @@
           "accepted": true,
           "queued": true,
           "provider": "vonage",
-          "message_id": "smoke-wa-1772131716093",
+          "message_id": "smoke-wa-1772134544164",
           "count_in": 1,
           "sender": "+14155550100",
           "sender_whitelist_enabled": false,
@@ -82,7 +82,7 @@
             "invalid": 0,
             "valid_ratio": 1,
             "reasons": [],
-            "checked_at": 1772131716669
+            "checked_at": 1772134544762
           },
           "media_detected": true,
           "media_queued_for_extraction": false,
@@ -110,7 +110,7 @@
       "auth": "none",
       "request_body": {
         "from": "+14155550100",
-        "message_uuid": "smoke-wa-media-1772131716116",
+        "message_uuid": "smoke-wa-media-1772134544187",
         "message_type": "document",
         "file": {
           "url": "https://example.com/mock-jd.pdf",
@@ -125,7 +125,7 @@
         403
       ],
       "http_status": 200,
-      "duration_ms": 13,
+      "duration_ms": 15,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -135,7 +135,7 @@
           "accepted": true,
           "queued": true,
           "provider": "vonage",
-          "message_id": "smoke-wa-media-1772131716116",
+          "message_id": "smoke-wa-media-1772134544187",
           "count_in": 0,
           "sender": "+14155550100",
           "sender_whitelist_enabled": false,
@@ -152,7 +152,7 @@
               "no_candidates",
               "no_canonical_job_urls"
             ],
-            "checked_at": 1772131716689
+            "checked_at": 1772134544779
           },
           "media_detected": true,
           "media_queued_for_extraction": true,
@@ -183,7 +183,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 525,
+      "duration_ms": 1034,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -191,26 +191,26 @@
         "ok": true,
         "data": [
           {
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "company": "Smoke Systems",
             "role_title": "Business Program Manager - Platform Operations",
             "location": "Remote",
             "seniority": "Mid",
             "final_score": 73,
             "status": "SCORED",
-            "job_url": "https://www.linkedin.com/jobs/view/4370722725/",
+            "job_url": "https://www.linkedin.com/jobs/view/4377165152/",
             "source_domain": "linkedin",
             "system_status": null,
             "fetch_debug_json": "{}",
-            "updated_at": 1772131594112,
-            "created_at": 1772102761237,
+            "updated_at": 1772134344218,
+            "created_at": 1772095561049,
             "fetch_debug": {},
             "ingest_channel": null,
             "jd_confidence": null,
-            "last_touchpoint_at": 1772128453872,
-            "last_touchpoint_status": "REPLIED",
-            "last_touchpoint_channel": "LINKEDIN",
-            "days_since_touchpoint": 0,
+            "last_touchpoint_at": null,
+            "last_touchpoint_status": null,
+            "last_touchpoint_channel": null,
+            "days_since_touchpoint": null,
             "display_title": "Business Program Manager - Platform Operations",
             "display_company": "Smoke Systems"
           }
@@ -228,7 +228,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 882,
+      "duration_ms": 877,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -237,7 +237,7 @@
         "data": {
           "enabled": true,
           "stale_days": 3,
-          "generated_at": 1772131717228,
+          "generated_at": 1772134545827,
           "pulse": {
             "gold_leads_count": 3,
             "replies_7d_count": 3,
@@ -301,7 +301,7 @@
                 "channel": "LINKEDIN",
                 "status": "REPLIED",
                 "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-                "touchpoint_updated_at": 1772128453872,
+                "touchpoint_updated_at": 1772131743037,
                 "days_in_stage": 0,
                 "contact_name": "Shivanand Shah",
                 "contact_title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
@@ -310,9 +310,9 @@
                 "email": "",
                 "role_title": "Business Program Manager - Platform Operations",
                 "company": "Smoke Systems",
-                "job_status": "SCORED",
+                "job_status": "READY_TO_APPLY",
                 "final_score": 73,
-                "job_updated_at": 1772131594112,
+                "job_updated_at": 1772131734456,
                 "priority": "RESPONSE_PENDING",
                 "priority_score": 300,
                 "action_label": "Respond",
@@ -376,7 +376,7 @@
                 "channel": "LINKEDIN",
                 "status": "REPLIED",
                 "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-                "touchpoint_updated_at": 1772128453872,
+                "touchpoint_updated_at": 1772131743037,
                 "days_in_stage": 0,
                 "contact_name": "Shivanand Shah",
                 "contact_title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
@@ -385,9 +385,9 @@
                 "email": "",
                 "role_title": "Business Program Manager - Platform Operations",
                 "company": "Smoke Systems",
-                "job_status": "SCORED",
+                "job_status": "READY_TO_APPLY",
                 "final_score": 73,
-                "job_updated_at": 1772131594112,
+                "job_updated_at": 1772131734456,
                 "priority": "RESPONSE_PENDING",
                 "priority_score": 300,
                 "action_label": "Respond",
@@ -397,13 +397,13 @@
           },
           "gold_leads": [
             {
-              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
+              "job_key": "1418874c737d46afa6dd2d2bcd5c53cb1c379c9e",
+              "role_title": "",
+              "company": "Wockhardt",
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772131591063
+              "updated_at": 1772134320043
             },
             {
               "job_key": "3028f15a6b7a6d1439a775c28fd38a5241565908",
@@ -412,7 +412,7 @@
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772131589230
+              "updated_at": 1772134299738
             },
             {
               "job_key": "66a61647f865758b81b9596b23d64b3ad4e27c3c",
@@ -421,7 +421,7 @@
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772131584383
+              "updated_at": 1772134296132
             }
           ],
           "touchpoint_conversion": {
@@ -453,15 +453,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 5210,
+      "duration_ms": 5153,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "41f84cbe-4f97-413b-93ea-84cfa1880e7c",
-          "ts": 1772131718113,
+          "run_id": "de3486a7-ed47-483e-8959-6ecd96540298",
+          "ts": 1772134546704,
           "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
           "max_results": 25,
           "max_jobs_per_email": 3,
@@ -511,15 +511,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 195,
+      "duration_ms": 186,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "0f3dd8c2-d645-498d-96bc-d8667cc30381",
-          "ts": 1772131723323,
+          "run_id": "cecf8537-2e5f-45b1-8df7-b6bf75addc34",
+          "ts": 1772134551857,
           "skipped": true,
           "reason": "no_feeds_configured",
           "feeds_total": 0,
@@ -601,7 +601,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 184,
+      "duration_ms": 190,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -610,7 +610,7 @@
         "data": {
           "id": "primary",
           "name": "Smoke Profile",
-          "updated_at": 1772131723517
+          "updated_at": 1772134552045
         }
       },
       "response_text": null
@@ -654,7 +654,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 191,
+      "duration_ms": 186,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -663,7 +663,7 @@
         "data": {
           "id": "primary-alt",
           "name": "Smoke Profile Alt",
-          "updated_at": 1772131723701
+          "updated_at": 1772134552235
         }
       },
       "response_text": null
@@ -671,7 +671,7 @@
     {
       "name": "wizard.profile.preference.set",
       "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/profile-preference",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/profile-preference",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt"
@@ -680,16 +680,16 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1402,
+      "duration_ms": 1383,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "profile_id": "primary-alt",
-          "updated_at": 1772131724408,
+          "updated_at": 1772134552930,
           "cleared": false,
           "enabled": true,
           "effective_profile_id": "primary-alt",
@@ -701,23 +701,23 @@
     {
       "name": "wizard.profile.preference.get",
       "method": "GET",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/profile-preference",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/profile-preference",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1052,
+      "duration_ms": 1018,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "profile_id": "primary-alt",
-          "updated_at": 1772131724408,
+          "updated_at": 1772134552930,
           "enabled": true,
           "effective_profile_id": "primary-alt",
           "effective_source": "job_preference"
@@ -728,7 +728,7 @@
     {
       "name": "wizard.generate",
       "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/generate-application-pack",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/generate-application-pack",
       "auth": "ui",
       "request_body": {
         "force": false,
@@ -740,15 +740,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 5241,
+      "duration_ms": 4538,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-          "draft_id": "d5c6c9f2-a838-4987-af4f-24a070318b2f",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "draft_id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
           "profile_id": "primary-alt",
           "profile_source": "job_preference",
           "status": "READY_TO_APPLY",
@@ -761,22 +761,22 @@
     {
       "name": "wizard.pack.fetch.before",
       "method": "GET",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/application-pack",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/application-pack",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1256,
+      "duration_ms": 1205,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "id": "d5c6c9f2-a838-4987-af4f-24a070318b2f",
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "profile_id": "primary-alt",
           "profile_lookup_source": "job_preference",
           "requested_profile_id": null,
@@ -785,8 +785,8 @@
           "error_text": "",
           "pack_json": {
             "job": {
-              "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-              "job_url": "https://www.linkedin.com/jobs/view/4370722725/",
+              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+              "job_url": "https://www.linkedin.com/jobs/view/4377165152/",
               "source_domain": "linkedin",
               "status": "SCORED"
             },
@@ -808,21 +808,21 @@
               "reject": []
             },
             "extracted": {
-              "role_title": "Business Program Management",
-              "company": "Microsoft",
-              "location": "Gurgaon",
-              "seniority": "",
-              "final_score": 72,
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "location": "Gurugram",
+              "seniority": "Mid",
+              "final_score": 74,
               "reason_top_matches": ""
             },
             "tailoring": {
-              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
               "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+                "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
                 "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
                 "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
               ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
               "must_keywords": [],
               "nice_keywords": [],
               "evidence_matches": []
@@ -841,7 +841,7 @@
               "one_page_mode": "soft",
               "one_pager_strict": false,
               "content_review_required": false,
-              "approved_at": 1772128433594
+              "approved_at": 1772134334451
             },
             "renderer": "reactive_resume"
           },
@@ -857,7 +857,7 @@
             "notes": "Good keyword coverage",
             "target_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 33,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -904,11 +904,12 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
+                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -957,7 +958,7 @@
             },
             "pm_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 33,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1004,11 +1005,12 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
+                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -1062,7 +1064,7 @@
               "contract_id": "jobops.rr_export.v1",
               "schema_version": 1,
               "version": 1,
-              "exported_at": 1772128429478,
+              "exported_at": 1772134330407,
               "template_id": "balanced",
               "renderer": "reactive_resume",
               "contract_valid": true,
@@ -1073,7 +1075,7 @@
               "email": "smoke.user.alt@example.com",
               "phone": "",
               "location": "Remote",
-              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
             },
             "sections": {
               "experience": [
@@ -1096,7 +1098,7 @@
               ],
               "highlights": [
                 {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability."
+                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability."
                 },
                 {
                   "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
@@ -1107,10 +1109,10 @@
               ]
             },
             "job_context": {
-              "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-              "role_title": "Business Program Management",
-              "company": "Microsoft",
-              "job_url": "https://www.linkedin.com/jobs/view/4370722725/"
+              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "job_url": "https://www.linkedin.com/jobs/view/4377165152/"
             }
           },
           "rr_export_contract": {
@@ -1119,13 +1121,13 @@
           },
           "rr_export_import_ready": true,
           "rr_export_import_errors": [],
-          "rr_resume_id": null,
-          "rr_last_pushed_at": 0,
-          "rr_last_push_status": null,
+          "rr_resume_id": "019c9b63-13f8-7139-ab87-33d2f26f3941",
+          "rr_last_pushed_at": 1772133487801,
+          "rr_last_push_status": "SUCCESS",
           "rr_last_push_error": "",
-          "rr_pdf_url": null,
-          "rr_pdf_last_exported_at": 0,
-          "rr_pdf_last_export_status": null,
+          "rr_pdf_url": "https://rxresu.me/uploads/019c8a79-abbb-708b-9a5e-fd788db90622/pdfs/019c9b63-13f8-7139-ab87-33d2f26f3941/1772133491875.pdf",
+          "rr_pdf_last_exported_at": 1772133492056,
+          "rr_pdf_last_export_status": "SUCCESS",
           "rr_pdf_last_export_error": "",
           "pdf_readiness": {
             "gate_version": "pdf_readiness_v2",
@@ -1136,14 +1138,14 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Business Program Management",
+                "detail": "role: Product Manager",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Majid Al Futtaim",
                 "enforced": false
               },
               {
@@ -1210,14 +1212,14 @@
           "one_page_mode": "soft",
           "content_review_required": false,
           "latest_version": {
-            "id": "4a94e2af-e327-4c93-ba04-efb5106f797e",
-            "version_no": 3,
+            "id": "7cbd616e-955b-4adb-b70f-62ce2ca57a7d",
+            "version_no": 5,
             "source_action": "approve",
-            "created_at": 1772128433764
+            "created_at": 1772134334619
           },
           "version_history_enabled": true,
           "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772128433764
+          "updated_at": 1772134334619
         }
       },
       "response_text": null
@@ -1225,32 +1227,32 @@
     {
       "name": "wizard.review",
       "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/application-pack/review",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/application-pack/review",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt",
-        "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
         "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
           "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
           "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
         ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
       },
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1267,
+      "duration_ms": 1244,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "profile_id": "primary-alt",
-          "draft_id": "d5c6c9f2-a838-4987-af4f-24a070318b2f",
+          "draft_id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
           "status": "READY_FOR_EXPORT",
           "ats_score": 88,
           "pdf_readiness": {
@@ -1262,14 +1264,14 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Business Program Management",
+                "detail": "role: Product Manager",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Majid Al Futtaim",
                 "enforced": false
               },
               {
@@ -1333,8 +1335,8 @@
             },
             "hard_gate_applied": false
           },
-          "version_id": "cc6fd5c9-4a47-4188-b2d5-b8e37de08784",
-          "version_no": 4
+          "version_id": "00b2508d-5ea6-42ca-b4f2-0305a9cabb8a",
+          "version_no": 6
         }
       },
       "response_text": null
@@ -1342,32 +1344,32 @@
     {
       "name": "wizard.approve",
       "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/approve-pack",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/approve-pack",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt",
-        "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
         "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
           "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
           "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
         ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
       },
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1591,
+      "duration_ms": 1602,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "profile_id": "primary-alt",
-          "draft_id": "d5c6c9f2-a838-4987-af4f-24a070318b2f",
+          "draft_id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
           "status": "READY_TO_APPLY",
           "ats_score": 88,
           "pdf_readiness": {
@@ -1379,14 +1381,14 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Business Program Management",
+                "detail": "role: Product Manager",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Majid Al Futtaim",
                 "enforced": false
               },
               {
@@ -1450,8 +1452,8 @@
             },
             "hard_gate_applied": false
           },
-          "version_id": "920f0f24-40f1-46fc-bed1-a99fb978e8a9",
-          "version_no": 5
+          "version_id": "bd8159b7-0b7f-4686-9e0d-4a48ae127e87",
+          "version_no": 7
         }
       },
       "response_text": null
@@ -1459,22 +1461,22 @@
     {
       "name": "wizard.pack.fetch.after",
       "method": "GET",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/application-pack",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/application-pack",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1220,
+      "duration_ms": 1193,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "id": "d5c6c9f2-a838-4987-af4f-24a070318b2f",
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "profile_id": "primary-alt",
           "profile_lookup_source": "job_preference",
           "requested_profile_id": null,
@@ -1483,8 +1485,8 @@
           "error_text": "",
           "pack_json": {
             "job": {
-              "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-              "job_url": "https://www.linkedin.com/jobs/view/4370722725/",
+              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+              "job_url": "https://www.linkedin.com/jobs/view/4377165152/",
               "source_domain": "linkedin",
               "status": "SCORED"
             },
@@ -1506,21 +1508,21 @@
               "reject": []
             },
             "extracted": {
-              "role_title": "Business Program Management",
-              "company": "Microsoft",
-              "location": "Gurgaon",
-              "seniority": "",
-              "final_score": 72,
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "location": "Gurugram",
+              "seniority": "Mid",
+              "final_score": 74,
               "reason_top_matches": ""
             },
             "tailoring": {
-              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
               "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+                "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
                 "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
                 "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
               ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
               "must_keywords": [],
               "nice_keywords": [],
               "evidence_matches": []
@@ -1539,7 +1541,7 @@
               "one_page_mode": "soft",
               "one_pager_strict": false,
               "content_review_required": false,
-              "approved_at": 1772131734284
+              "approved_at": 1772134561986
             },
             "renderer": "reactive_resume"
           },
@@ -1555,7 +1557,7 @@
             "notes": "Good keyword coverage",
             "target_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 33,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1602,11 +1604,12 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
+                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -1655,7 +1658,7 @@
             },
             "pm_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 33,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1702,11 +1705,12 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
+                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -1760,7 +1764,7 @@
               "contract_id": "jobops.rr_export.v1",
               "schema_version": 1,
               "version": 1,
-              "exported_at": 1772128429478,
+              "exported_at": 1772134330407,
               "template_id": "balanced",
               "renderer": "reactive_resume",
               "contract_valid": true,
@@ -1771,7 +1775,7 @@
               "email": "smoke.user.alt@example.com",
               "phone": "",
               "location": "Remote",
-              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
             },
             "sections": {
               "experience": [
@@ -1794,7 +1798,7 @@
               ],
               "highlights": [
                 {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability."
+                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability."
                 },
                 {
                   "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
@@ -1805,10 +1809,10 @@
               ]
             },
             "job_context": {
-              "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-              "role_title": "Business Program Management",
-              "company": "Microsoft",
-              "job_url": "https://www.linkedin.com/jobs/view/4370722725/"
+              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "job_url": "https://www.linkedin.com/jobs/view/4377165152/"
             }
           },
           "rr_export_contract": {
@@ -1817,13 +1821,13 @@
           },
           "rr_export_import_ready": true,
           "rr_export_import_errors": [],
-          "rr_resume_id": null,
-          "rr_last_pushed_at": 0,
-          "rr_last_push_status": null,
+          "rr_resume_id": "019c9b63-13f8-7139-ab87-33d2f26f3941",
+          "rr_last_pushed_at": 1772133487801,
+          "rr_last_push_status": "SUCCESS",
           "rr_last_push_error": "",
-          "rr_pdf_url": null,
-          "rr_pdf_last_exported_at": 0,
-          "rr_pdf_last_export_status": null,
+          "rr_pdf_url": "https://rxresu.me/uploads/019c8a79-abbb-708b-9a5e-fd788db90622/pdfs/019c9b63-13f8-7139-ab87-33d2f26f3941/1772133491875.pdf",
+          "rr_pdf_last_exported_at": 1772133492056,
+          "rr_pdf_last_export_status": "SUCCESS",
           "rr_pdf_last_export_error": "",
           "pdf_readiness": {
             "gate_version": "pdf_readiness_v2",
@@ -1834,14 +1838,14 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Business Program Management",
+                "detail": "role: Product Manager",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Majid Al Futtaim",
                 "enforced": false
               },
               {
@@ -1908,14 +1912,14 @@
           "one_page_mode": "soft",
           "content_review_required": false,
           "latest_version": {
-            "id": "920f0f24-40f1-46fc-bed1-a99fb978e8a9",
-            "version_no": 5,
+            "id": "bd8159b7-0b7f-4686-9e0d-4a48ae127e87",
+            "version_no": 7,
             "source_action": "approve",
-            "created_at": 1772131734456
+            "created_at": 1772134562151
           },
           "version_history_enabled": true,
           "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772131734456
+          "updated_at": 1772134562151
         }
       },
       "response_text": null
@@ -1923,7 +1927,7 @@
     {
       "name": "wizard.evidence.rebuild",
       "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/evidence/rebuild",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/evidence/rebuild",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
@@ -1931,14 +1935,14 @@
         400
       ],
       "http_status": 200,
-      "duration_ms": 893,
+      "duration_ms": 880,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "rows_written": 9,
           "matched_count": 9,
           "unmatched_count": 0,
@@ -1950,14 +1954,14 @@
     {
       "name": "wizard.evidence.fetch",
       "method": "GET",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/evidence?limit=60",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/evidence?limit=60",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 366,
+      "duration_ms": 355,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -1965,47 +1969,47 @@
         "ok": true,
         "data": [
           {
-            "id": "28f4dadf-41d8-4acf-98eb-ce206f73851d",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "5d2bd789-b200-47e4-ad8d-a7b0b6d4c90f",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "Program management",
             "requirement_type": "must",
-            "evidence_text": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-",
+            "evidence_text": "...ed execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "194d8f12-b20f-431c-82f3-6878ef20c035",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "4849bab9-2a35-443f-8a67-45577f0939b2",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "KPI tracking",
             "requirement_type": "must",
-            "evidence_text": "...measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...ear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "5e38f30d-73a4-4661-9692-d4f940771186",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "19a9c9b7-b4d2-4037-8600-be31375fc34c",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "Stakeholder management",
             "requirement_type": "must",
-            "evidence_text": "...with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...s-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "0dc6e481-65e8-4e91-8b9e-3426e8147b19",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "2ec87eb2-964a-4097-8d56-2b3a6b23e807",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "Cross-functional collaboration",
             "requirement_type": "must",
             "evidence_text": "...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an",
@@ -2013,12 +2017,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "ff5753bc-8e89-4891-8894-ce0ab91839fd",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "10a2ced2-74fa-4f83-9fcc-2a0e9ef52a0b",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "SQL skills",
             "requirement_type": "must",
             "evidence_text": "...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m",
@@ -2026,12 +2030,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "e3026285-5e67-4a3a-9861-4def3de6a990",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "d3b9018e-e098-4fd1-ad8a-5dcfb78caac1",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "Process optimization",
             "requirement_type": "nice",
             "evidence_text": "...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role ",
@@ -2039,12 +2043,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "a25386d5-3c28-47d0-8a87-610865e7475c",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "2301467b-f2ea-4841-8b90-f799422f4b54",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "Workflow automation",
             "requirement_type": "nice",
             "evidence_text": "...ion. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written co",
@@ -2052,12 +2056,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "68cd9ac8-8805-468a-b89f-5f54fef30486",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "d76d5197-f16d-415e-bbad-5c3520179b6b",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "Business strategy",
             "requirement_type": "nice",
             "evidence_text": "...ultiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and ",
@@ -2065,12 +2069,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           },
           {
-            "id": "f7e543ab-210e-47de-923b-fc499c076f39",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+            "id": "9c744190-643e-48d9-9388-f5e080f79fce",
+            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
             "requirement_text": "Operational planning",
             "requirement_type": "nice",
             "evidence_text": "...ce to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and measurable outcomes.",
@@ -2078,12 +2082,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772128443764,
-            "updated_at": 1772131737264
+            "created_at": 1772134344218,
+            "updated_at": 1772134564935
           }
         ],
         "meta": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
           "count": 9,
           "matched_count": 9,
           "unmatched_count": 0
@@ -2094,73 +2098,40 @@
     {
       "name": "wizard.resume.html",
       "method": "GET",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/resume/html?profile_id=primary-alt&evidence_limit=12",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/resume/html?profile_id=primary-alt&evidence_limit=12",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 706,
+      "duration_ms": 691,
       "ok": true,
       "error": null,
       "response_content_type": "text/html; charset=utf-8",
       "response_json": null,
-      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Alternate profile for per-job preference verification.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Smoke Systems (Business Program Manager - Platform Operations)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div class=\"impact-head\"><strong>Program management</strong><span class=\"impact-score\">95%</span></div><div>Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi Focus areas: program management, cross-</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>KPI tracking</strong><span class=\"impact-score\">95%</span></div><div>...measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Stakeholder management</strong><span class=\"impact-score\">95%</span></div><div>...with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Cross-functional collaboration</strong><span class=\"impact-score\">70%</span></div><div>...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>SQL skills</strong><span class=\"impact-score\">70%</span></div><div>...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Process optimization</strong><span class=\"impact-score\">70%</span></div><div>...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Workflow automation</strong><span class=\"impact-score\">70%</span></div><div>...ion. - Stakeholder man..."
+      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Alternate profile for per-job preference verification.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Smoke Systems (Business Program Manager - Platform Operations)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div class=\"impact-head\"><strong>Program management</strong><span class=\"impact-score\">95%</span></div><div>...ed execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>KPI tracking</strong><span class=\"impact-score\">95%</span></div><div>...ear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Stakeholder management</strong><span class=\"impact-score\">95%</span></div><div>...s-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Cross-functional collaboration</strong><span class=\"impact-score\">70%</span></div><div>...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>SQL skills</strong><span class=\"impact-score\">70%</span></div><div>...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Process optimization</strong><span class=\"impact-score\">70%</span></div><div>...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Workflow automation</strong><span class=\"impact-score\">70%</span></div><div>...ion. - Stakeholder management across multiple wo..."
     },
     {
       "name": "outreach.contacts.list",
       "method": "GET",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/contacts",
+      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/contacts",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 359,
+      "duration_ms": 519,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
-        "data": [
-          {
-            "id": "ace6d45a-110a-457f-b540-84db34128a4c",
-            "name": "Shivanand Shah",
-            "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
-            "company_name": "Microsoft",
-            "linkedin_url": null,
-            "email": null,
-            "confidence": 100,
-            "source": "jd_mention",
-            "channel": "LINKEDIN",
-            "status": "REPLIED",
-            "touchpoint_id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-            "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-            "touchpoint_updated_at": 1772128453872,
-            "linked_to_job": true,
-            "channels": [
-              "LINKEDIN",
-              "OTHER"
-            ],
-            "channel_statuses": {
-              "LINKEDIN": "REPLIED",
-              "OTHER": "DRAFT"
-            },
-            "channel_touchpoints": {
-              "LINKEDIN": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-              "OTHER": "3640e8a4-7ce1-422f-8621-4c82018a38f9"
-            },
-            "channel_updated_at": {
-              "LINKEDIN": 1772128453872,
-              "OTHER": 1772128441954
-            }
-          }
-        ],
+        "data": [],
         "meta": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-          "count": 1,
+          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "count": 0,
           "contacts_storage_enabled": true,
           "contacts_storage_error": null
         }
@@ -2169,261 +2140,69 @@
     },
     {
       "name": "outreach.draft.linkedin",
-      "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/contacts/ace6d45a-110a-457f-b540-84db34128a4c/draft",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary-alt",
-        "channel": "LINKEDIN",
-        "use_ai": true
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 2565,
+      "method": "SKIP",
+      "path": "-",
+      "auth": "none",
+      "request_body": null,
+      "expected_status": [],
+      "http_status": null,
+      "duration_ms": 0,
       "ok": true,
       "error": null,
-      "response_content_type": "application/json",
       "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-          "channel": "LINKEDIN",
-          "contacts_count": 1,
-          "contacts": [
-            {
-              "id": "ace6d45a-110a-457f-b540-84db34128a4c",
-              "name": "Shivanand Shah",
-              "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
-              "company_name": "Microsoft",
-              "linkedin_url": null,
-              "email": null,
-              "confidence": 100,
-              "source": "jd_mention",
-              "channel": "LINKEDIN",
-              "status": "REPLIED",
-              "touchpoint_id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-              "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-              "touchpoint_updated_at": 1772128453872,
-              "linked_to_job": true,
-              "channels": [
-                "LINKEDIN",
-                "OTHER"
-              ],
-              "channel_statuses": {
-                "LINKEDIN": "REPLIED",
-                "OTHER": "DRAFT"
-              },
-              "channel_touchpoints": {
-                "LINKEDIN": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-                "OTHER": "3640e8a4-7ce1-422f-8621-4c82018a38f9"
-              },
-              "channel_updated_at": {
-                "LINKEDIN": 1772128453872,
-                "OTHER": 1772128441954
-              },
-              "selected": true
-            }
-          ],
-          "selected_contact": {
-            "id": "ace6d45a-110a-457f-b540-84db34128a4c",
-            "name": "Shivanand Shah",
-            "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
-            "company_name": "Microsoft",
-            "linkedin_url": null,
-            "email": null,
-            "confidence": 100,
-            "source": "jd_mention",
-            "channel": "LINKEDIN",
-            "status": "REPLIED",
-            "touchpoint_id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-            "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-            "touchpoint_updated_at": 1772128453872,
-            "linked_to_job": true,
-            "channels": [
-              "LINKEDIN",
-              "OTHER"
-            ],
-            "channel_statuses": {
-              "LINKEDIN": "REPLIED",
-              "OTHER": "DRAFT"
-            },
-            "channel_touchpoints": {
-              "LINKEDIN": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-              "OTHER": "3640e8a4-7ce1-422f-8621-4c82018a38f9"
-            },
-            "channel_updated_at": {
-              "LINKEDIN": 1772128453872,
-              "OTHER": 1772128441954
-            }
-          },
-          "evidence_matches": [
-            {
-              "requirement": "Program management",
-              "evidence": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear...",
-              "confidence": 95,
-              "source": "resume_summary"
-            },
-            {
-              "requirement": "KPI tracking",
-              "evidence": "...measurable impact with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management",
-              "confidence": 95,
-              "source": "resume_summary"
-            },
-            {
-              "requirement": "Stakeholder management",
-              "evidence": "...with clear ownershi Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management",
-              "confidence": 95,
-              "source": "resume_summary"
-            }
-          ],
-          "draft": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-          "touchpoint": {
-            "id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-            "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-            "channel": "LINKEDIN",
-            "status": "DRAFT",
-            "updated_at": 1772131741266
-          },
-          "used_ai": false,
-          "ai_model": null,
-          "usage": null
-        }
+        "skipped": true,
+        "reason": "Outreach contacts list is empty for selected JOB_KEY. Skipped (SMOKE_REQUIRE_OUTREACH=0)."
       },
       "response_text": null
     },
     {
       "name": "outreach.status.sent",
-      "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/contacts/ace6d45a-110a-457f-b540-84db34128a4c/touchpoint-status",
-      "auth": "ui",
-      "request_body": {
-        "channel": "LINKEDIN",
-        "status": "SENT"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 884,
+      "method": "SKIP",
+      "path": "-",
+      "auth": "none",
+      "request_body": null,
+      "expected_status": [],
+      "http_status": null,
+      "duration_ms": 0,
       "ok": true,
       "error": null,
-      "response_content_type": "application/json",
       "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-          "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
-          "channel": "LINKEDIN",
-          "status": "SENT",
-          "touchpoint": {
-            "id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-            "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-            "channel": "LINKEDIN",
-            "status": "SENT",
-            "content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-            "updated_at": 1772131742159
-          }
-        }
+        "skipped": true,
+        "reason": "Outreach contacts list is empty for selected JOB_KEY. Skipped (SMOKE_REQUIRE_OUTREACH=0)."
       },
       "response_text": null
     },
     {
       "name": "outreach.status.replied",
-      "method": "POST",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/contacts/ace6d45a-110a-457f-b540-84db34128a4c/touchpoint-status",
-      "auth": "ui",
-      "request_body": {
-        "channel": "LINKEDIN",
-        "status": "REPLIED"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 872,
+      "method": "SKIP",
+      "path": "-",
+      "auth": "none",
+      "request_body": null,
+      "expected_status": [],
+      "http_status": null,
+      "duration_ms": 0,
       "ok": true,
       "error": null,
-      "response_content_type": "application/json",
       "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-          "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
-          "channel": "LINKEDIN",
-          "status": "REPLIED",
-          "touchpoint": {
-            "id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-            "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
-            "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-            "channel": "LINKEDIN",
-            "status": "REPLIED",
-            "content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-            "updated_at": 1772131743037
-          }
-        }
+        "skipped": true,
+        "reason": "Outreach contacts list is empty for selected JOB_KEY. Skipped (SMOKE_REQUIRE_OUTREACH=0)."
       },
       "response_text": null
     },
     {
       "name": "outreach.contacts.verify.replied",
-      "method": "GET",
-      "path": "/jobs/705f7c063eb7bd67752995c9993cf7af24429291/contacts",
-      "auth": "ui",
+      "method": "SKIP",
+      "path": "-",
+      "auth": "none",
       "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 349,
+      "expected_status": [],
+      "http_status": null,
+      "duration_ms": 0,
       "ok": true,
       "error": null,
-      "response_content_type": "application/json",
       "response_json": {
-        "ok": true,
-        "data": [
-          {
-            "id": "ace6d45a-110a-457f-b540-84db34128a4c",
-            "name": "Shivanand Shah",
-            "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
-            "company_name": "Microsoft",
-            "linkedin_url": null,
-            "email": null,
-            "confidence": 100,
-            "source": "jd_mention",
-            "channel": "LINKEDIN",
-            "status": "REPLIED",
-            "touchpoint_id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-            "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
-            "touchpoint_updated_at": 1772131743037,
-            "linked_to_job": true,
-            "channels": [
-              "LINKEDIN",
-              "OTHER"
-            ],
-            "channel_statuses": {
-              "LINKEDIN": "REPLIED",
-              "OTHER": "DRAFT"
-            },
-            "channel_touchpoints": {
-              "LINKEDIN": "06843465-f621-4946-9df6-93b0d2d5d2eb",
-              "OTHER": "3640e8a4-7ce1-422f-8621-4c82018a38f9"
-            },
-            "channel_updated_at": {
-              "LINKEDIN": 1772131743037,
-              "OTHER": 1772128441954
-            }
-          }
-        ],
-        "meta": {
-          "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
-          "count": 1,
-          "contacts_storage_enabled": true,
-          "contacts_storage_error": null
-        }
+        "skipped": true,
+        "reason": "Outreach contacts list is empty for selected JOB_KEY. Skipped (SMOKE_REQUIRE_OUTREACH=0)."
       },
       "response_text": null
     }
@@ -2436,5 +2215,5 @@
     "success": true
   },
   "error": null,
-  "ended_at": "2026-02-26T18:49:03.348Z"
+  "ended_at": "2026-02-26T19:36:06.459Z"
 }
