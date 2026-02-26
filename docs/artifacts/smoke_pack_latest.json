@@ -1,6 +1,6 @@
 {
-  "run_id": "7a948ace-b9f4-46da-b1ac-6d1a22745e27",
-  "started_at": "2026-02-26T19:35:44.028Z",
+  "run_id": "5d5075f6-fb2c-4080-a4b7-8dd6005be14f",
+  "started_at": "2026-02-26T21:21:37.035Z",
   "base_url": "https://get-job.shivanand-shah94.workers.dev",
   "script": "scripts/smoke_pack.mjs",
   "config": {
@@ -9,14 +9,13 @@
     "job_key_input": null,
     "output_file": "docs/artifacts/smoke_pack_latest.json",
     "require_outreach": false,
-    "whatsapp_sim_enabled": true,
+    "whatsapp_sim_enabled": false,
     "whatsapp_webhook_path": "/ingest/whatsapp/vonage",
-    "whatsapp_sim_http_status": 200,
-    "whatsapp_media_sim_http_status": 200,
-    "job_key_resolved": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+    "job_key_resolved": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
     "profile_id_effective": "primary-alt",
     "resume_html_evidence_rows": 9,
-    "resume_html_evidence_needle": "...ed execution. i deliver measurable impact with clear",
+    "resume_html_evidence_needle": "...outcomes to expectations at company. i deliver measurable",
+    "resume_html_expected_email": "smoke.user.alt@example.com",
     "outreach_contact_id": null,
     "outreach_skipped": true
   },
@@ -31,145 +30,48 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 134,
+      "duration_ms": 522,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
-        "ts": 1772134544724,
+        "ts": 1772140898087,
         "worker_version": "dev"
       },
       "response_text": null
     },
     {
       "name": "whatsapp.vonage.sim",
-      "method": "POST",
-      "path": "/ingest/whatsapp/vonage?key=sqRPRdkPU3%24N1Zoc%24jBXd",
+      "method": "SKIP",
+      "path": "-",
       "auth": "none",
-      "request_body": {
-        "from": "+14155550100",
-        "text": "Smoke test lead https://get-job.shivanand-shah94.workers.dev/health",
-        "message_uuid": "smoke-wa-1772134544164"
-      },
-      "expected_status": [
-        200,
-        401,
-        403
-      ],
-      "http_status": 200,
-      "duration_ms": 22,
+      "request_body": null,
+      "expected_status": [],
+      "http_status": null,
+      "duration_ms": 0,
       "ok": true,
       "error": null,
-      "response_content_type": "application/json",
       "response_json": {
-        "ok": true,
-        "data": {
-          "accepted": true,
-          "queued": true,
-          "provider": "vonage",
-          "message_id": "smoke-wa-1772134544164",
-          "count_in": 1,
-          "sender": "+14155550100",
-          "sender_whitelist_enabled": false,
-          "signature_verified": true,
-          "source_health": {
-            "source": "WHATSAPP",
-            "status": "healthy",
-            "min_valid_ratio": 0.6,
-            "total": 1,
-            "valid": 1,
-            "invalid": 0,
-            "valid_ratio": 1,
-            "reasons": [],
-            "checked_at": 1772134544762
-          },
-          "media_detected": true,
-          "media_queued_for_extraction": false,
-          "media": {
-            "type": "document",
-            "mime_type": null,
-            "file_name": null,
-            "size_bytes": null,
-            "caption_preview": null,
-            "url_host": null
-          },
-          "extraction": {
-            "queued": false,
-            "configured": true,
-            "status": "not_applicable"
-          }
-        }
+        "skipped": true,
+        "reason": "Set WHATSAPP_VONAGE_KEY (or WHATSAPP_WEBHOOK_KEY) to enable this step."
       },
       "response_text": null
     },
     {
       "name": "whatsapp.vonage.media.sim",
-      "method": "POST",
-      "path": "/ingest/whatsapp/vonage?key=sqRPRdkPU3%24N1Zoc%24jBXd",
+      "method": "SKIP",
+      "path": "-",
       "auth": "none",
-      "request_body": {
-        "from": "+14155550100",
-        "message_uuid": "smoke-wa-media-1772134544187",
-        "message_type": "document",
-        "file": {
-          "url": "https://example.com/mock-jd.pdf",
-          "mime_type": "application/pdf",
-          "name": "mock-jd.pdf",
-          "caption": "Attached job description document for smoke validation"
-        }
-      },
-      "expected_status": [
-        200,
-        401,
-        403
-      ],
-      "http_status": 200,
-      "duration_ms": 15,
+      "request_body": null,
+      "expected_status": [],
+      "http_status": null,
+      "duration_ms": 0,
       "ok": true,
       "error": null,
-      "response_content_type": "application/json",
       "response_json": {
-        "ok": true,
-        "data": {
-          "accepted": true,
-          "queued": true,
-          "provider": "vonage",
-          "message_id": "smoke-wa-media-1772134544187",
-          "count_in": 0,
-          "sender": "+14155550100",
-          "sender_whitelist_enabled": false,
-          "signature_verified": true,
-          "source_health": {
-            "source": "WHATSAPP",
-            "status": "failing",
-            "min_valid_ratio": 0.6,
-            "total": 0,
-            "valid": 0,
-            "invalid": 0,
-            "valid_ratio": 0,
-            "reasons": [
-              "no_candidates",
-              "no_canonical_job_urls"
-            ],
-            "checked_at": 1772134544779
-          },
-          "media_detected": true,
-          "media_queued_for_extraction": true,
-          "media": {
-            "type": "document",
-            "mime_type": "application/pdf",
-            "file_name": "mock-jd.pdf",
-            "size_bytes": null,
-            "caption_preview": "Attached job description document for smoke validation",
-            "url_host": "example.com"
-          },
-          "extraction": {
-            "queued": true,
-            "configured": true,
-            "status": "queued"
-          }
-        }
+        "skipped": true,
+        "reason": "Set WHATSAPP_VONAGE_KEY (or WHATSAPP_WEBHOOK_KEY) to enable this step."
       },
       "response_text": null
     },
@@ -183,7 +85,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1034,
+      "duration_ms": 800,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -191,28 +93,37 @@
         "ok": true,
         "data": [
           {
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
-            "company": "Smoke Systems",
-            "role_title": "Business Program Manager - Platform Operations",
-            "location": "Remote",
-            "seniority": "Mid",
-            "final_score": 73,
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+            "company": "",
+            "role_title": "Architects",
+            "location": "",
+            "seniority": "",
+            "final_score": 74,
             "status": "SCORED",
-            "job_url": "https://www.linkedin.com/jobs/view/4377165152/",
-            "source_domain": "linkedin",
+            "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac",
+            "source_domain": "whatsapp.vonage.local",
             "system_status": null,
-            "fetch_debug_json": "{}",
-            "updated_at": 1772134344218,
-            "created_at": 1772095561049,
-            "fetch_debug": {},
-            "ingest_channel": null,
-            "jd_confidence": null,
+            "fetch_debug_json": "{\"jd_confidence\":\"low\",\"jd_length\":0,\"http_status\":530,\"ai_available\":true,\"ingest_channel\":\"recover\",\"fallback_reason\":\"manual_required\",\"fallback_policy\":\"default\",\"source_policy_domain\":\"whatsapp.vonage.local\"}",
+            "updated_at": 1772140625428,
+            "created_at": 1772140171157,
+            "fetch_debug": {
+              "jd_confidence": "low",
+              "jd_length": 0,
+              "http_status": 530,
+              "ai_available": true,
+              "ingest_channel": "recover",
+              "fallback_reason": "manual_required",
+              "fallback_policy": "default",
+              "source_policy_domain": "whatsapp.vonage.local"
+            },
+            "ingest_channel": "recover",
+            "jd_confidence": "low",
             "last_touchpoint_at": null,
             "last_touchpoint_status": null,
             "last_touchpoint_channel": null,
             "days_since_touchpoint": null,
-            "display_title": "Business Program Manager - Platform Operations",
-            "display_company": "Smoke Systems"
+            "display_title": "Architects",
+            "display_company": ""
           }
         ]
       },
@@ -228,7 +139,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 877,
+      "duration_ms": 1070,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -237,7 +148,7 @@
         "data": {
           "enabled": true,
           "stale_days": 3,
-          "generated_at": 1772134545827,
+          "generated_at": 1772140899156,
           "pulse": {
             "gold_leads_count": 3,
             "replies_7d_count": 3,
@@ -397,31 +308,31 @@
           },
           "gold_leads": [
             {
+              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+              "role_title": "Architects",
+              "company": "",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772140625428
+            },
+            {
+              "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+              "role_title": "",
+              "company": "Microsoft",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772140623308
+            },
+            {
               "job_key": "1418874c737d46afa6dd2d2bcd5c53cb1c379c9e",
               "role_title": "",
               "company": "Wockhardt",
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772134320043
-            },
-            {
-              "job_key": "3028f15a6b7a6d1439a775c28fd38a5241565908",
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "status": "SCORED",
-              "final_score": 74,
-              "profile_id": "primary",
-              "updated_at": 1772134299738
-            },
-            {
-              "job_key": "66a61647f865758b81b9596b23d64b3ad4e27c3c",
-              "role_title": "Business Consultant",
-              "company": "EY",
-              "status": "SCORED",
-              "final_score": 74,
-              "profile_id": "primary",
-              "updated_at": 1772134296132
+              "updated_at": 1772140616914
             }
           ],
           "touchpoint_conversion": {
@@ -453,15 +364,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 5153,
+      "duration_ms": 6137,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "de3486a7-ed47-483e-8959-6ecd96540298",
-          "ts": 1772134546704,
+          "run_id": "19e34a34-9ac3-4b2b-a0f3-a580d9edb483",
+          "ts": 1772140900079,
           "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
           "max_results": 25,
           "max_jobs_per_email": 3,
@@ -511,15 +422,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 186,
+      "duration_ms": 330,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "cecf8537-2e5f-45b1-8df7-b6bf75addc34",
-          "ts": 1772134551857,
+          "run_id": "0d76a066-4da8-4a1f-8551-80e4a006901e",
+          "ts": 1772140906303,
           "skipped": true,
           "reason": "no_feeds_configured",
           "feeds_total": 0,
@@ -601,7 +512,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 190,
+      "duration_ms": 279,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -610,7 +521,7 @@
         "data": {
           "id": "primary",
           "name": "Smoke Profile",
-          "updated_at": 1772134552045
+          "updated_at": 1772140906551
         }
       },
       "response_text": null
@@ -654,7 +565,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 186,
+      "duration_ms": 336,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -663,7 +574,7 @@
         "data": {
           "id": "primary-alt",
           "name": "Smoke Profile Alt",
-          "updated_at": 1772134552235
+          "updated_at": 1772140906839
         }
       },
       "response_text": null
@@ -671,7 +582,7 @@
     {
       "name": "wizard.profile.preference.set",
       "method": "POST",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/profile-preference",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/profile-preference",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt"
@@ -680,16 +591,16 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1383,
+      "duration_ms": 1477,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "profile_id": "primary-alt",
-          "updated_at": 1772134552930,
+          "updated_at": 1772140907679,
           "cleared": false,
           "enabled": true,
           "effective_profile_id": "primary-alt",
@@ -701,23 +612,23 @@
     {
       "name": "wizard.profile.preference.get",
       "method": "GET",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/profile-preference",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/profile-preference",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1018,
+      "duration_ms": 1067,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "profile_id": "primary-alt",
-          "updated_at": 1772134552930,
+          "updated_at": 1772140907679,
           "enabled": true,
           "effective_profile_id": "primary-alt",
           "effective_source": "job_preference"
@@ -728,7 +639,7 @@
     {
       "name": "wizard.generate",
       "method": "POST",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/generate-application-pack",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/generate-application-pack",
       "auth": "ui",
       "request_body": {
         "force": false,
@@ -740,20 +651,33 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 4538,
+      "duration_ms": 4459,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
-          "draft_id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+          "draft_id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
           "profile_id": "primary-alt",
           "profile_source": "job_preference",
-          "status": "READY_TO_APPLY",
-          "locked": true,
-          "message": "Draft is locked after approval. Use force=true to regenerate."
+          "status": "CONTENT_REVIEW_REQUIRED",
+          "ats_score": 88,
+          "template_id": "",
+          "enabled_blocks_count": 0,
+          "selected_keywords_count": 0,
+          "one_page_mode": "soft",
+          "one_pager_strict": false,
+          "content_review_required": true,
+          "evidence_first": true,
+          "evidence_match_count": 0,
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": []
         }
       },
       "response_text": null
@@ -761,33 +685,33 @@
     {
       "name": "wizard.pack.fetch.before",
       "method": "GET",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/application-pack",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/application-pack",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1205,
+      "duration_ms": 1344,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "profile_id": "primary-alt",
           "profile_lookup_source": "job_preference",
           "requested_profile_id": null,
           "preference_profile_id": "primary-alt",
-          "status": "READY_TO_APPLY",
+          "status": "CONTENT_REVIEW_REQUIRED",
           "error_text": "",
           "pack_json": {
             "job": {
-              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
-              "job_url": "https://www.linkedin.com/jobs/view/4377165152/",
-              "source_domain": "linkedin",
+              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac",
+              "source_domain": "whatsapp.vonage.local",
               "status": "SCORED"
             },
             "target": {
@@ -808,21 +732,21 @@
               "reject": []
             },
             "extracted": {
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "location": "Gurugram",
-              "seniority": "Mid",
+              "role_title": "Architects",
+              "company": "",
+              "location": "",
+              "seniority": "",
               "final_score": 74,
               "reason_top_matches": ""
             },
             "tailoring": {
-              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership,",
               "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
+                "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
                 "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
                 "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
               ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
               "must_keywords": [],
               "nice_keywords": [],
               "evidence_matches": []
@@ -840,8 +764,7 @@
               "ats_target_mode": "all",
               "one_page_mode": "soft",
               "one_pager_strict": false,
-              "content_review_required": false,
-              "approved_at": 1772134334451
+              "content_review_required": true
             },
             "renderer": "reactive_resume"
           },
@@ -857,7 +780,7 @@
             "notes": "Good keyword coverage",
             "target_rubric": {
               "applicable": true,
-              "score": 33,
+              "score": 27,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -904,12 +827,11 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 100,
-                  "hit_count": 3,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
-                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -958,7 +880,7 @@
             },
             "pm_rubric": {
               "applicable": true,
-              "score": 33,
+              "score": 27,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1005,12 +927,11 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 100,
-                  "hit_count": 3,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
-                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -1064,7 +985,7 @@
               "contract_id": "jobops.rr_export.v1",
               "schema_version": 1,
               "version": 1,
-              "exported_at": 1772134330407,
+              "exported_at": 1772140912708,
               "template_id": "balanced",
               "renderer": "reactive_resume",
               "contract_valid": true,
@@ -1075,7 +996,7 @@
               "email": "smoke.user.alt@example.com",
               "phone": "",
               "location": "Remote",
-              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership,"
             },
             "sections": {
               "experience": [
@@ -1098,7 +1019,7 @@
               ],
               "highlights": [
                 {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability."
+                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability."
                 },
                 {
                   "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
@@ -1109,10 +1030,10 @@
               ]
             },
             "job_context": {
-              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "job_url": "https://www.linkedin.com/jobs/view/4377165152/"
+              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+              "role_title": "Architects",
+              "company": "",
+              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac"
             }
           },
           "rr_export_contract": {
@@ -1121,13 +1042,13 @@
           },
           "rr_export_import_ready": true,
           "rr_export_import_errors": [],
-          "rr_resume_id": "019c9b63-13f8-7139-ab87-33d2f26f3941",
-          "rr_last_pushed_at": 1772133487801,
-          "rr_last_push_status": "SUCCESS",
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
           "rr_last_push_error": "",
-          "rr_pdf_url": "https://rxresu.me/uploads/019c8a79-abbb-708b-9a5e-fd788db90622/pdfs/019c9b63-13f8-7139-ab87-33d2f26f3941/1772133491875.pdf",
-          "rr_pdf_last_exported_at": 1772133492056,
-          "rr_pdf_last_export_status": "SUCCESS",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
           "rr_pdf_last_export_error": "",
           "pdf_readiness": {
             "gate_version": "pdf_readiness_v2",
@@ -1138,28 +1059,28 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Product Manager",
+                "detail": "role: Architects",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
-                "ok": true,
-                "detail": "company: Majid Al Futtaim",
+                "ok": false,
+                "detail": "Missing company",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=807, jd_confidence=-",
+                "detail": "jd_len=455, jd_confidence=low",
                 "enforced": false
               },
               {
                 "id": "summary_length",
                 "label": "Tailored summary length",
                 "ok": true,
-                "detail": "summary_chars=283/80",
+                "detail": "summary_chars=179/80",
                 "enforced": false
               },
               {
@@ -1192,7 +1113,15 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              }
+            ],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -1201,25 +1130,25 @@
             },
             "one_page_mode": "soft",
             "one_page_estimate": {
-              "summary_chars": 283,
+              "summary_chars": 179,
               "bullets_count": 3,
               "experience_items": 1,
               "skills_items": 5,
-              "estimated_density": "high"
+              "estimated_density": "low"
             },
             "hard_gate_applied": false
           },
           "one_page_mode": "soft",
-          "content_review_required": false,
+          "content_review_required": true,
           "latest_version": {
-            "id": "7cbd616e-955b-4adb-b70f-62ce2ca57a7d",
-            "version_no": 5,
-            "source_action": "approve",
-            "created_at": 1772134334619
+            "id": "0d99dae3-6487-4ed1-9e52-ee76c116ef4c",
+            "version_no": 1,
+            "source_action": "generate",
+            "created_at": 1772140913409
           },
           "version_history_enabled": true,
           "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772134334619
+          "updated_at": 1772140912708
         }
       },
       "response_text": null
@@ -1227,32 +1156,32 @@
     {
       "name": "wizard.review",
       "method": "POST",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/application-pack/review",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/application-pack/review",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt",
-        "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
         "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
+          "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
           "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
           "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
         ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+        "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
       },
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1244,
+      "duration_ms": 1307,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "profile_id": "primary-alt",
-          "draft_id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
+          "draft_id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
           "status": "READY_FOR_EXPORT",
           "ats_score": 88,
           "pdf_readiness": {
@@ -1264,28 +1193,28 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Product Manager",
+                "detail": "role: Architects",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
-                "ok": true,
-                "detail": "company: Majid Al Futtaim",
+                "ok": false,
+                "detail": "Missing company",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=807, jd_confidence=-",
+                "detail": "jd_len=455, jd_confidence=low",
                 "enforced": false
               },
               {
                 "id": "summary_length",
                 "label": "Tailored summary length",
                 "ok": true,
-                "detail": "summary_chars=283/80",
+                "detail": "summary_chars=282/80",
                 "enforced": false
               },
               {
@@ -1318,7 +1247,15 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              }
+            ],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -1327,7 +1264,7 @@
             },
             "one_page_mode": "soft",
             "one_page_estimate": {
-              "summary_chars": 283,
+              "summary_chars": 282,
               "bullets_count": 3,
               "experience_items": 1,
               "skills_items": 5,
@@ -1335,8 +1272,8 @@
             },
             "hard_gate_applied": false
           },
-          "version_id": "00b2508d-5ea6-42ca-b4f2-0305a9cabb8a",
-          "version_no": 6
+          "version_id": "957a3c03-90b4-4544-9ff3-d589f24c09da",
+          "version_no": 2
         }
       },
       "response_text": null
@@ -1344,32 +1281,32 @@
     {
       "name": "wizard.approve",
       "method": "POST",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/approve-pack",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/approve-pack",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt",
-        "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
         "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
+          "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
           "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
           "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
         ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+        "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
       },
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1602,
+      "duration_ms": 1726,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "profile_id": "primary-alt",
-          "draft_id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
+          "draft_id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
           "status": "READY_TO_APPLY",
           "ats_score": 88,
           "pdf_readiness": {
@@ -1381,28 +1318,28 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Product Manager",
+                "detail": "role: Architects",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
-                "ok": true,
-                "detail": "company: Majid Al Futtaim",
+                "ok": false,
+                "detail": "Missing company",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=807, jd_confidence=-",
+                "detail": "jd_len=455, jd_confidence=low",
                 "enforced": false
               },
               {
                 "id": "summary_length",
                 "label": "Tailored summary length",
                 "ok": true,
-                "detail": "summary_chars=283/80",
+                "detail": "summary_chars=282/80",
                 "enforced": false
               },
               {
@@ -1435,7 +1372,15 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              }
+            ],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -1444,7 +1389,7 @@
             },
             "one_page_mode": "soft",
             "one_page_estimate": {
-              "summary_chars": 283,
+              "summary_chars": 282,
               "bullets_count": 3,
               "experience_items": 1,
               "skills_items": 5,
@@ -1452,8 +1397,8 @@
             },
             "hard_gate_applied": false
           },
-          "version_id": "bd8159b7-0b7f-4686-9e0d-4a48ae127e87",
-          "version_no": 7
+          "version_id": "e628a020-6220-4930-b883-f066ed281966",
+          "version_no": 3
         }
       },
       "response_text": null
@@ -1461,22 +1406,22 @@
     {
       "name": "wizard.pack.fetch.after",
       "method": "GET",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/application-pack",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/application-pack",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1193,
+      "duration_ms": 1340,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "id": "e85d28d7-10d0-4454-992a-6b70759e9d2a",
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "profile_id": "primary-alt",
           "profile_lookup_source": "job_preference",
           "requested_profile_id": null,
@@ -1485,9 +1430,9 @@
           "error_text": "",
           "pack_json": {
             "job": {
-              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
-              "job_url": "https://www.linkedin.com/jobs/view/4377165152/",
-              "source_domain": "linkedin",
+              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac",
+              "source_domain": "whatsapp.vonage.local",
               "status": "SCORED"
             },
             "target": {
@@ -1508,21 +1453,21 @@
               "reject": []
             },
             "extracted": {
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "location": "Gurugram",
-              "seniority": "Mid",
+              "role_title": "Architects",
+              "company": "",
+              "location": "",
+              "seniority": "",
               "final_score": 74,
               "reason_top_matches": ""
             },
             "tailoring": {
-              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
               "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability.",
+                "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
                 "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
                 "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
               ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
               "must_keywords": [],
               "nice_keywords": [],
               "evidence_matches": []
@@ -1541,7 +1486,7 @@
               "one_page_mode": "soft",
               "one_pager_strict": false,
               "content_review_required": false,
-              "approved_at": 1772134561986
+              "approved_at": 1772140916992
             },
             "renderer": "reactive_resume"
           },
@@ -1557,7 +1502,7 @@
             "notes": "Good keyword coverage",
             "target_rubric": {
               "applicable": true,
-              "score": 33,
+              "score": 27,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1604,12 +1549,11 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 100,
-                  "hit_count": 3,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
-                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -1658,7 +1602,7 @@
             },
             "pm_rubric": {
               "applicable": true,
-              "score": 33,
+              "score": 27,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1705,12 +1649,11 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 100,
-                  "hit_count": 3,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
                   "evidence": [
                     "requirements",
-                    "cross-functional",
                     "execution"
                   ],
                   "missing_evidence": [
@@ -1764,7 +1707,7 @@
               "contract_id": "jobops.rr_export.v1",
               "schema_version": 1,
               "version": 1,
-              "exported_at": 1772134330407,
+              "exported_at": 1772140912708,
               "template_id": "balanced",
               "renderer": "reactive_resume",
               "contract_valid": true,
@@ -1775,7 +1718,7 @@
               "email": "smoke.user.alt@example.com",
               "phone": "",
               "location": "Remote",
-              "summary": "Product Manager delivering measurable impact through data-driven decision making and structured execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
             },
             "sections": {
               "experience": [
@@ -1798,7 +1741,7 @@
               ],
               "highlights": [
                 {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations. using core capability."
+                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability."
                 },
                 {
                   "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
@@ -1809,10 +1752,10 @@
               ]
             },
             "job_context": {
-              "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "job_url": "https://www.linkedin.com/jobs/view/4377165152/"
+              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+              "role_title": "Architects",
+              "company": "",
+              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac"
             }
           },
           "rr_export_contract": {
@@ -1821,13 +1764,13 @@
           },
           "rr_export_import_ready": true,
           "rr_export_import_errors": [],
-          "rr_resume_id": "019c9b63-13f8-7139-ab87-33d2f26f3941",
-          "rr_last_pushed_at": 1772133487801,
-          "rr_last_push_status": "SUCCESS",
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
           "rr_last_push_error": "",
-          "rr_pdf_url": "https://rxresu.me/uploads/019c8a79-abbb-708b-9a5e-fd788db90622/pdfs/019c9b63-13f8-7139-ab87-33d2f26f3941/1772133491875.pdf",
-          "rr_pdf_last_exported_at": 1772133492056,
-          "rr_pdf_last_export_status": "SUCCESS",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
           "rr_pdf_last_export_error": "",
           "pdf_readiness": {
             "gate_version": "pdf_readiness_v2",
@@ -1838,28 +1781,28 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Product Manager",
+                "detail": "role: Architects",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
-                "ok": true,
-                "detail": "company: Majid Al Futtaim",
+                "ok": false,
+                "detail": "Missing company",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=807, jd_confidence=-",
+                "detail": "jd_len=455, jd_confidence=low",
                 "enforced": false
               },
               {
                 "id": "summary_length",
                 "label": "Tailored summary length",
                 "ok": true,
-                "detail": "summary_chars=283/80",
+                "detail": "summary_chars=282/80",
                 "enforced": false
               },
               {
@@ -1892,7 +1835,15 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              }
+            ],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -1901,7 +1852,7 @@
             },
             "one_page_mode": "soft",
             "one_page_estimate": {
-              "summary_chars": 283,
+              "summary_chars": 282,
               "bullets_count": 3,
               "experience_items": 1,
               "skills_items": 5,
@@ -1912,14 +1863,14 @@
           "one_page_mode": "soft",
           "content_review_required": false,
           "latest_version": {
-            "id": "bd8159b7-0b7f-4686-9e0d-4a48ae127e87",
-            "version_no": 7,
+            "id": "e628a020-6220-4930-b883-f066ed281966",
+            "version_no": 3,
             "source_action": "approve",
-            "created_at": 1772134562151
+            "created_at": 1772140917167
           },
           "version_history_enabled": true,
           "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772134562151
+          "updated_at": 1772140917167
         }
       },
       "response_text": null
@@ -1927,22 +1878,117 @@
     {
       "name": "wizard.evidence.rebuild",
       "method": "POST",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/evidence/rebuild",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence/rebuild",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200,
         400
       ],
+      "http_status": 400,
+      "duration_ms": 506,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": false,
+        "error": "No extracted requirements available. Rescore first."
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.rescore.for.evidence",
+      "method": "POST",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/rescore",
+      "auth": "ui",
+      "request_body": {},
+      "expected_status": [
+        200
+      ],
       "http_status": 200,
-      "duration_ms": 880,
+      "duration_ms": 3789,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+          "final_score": 74,
+          "status": "SCORED",
+          "primary_target_id": "TGT-NEW-01",
+          "potential_contacts": []
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.evidence.rebuild.after_rescore",
+      "method": "POST",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence/rebuild",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200,
+        400
+      ],
+      "http_status": 400,
+      "duration_ms": 400,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": false,
+        "error": "No extracted requirements available. Rescore first."
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.manual_jd.seed",
+      "method": "POST",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/manual-jd",
+      "auth": "ui",
+      "request_body": {
+        "jd_text_clean": "\nBusiness Program Manager - Platform Operations\nCompany: Smoke Systems\nLocation: Remote\n\nWe are hiring a Business Program Manager to lead cross-functional delivery, KPI tracking, and stakeholder communication across product, operations, and engineering teams.\n\nMust have:\n- Program management experience owning delivery plans and roadmap milestones.\n- Cross-functional collaboration with product, engineering, design, and operations.\n- Strong SQL skills for reporting and analytics.\n- KPI tracking and executive-ready status communication.\n- Stakeholder management across multiple workstreams.\n\nNice to have:\n- Process optimization and workflow automation.\n- Experience with business strategy and operational planning.\n\nThe role requires clear written communication, execution ownership, and measurable outcomes.\n"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 4668,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+          "status": "SCORED",
+          "final_score": 73,
+          "primary_target_id": "TGT-NEW-01",
+          "potential_contacts": []
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.evidence.rebuild.after_manual_jd",
+      "method": "POST",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence/rebuild",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 2004,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "rows_written": 9,
           "matched_count": 9,
           "unmatched_count": 0,
@@ -1954,14 +2000,14 @@
     {
       "name": "wizard.evidence.fetch",
       "method": "GET",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/evidence?limit=60",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence?limit=60",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 355,
+      "duration_ms": 655,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -1969,47 +2015,47 @@
         "ok": true,
         "data": [
           {
-            "id": "5d2bd789-b200-47e4-ad8d-a7b0b6d4c90f",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "34b29609-1bc7-45e9-9426-2312db41369d",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "Program management",
             "requirement_type": "must",
-            "evidence_text": "...ed execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "4849bab9-2a35-443f-8a67-45577f0939b2",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "9fd36945-89d2-43f9-b33c-a09f5c93bb07",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "KPI tracking",
             "requirement_type": "must",
-            "evidence_text": "...ear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...easurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "19a9c9b7-b4d2-4037-8600-be31375fc34c",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "ee49c31c-fbbc-4738-9bb6-a592ab5f04c5",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "Stakeholder management",
             "requirement_type": "must",
-            "evidence_text": "...s-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...th clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "2ec87eb2-964a-4097-8d56-2b3a6b23e807",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "162595d2-5e42-4543-baed-8fe104e3e891",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "Cross-functional collaboration",
             "requirement_type": "must",
             "evidence_text": "...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an",
@@ -2017,12 +2063,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "10a2ced2-74fa-4f83-9fcc-2a0e9ef52a0b",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "874ed372-db95-48c9-b232-6b5286b01931",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "SQL skills",
             "requirement_type": "must",
             "evidence_text": "...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m",
@@ -2030,12 +2076,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "d3b9018e-e098-4fd1-ad8a-5dcfb78caac1",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "20d8e131-bafb-4565-b884-4059eedc76f4",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "Process optimization",
             "requirement_type": "nice",
             "evidence_text": "...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role ",
@@ -2043,12 +2089,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "2301467b-f2ea-4841-8b90-f799422f4b54",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "3759b4db-9b96-4393-b4e9-7df754a1a57f",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "Workflow automation",
             "requirement_type": "nice",
             "evidence_text": "...ion. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written co",
@@ -2056,12 +2102,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "d76d5197-f16d-415e-bbad-5c3520179b6b",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "8343a10b-16b7-4927-8ad6-f9d38469137e",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "Business strategy",
             "requirement_type": "nice",
             "evidence_text": "...ultiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and ",
@@ -2069,12 +2115,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           },
           {
-            "id": "9c744190-643e-48d9-9388-f5e080f79fce",
-            "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+            "id": "4f530536-fa0f-4bd7-864b-4b7fe9e3c4d2",
+            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
             "requirement_text": "Operational planning",
             "requirement_type": "nice",
             "evidence_text": "...ce to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and measurable outcomes.",
@@ -2082,12 +2128,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772134344218,
-            "updated_at": 1772134564935
+            "created_at": 1772140924752,
+            "updated_at": 1772140930458
           }
         ],
         "meta": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "count": 9,
           "matched_count": 9,
           "unmatched_count": 0
@@ -2098,31 +2144,31 @@
     {
       "name": "wizard.resume.html",
       "method": "GET",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/resume/html?profile_id=primary-alt&evidence_limit=12",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/resume/html?profile_id=primary-alt&evidence_limit=12",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 691,
+      "duration_ms": 922,
       "ok": true,
       "error": null,
       "response_content_type": "text/html; charset=utf-8",
       "response_json": null,
-      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Alternate profile for per-job preference verification.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Smoke Systems (Business Program Manager - Platform Operations)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div class=\"impact-head\"><strong>Program management</strong><span class=\"impact-score\">95%</span></div><div>...ed execution. I deliver measurable impact with clear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>KPI tracking</strong><span class=\"impact-score\">95%</span></div><div>...ear ownership, cross-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Stakeholder management</strong><span class=\"impact-score\">95%</span></div><div>...s-functional collab Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Cross-functional collaboration</strong><span class=\"impact-score\">70%</span></div><div>...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>SQL skills</strong><span class=\"impact-score\">70%</span></div><div>...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Process optimization</strong><span class=\"impact-score\">70%</span></div><div>...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Workflow automation</strong><span class=\"impact-score\">70%</span></div><div>...ion. - Stakeholder management across multiple wo..."
+      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Alternate profile for per-job preference verification.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Smoke Systems (Business Program Manager - Platform Operations)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div class=\"impact-head\"><strong>Program management</strong><span class=\"impact-score\">95%</span></div><div>...outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>KPI tracking</strong><span class=\"impact-score\">95%</span></div><div>...easurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Stakeholder management</strong><span class=\"impact-score\">95%</span></div><div>...th clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Cross-functional collaboration</strong><span class=\"impact-score\">70%</span></div><div>...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>SQL skills</strong><span class=\"impact-score\">70%</span></div><div>...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Process optimization</strong><span class=\"impact-score\">70%</span></div><div>...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Workflow automation</strong><span class=\"impact-score\">70%</span></div><div>...ion. - Stakeholder management across multiple wor..."
     },
     {
       "name": "outreach.contacts.list",
       "method": "GET",
-      "path": "/jobs/7b4613b11f0ac36dcb751ab2bac4fc797ec7b619/contacts",
+      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/contacts",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 519,
+      "duration_ms": 805,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -2130,7 +2176,7 @@
         "ok": true,
         "data": [],
         "meta": {
-          "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
           "count": 0,
           "contacts_storage_enabled": true,
           "contacts_storage_error": null
@@ -2209,11 +2255,11 @@
   ],
   "result": "PASS",
   "summary": {
-    "total_steps": 24,
-    "passed_steps": 24,
+    "total_steps": 28,
+    "passed_steps": 28,
     "failed_steps": 0,
     "success": true
   },
   "error": null,
-  "ended_at": "2026-02-26T19:36:06.459Z"
+  "ended_at": "2026-02-26T21:22:12.984Z"
 }
