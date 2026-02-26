@@ -109,6 +109,27 @@ function truncateToLimit_(text, maxLen) {
   return cut ? `${cut}...` : src.slice(0, maxLen);
 }
 
+function escapeRegex_(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasReversePerspective_(text, contact = {}) {
+  const raw = safeText_(text, 5000);
+  if (!raw) return true;
+  const low = raw.toLowerCase();
+  if (low.includes("i came across your profile")) return true;
+  if (low.includes("our role")) return true;
+  if (low.includes("dear smoke user")) return true;
+
+  const contactName = safeText_(contact.name, 220);
+  const first = firstName_(contactName);
+  const signToken = contactName || first;
+  if (!signToken) return false;
+  const escaped = escapeRegex_(signToken);
+  const signoff = new RegExp(`(best regards|regards|sincerely|thanks)[,\\s\\r\\n]+${escaped}\\b`, "i");
+  return signoff.test(raw);
+}
+
 function deterministicDraft_(input = {}) {
   const channel = normalizeChannel_(input.channel);
   const job = input.job && typeof input.job === "object" ? input.job : {};
@@ -266,7 +287,7 @@ export async function draftOutreachMessage_(input = {}) {
     });
     const textRaw = safeText_(modelTextFromResult_(result), 5000);
     const text = truncateToLimit_(textRaw, channelLimit_(channel));
-    if (!text) {
+    if (!text || hasReversePerspective_(text, contact)) {
       return {
         ok: true,
         channel,
@@ -298,4 +319,3 @@ export async function draftOutreachMessage_(input = {}) {
     };
   }
 }
-
