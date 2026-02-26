@@ -149,7 +149,7 @@ export default {
     };
 
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const geminiRes = await fetchWithTimeout_(geminiUrl, {
+    let geminiRes = await fetchWithTimeout_(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(geminiPayload),
@@ -158,8 +158,26 @@ export default {
       return json_({ ok: false, error: `Gemini request failed: ${geminiRes.__error}` }, env, 502);
     }
 
-    const geminiRawText = await geminiRes.text().catch(() => "");
-    const geminiObj = safeJsonParse_(geminiRawText) || {};
+    let geminiRawText = await geminiRes.text().catch(() => "");
+    let geminiObj = safeJsonParse_(geminiRawText) || {};
+    if (!geminiRes.ok) {
+      // Compatibility fallback for models/accounts that reject responseMimeType.
+      const fallbackPayload = {
+        contents: geminiPayload.contents,
+        generationConfig: { temperature: 0.1 },
+      };
+      const retry = await fetchWithTimeout_(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fallbackPayload),
+      }, geminiTimeoutMs).catch((e) => ({ __error: String(e?.message || e || "gemini_request_failed") }));
+      if (retry?.__error) {
+        return json_({ ok: false, error: `Gemini request failed: ${retry.__error}` }, env, 502);
+      }
+      geminiRes = retry;
+      geminiRawText = await geminiRes.text().catch(() => "");
+      geminiObj = safeJsonParse_(geminiRawText) || {};
+    }
     if (!geminiRes.ok) {
       const detail = String(
         geminiObj?.error?.message ||
