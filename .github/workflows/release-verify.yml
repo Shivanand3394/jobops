@@ -1,0 +1,106 @@
+name: Release Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Worker base URL"
+        required: false
+        default: "https://get-job.shivanand-shah94.workers.dev"
+      release_id:
+        description: "Worker deploy/version id (optional)"
+        required: false
+        default: ""
+      pages_url:
+        description: "Pages URL (optional)"
+        required: false
+        default: ""
+      expected_worker_version:
+        description: "Expected /health.worker_version (optional)"
+        required: false
+        default: ""
+      profile_id:
+        description: "Profile id for smoke path"
+        required: false
+        default: "primary"
+      run_smoke:
+        description: "Run full smoke pack within release verify"
+        required: false
+        default: "1"
+      require_smoke_pass:
+        description: "Fail workflow when smoke fails"
+        required: false
+        default: "1"
+      allow_connector_skip:
+        description: "Allow soft pass for connector 4xx in verify"
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  release-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          UI_KEY: ${{ secrets.UI_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
+        run: |
+          set -euo pipefail
+          missing=0
+          if [ -z "${UI_KEY:-}" ]; then
+            echo "Missing GitHub secret: UI_KEY"
+            missing=1
+          fi
+          if [ -z "${API_KEY:-}" ]; then
+            echo "Missing GitHub secret: API_KEY"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Run release verification
+        shell: bash
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || vars.SMOKE_BASE_URL || 'https://get-job.shivanand-shah94.workers.dev' }}
+          RELEASE_ID: ${{ github.event.inputs.release_id || '' }}
+          PAGES_URL: ${{ github.event.inputs.pages_url || '' }}
+          EXPECT_WORKER_VERSION: ${{ github.event.inputs.expected_worker_version || '' }}
+          PROFILE_ID: ${{ github.event.inputs.profile_id || vars.SMOKE_PROFILE_ID || 'primary' }}
+          RELEASE_VERIFY_RUN_SMOKE: ${{ github.event.inputs.run_smoke || '1' }}
+          RELEASE_VERIFY_REQUIRE_SMOKE_PASS: ${{ github.event.inputs.require_smoke_pass || '1' }}
+          RELEASE_VERIFY_ALLOW_CONNECTOR_SKIP: ${{ github.event.inputs.allow_connector_skip || '1' }}
+          UI_KEY: ${{ secrets.UI_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
+          WHATSAPP_VONAGE_KEY: ${{ secrets.WHATSAPP_VONAGE_KEY }}
+          WHATSAPP_VONAGE_SIGNATURE_SECRET: ${{ secrets.WHATSAPP_VONAGE_SIGNATURE_SECRET }}
+          WHATSAPP_VONAGE_JWT: ${{ secrets.WHATSAPP_VONAGE_JWT }}
+          WHATSAPP_TEST_SENDER: ${{ vars.WHATSAPP_TEST_SENDER || '+14155550100' }}
+        run: |
+          node --check scripts/release_verify.mjs
+          node scripts/release_verify.mjs
+
+      - name: Upload release verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-verify-${{ github.run_id }}
+          path: |
+            docs/artifacts/release_verify_latest.json
+            docs/artifacts/release_verify_latest.md
+            docs/artifacts/smoke_pack_latest.json
+          retention-days: 14

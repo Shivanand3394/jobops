@@ -95,6 +95,38 @@ Optional GitHub Variables:
 
 The workflow uploads `docs/artifacts/smoke_pack_latest.json` as an artifact on every run (`workflow_dispatch` and nightly schedule).
 
+### GitHub Actions release verification workflow
+Repo workflow: `.github/workflows/release-verify.yml`
+
+Inputs:
+- `base_url`
+- `release_id`
+- `pages_url`
+- `expected_worker_version`
+- `profile_id`
+- `run_smoke`
+- `require_smoke_pass`
+- `allow_connector_skip`
+
+Required GitHub Secrets:
+- `UI_KEY`
+- `API_KEY`
+
+Optional GitHub Secrets:
+- `WHATSAPP_VONAGE_KEY`
+- `WHATSAPP_VONAGE_SIGNATURE_SECRET`
+- `WHATSAPP_VONAGE_JWT`
+
+Optional GitHub Variables:
+- `SMOKE_BASE_URL`
+- `SMOKE_PROFILE_ID`
+- `WHATSAPP_TEST_SENDER`
+
+The workflow uploads:
+- `docs/artifacts/release_verify_latest.json`
+- `docs/artifacts/release_verify_latest.md`
+- `docs/artifacts/smoke_pack_latest.json` (when smoke runs)
+
 ## 1) GET /health (public)
 ### curl
 ```bash

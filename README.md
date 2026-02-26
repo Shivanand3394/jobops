@@ -391,6 +391,10 @@ What it checks on `push` and `pull_request` to `main`:
 
 No deployment happens in CI.
 
+Manual verification workflows:
+- Smoke pack: [`.github/workflows/smoke-pack.yml`](/c:/Users/dell/Documents/GitHub/jobops/.github/workflows/smoke-pack.yml)
+- Release verify wrapper: [`.github/workflows/release-verify.yml`](/c:/Users/dell/Documents/GitHub/jobops/.github/workflows/release-verify.yml)
+
 ## Recommended Git Workflow
 1. Create feature branch from `main`.
 2. Make changes and run local checks.
