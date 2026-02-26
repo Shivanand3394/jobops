@@ -312,6 +312,26 @@ async function main() {
   run.detected_worker_version = asString(health?.json?.worker_version, 120) || null;
 
   await runStep({
+    name: "release.admin.config.self_check",
+    method: "GET",
+    path: "/admin/config/self-check",
+    auth: "api",
+    validate: ({ json }) => {
+      if (json?.ok !== true) return "Expected { ok: true }";
+      const data = json?.data;
+      if (!data || typeof data !== "object") return "Missing self-check payload";
+      if (!data.checks || typeof data.checks !== "object") return "Missing checks block";
+      if (!Array.isArray(data.missing_required)) return "Missing missing_required[]";
+      if (!Array.isArray(data.warnings)) return "Missing warnings[]";
+      if (data.overall_ok !== true) {
+        const missing = data.missing_required.join(",") || "unknown_required";
+        return `Config self-check failed: missing_required=${missing}`;
+      }
+      return true;
+    },
+  });
+
+  await runStep({
     name: "release.jobs.limit1",
     method: "GET",
     path: "/jobs?limit=1&offset=0",

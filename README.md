@@ -244,6 +244,8 @@ Outputs:
 - `docs/artifacts/release_verify_latest.md`
 - `docs/artifacts/smoke_pack_latest.json` (when smoke is enabled)
 
+The release verifier includes `GET /admin/config/self-check` (API key) and fails if required bindings/keys are missing.
+
 Optional toggles:
 - `RELEASE_VERIFY_RUN_SMOKE=0`
 - `RELEASE_VERIFY_REQUIRE_SMOKE_PASS=0`

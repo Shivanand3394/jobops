@@ -766,6 +766,14 @@ export default {
       }
 
       // ============================
+      // API: Config self-check (non-secret ops diagnostics)
+      // ============================
+      if (path === "/admin/config/self-check" && request.method === "GET") {
+        const data = buildConfigSelfCheck_(env);
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      // ============================
       // API: Scoring efficiency report (read-only)
       // ============================
       if (path === "/admin/scoring-runs/report" && request.method === "GET") {
@@ -9968,12 +9976,106 @@ function sleepMs_(ms) {
   return new Promise((resolve) => setTimeout(resolve, wait));
 }
 
+function hasEnvValue_(env, name) {
+  return Boolean(String((env && env[name]) || "").trim());
+}
+
+function buildConfigSelfCheck_(env) {
+  const hasDbBinding = Boolean(env && env.DB && typeof env.DB.prepare === "function");
+  const aiBindingOverride = String((env && env.AI_BINDING) || "").trim();
+  const hasAiDefault = Boolean(env && env.AI);
+  const hasAiOverride = Boolean(aiBindingOverride && env && env[aiBindingOverride]);
+  const hasAiBinding = hasAiDefault || hasAiOverride;
+  const effectiveAiBinding = aiBindingOverride || (hasAiDefault ? "AI" : "");
+  const allowOrigin = String((env && env.ALLOW_ORIGIN) || "").trim();
+  const hasWhatsappIngestKey = hasEnvValue_(env, "WHATSAPP_VONAGE_KEY") || hasEnvValue_(env, "WHATSAPP_INGEST_KEY");
+  const hasWhatsappMediaExtractor = hasEnvValue_(env, "WHATSAPP_MEDIA_EXTRACTOR_URL") || Boolean(env && env.EXTRACTOR);
+
+  const checks = {
+    bindings: {
+      DB: {
+        required: true,
+        present: hasDbBinding,
+      },
+      AI: {
+        required: true,
+        present: hasAiBinding,
+        binding_name: effectiveAiBinding || null,
+      },
+    },
+    secrets: {
+      UI_KEY: {
+        required: true,
+        present: hasEnvValue_(env, "UI_KEY"),
+      },
+      API_KEY: {
+        required: true,
+        present: hasEnvValue_(env, "API_KEY"),
+      },
+    },
+    vars: {
+      ALLOW_ORIGIN: {
+        required: true,
+        present: hasEnvValue_(env, "ALLOW_ORIGIN"),
+      },
+      WORKER_VERSION: {
+        required: false,
+        present: hasEnvValue_(env, "WORKER_VERSION"),
+      },
+    },
+    connectors: {
+      gmail: {
+        client_id_present: hasEnvValue_(env, "GMAIL_CLIENT_ID"),
+        client_secret_present: hasEnvValue_(env, "GMAIL_CLIENT_SECRET"),
+        token_enc_key_present: hasEnvValue_(env, "TOKEN_ENC_KEY"),
+      },
+      whatsapp_vonage: {
+        ingest_key_present: hasWhatsappIngestKey,
+        signature_secret_present: hasEnvValue_(env, "WHATSAPP_VONAGE_SIGNATURE_SECRET"),
+        media_extractor_present: hasWhatsappMediaExtractor,
+      },
+      reactive_resume: {
+        base_url_present: hasEnvValue_(env, "RR_BASE_URL"),
+        api_key_present: hasEnvValue_(env, "RR_KEY"),
+      },
+    },
+  };
+
+  const missingRequired = [];
+  const warnings = [];
+
+  if (!checks.bindings.DB.present) missingRequired.push("bindings.DB");
+  if (!checks.bindings.AI.present) missingRequired.push("bindings.AI");
+  if (!checks.secrets.UI_KEY.present) missingRequired.push("secrets.UI_KEY");
+  if (!checks.secrets.API_KEY.present) missingRequired.push("secrets.API_KEY");
+  if (!checks.vars.ALLOW_ORIGIN.present) missingRequired.push("vars.ALLOW_ORIGIN");
+
+  if (aiBindingOverride && !hasAiOverride) {
+    warnings.push(`AI_BINDING is set to "${aiBindingOverride}" but that binding was not found at runtime.`);
+  }
+  if (allowOrigin === "*") {
+    warnings.push("ALLOW_ORIGIN is wildcard (*). Use explicit production origin allowlist.");
+  }
+  if (!checks.vars.WORKER_VERSION.present) {
+    warnings.push("WORKER_VERSION is not set. /health will report worker_version=dev.");
+  }
+
+  return {
+    generated_at: Date.now(),
+    overall_ok: missingRequired.length === 0,
+    missing_required: missingRequired,
+    warnings,
+    checks,
+  };
+}
+
 function routeModeFor_(path) {
   if (path === "/health" || path === "/") return "public";
   if (path === "/ingest/whatsapp/vonage") return "public";
   if (path === "/dashboard/triage") return "ui";
   if (path === "/jobs/evidence/rebuild-archived") return "api";
   if (path === "/jobs/evidence/gap-report") return "api";
+  if (path === "/admin/config/self-check") return "api";
   if (path === "/admin/scoring-runs/report") return "api";
 
   if (

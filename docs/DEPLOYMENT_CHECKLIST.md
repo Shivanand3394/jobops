@@ -55,10 +55,11 @@ Static files must exist:
 
 ## 5) Quick post-deploy checks
 1. `GET /health` -> `ok=true`
-2. `POST /ingest` with UI key works.
-3. `POST /score-pending` works with UI key and API key.
-4. Targets list/save works with UI key.
-5. Checklist route behavior:
+2. `GET /admin/config/self-check` with API key -> `ok=true`, `data.overall_ok=true`
+3. `POST /ingest` with UI key works.
+4. `POST /score-pending` works with UI key and API key.
+5. Targets list/save works with UI key.
+6. Checklist route behavior:
    - if columns present -> normal success.
    - if columns missing -> clear `400 Checklist fields not enabled in DB schema`.
 
@@ -99,3 +100,6 @@ Useful toggles:
 - `RELEASE_VERIFY_RUN_SMOKE=0` to skip smoke pack execution.
 - `RELEASE_VERIFY_REQUIRE_SMOKE_PASS=0` to continue even if smoke fails.
 - `RELEASE_VERIFY_ALLOW_CONNECTOR_SKIP=0` for strict connector validation (`/gmail/poll`, `/rss/diagnostics`).
+
+`release_verify` now includes an explicit API-key check on:
+- `GET /admin/config/self-check`

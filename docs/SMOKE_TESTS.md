@@ -74,6 +74,9 @@ Artifacts:
 - `docs/artifacts/release_verify_latest.md`
 - `docs/artifacts/smoke_pack_latest.json` (smoke enabled by default)
 
+Core release checks include:
+- `GET /admin/config/self-check` (API key) with `data.overall_ok=true`
+
 ### GitHub Actions smoke workflow
 Repo workflow: `.github/workflows/smoke-pack.yml`
 
