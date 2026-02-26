@@ -227,6 +227,8 @@ Auth headers:
       "title":"Head of Engineering",
       "company_name":"Acme Labs",
       "channel":"LINKEDIN",
+      "status":"DRAFT",
+      "channel_statuses":{"LINKEDIN":"DRAFT","EMAIL":"SENT"},
       "channels":["LINKEDIN","EMAIL"],
       "confidence":95
     }
@@ -268,6 +270,28 @@ Auth headers:
 - Body (optional): `profile_id`, `channel`, `use_ai`
 - Response: same shape as `/jobs/:job_key/draft-outreach` but contact is explicitly targeted.
 - Side effects: same as above.
+- Failures: `400`, `401`, `404`, `500`
+
+### POST /jobs/:job_key/contacts/:contact_id/touchpoint-status
+- Auth: `x-ui-key`
+- Body:
+```json
+{ "channel":"LINKEDIN|EMAIL|OTHER", "status":"DRAFT|SENT|REPLIED" }
+```
+- Response 200:
+```json
+{
+  "ok": true,
+  "data": {
+    "job_key":"...",
+    "contact_id":"...",
+    "channel":"LINKEDIN",
+    "status":"SENT",
+    "touchpoint":{"id":"...","channel":"LINKEDIN","status":"SENT","updated_at":1700000000000}
+  }
+}
+```
+- Side effects: creates or updates `contact_touchpoints` row for `contact_id + job_key + channel` and logs `OUTREACH_TOUCHPOINT_STATUS_UPDATED`.
 - Failures: `400`, `401`, `404`, `500`
 
 ## API routes

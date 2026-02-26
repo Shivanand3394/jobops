@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-26-outreach-wizard-v1";
+const UI_BUILD_ID = "2026-02-26-outreach-lifecycle-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -1199,6 +1199,12 @@ function renderDetail(j) {
             <button class="btn btn-secondary" id="btnDraftOutreachLinkedin" onclick="draftWizardOutreach('LINKEDIN')" disabled>Draft LinkedIn DM</button>
             <button class="btn btn-ghost" id="btnDraftOutreachEmail" onclick="draftWizardOutreach('EMAIL')" disabled>Draft Email</button>
             <button class="btn btn-ghost" id="btnCopyOutreach" onclick="copyWizardOutreach(this)" disabled>Copy Draft</button>
+          </div>
+          <div class="row" style="justify-content:flex-start; margin-top:8px; gap:8px; flex-wrap:wrap;">
+            <span id="wizardOutreachStatus" class="chip">Status: -</span>
+            <button class="btn btn-ghost" id="btnOutreachStatusDraft" onclick="markWizardOutreachStatus('DRAFT')" disabled>Mark Draft</button>
+            <button class="btn btn-ghost" id="btnOutreachStatusSent" onclick="markWizardOutreachStatus('SENT')" disabled>Mark Sent</button>
+            <button class="btn btn-ghost" id="btnOutreachStatusReplied" onclick="markWizardOutreachStatus('REPLIED')" disabled>Mark Replied</button>
           </div>
           <textarea id="wizardOutreachDraft" rows="7" style="margin-top:8px;" placeholder="Outreach draft appears here"></textarea>
         </div>
@@ -2571,11 +2577,20 @@ async function copyWizardCoverLetter(sourceBtn = null) {
 
 function setWizardOutreachContacts_(contacts = [], selectedId = "") {
   const select = $("wizardOutreachContact");
+  const section = $("appPackSection");
   if (!select) return;
   const list = Array.isArray(contacts) ? contacts : [];
+  if (section) {
+    try {
+      section.dataset.outreachContactsJson = JSON.stringify(list);
+    } catch {
+      section.dataset.outreachContactsJson = "[]";
+    }
+  }
   if (!list.length) {
     select.innerHTML = "";
     select.classList.add("hidden");
+    syncWizardOutreachLifecycleUi_();
     return;
   }
   const desired = String(selectedId || "").trim();
@@ -2591,17 +2606,85 @@ function setWizardOutreachContacts_(contacts = [], selectedId = "") {
   if (!desired && list[0]?.id) {
     select.value = String(list[0].id);
   }
+  select.onchange = () => syncWizardOutreachLifecycleUi_();
   select.classList.remove("hidden");
+  syncWizardOutreachLifecycleUi_();
+}
+
+function getWizardOutreachContacts_() {
+  const section = $("appPackSection");
+  const raw = String(section?.dataset?.outreachContactsJson || "[]").trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeOutreachChannelUi_(channel = "") {
+  const s = String(channel || "").trim().toUpperCase();
+  if (s === "EMAIL" || s === "OTHER") return s;
+  return "LINKEDIN";
+}
+
+function getSelectedOutreachContact_() {
+  const contactId = String($("wizardOutreachContact")?.value || "").trim();
+  if (!contactId) return null;
+  const contacts = getWizardOutreachContacts_();
+  return contacts.find((x) => String(x?.id || "").trim() === contactId) || null;
+}
+
+function syncWizardOutreachLifecycleUi_() {
+  const section = $("appPackSection");
+  const channel = normalizeOutreachChannelUi_(section?.dataset?.outreachChannel || "LINKEDIN");
+  if (section) section.dataset.outreachChannel = channel;
+  const contact = getSelectedOutreachContact_();
+  const hasContact = Boolean(contact && String(contact.id || "").trim());
+
+  const statuses = (contact?.channel_statuses && typeof contact.channel_statuses === "object")
+    ? contact.channel_statuses
+    : {};
+  const status = String(statuses[channel] || contact?.status || "DRAFT").trim().toUpperCase() || "DRAFT";
+  const statusEl = $("wizardOutreachStatus");
+  if (statusEl) {
+    statusEl.textContent = hasContact ? `Status (${channel}): ${status}` : "Status: -";
+  }
+
+  const draftBtn = $("btnOutreachStatusDraft");
+  const sentBtn = $("btnOutreachStatusSent");
+  const repliedBtn = $("btnOutreachStatusReplied");
+  if (draftBtn) {
+    draftBtn.disabled = !hasContact;
+    draftBtn.classList.toggle("btn-success", hasContact && status === "DRAFT");
+  }
+  if (sentBtn) {
+    sentBtn.disabled = !hasContact;
+    sentBtn.classList.toggle("btn-success", hasContact && status === "SENT");
+  }
+  if (repliedBtn) {
+    repliedBtn.disabled = !hasContact;
+    repliedBtn.classList.toggle("btn-success", hasContact && status === "REPLIED");
+  }
 }
 
 function resetWizardOutreachUi_({ hideCard = false } = {}) {
+  const section = $("appPackSection");
+  if (section) {
+    section.dataset.outreachContactsJson = "[]";
+    section.dataset.outreachChannel = "LINKEDIN";
+  }
   if (hideCard) {
     $("wizardNetworkingCard")?.classList.add("hidden");
   }
   if ($("wizardOutreachHint")) $("wizardOutreachHint").textContent = "Draft targeted outreach for a recruiter or hiring manager.";
+  if ($("wizardOutreachStatus")) $("wizardOutreachStatus").textContent = "Status: -";
   if ($("wizardOutreachDraft")) $("wizardOutreachDraft").value = "";
   setWizardOutreachContacts_([]);
   if ($("btnCopyOutreach")) $("btnCopyOutreach").disabled = true;
+  if ($("btnDraftOutreachLinkedin")) $("btnDraftOutreachLinkedin").disabled = true;
+  if ($("btnDraftOutreachEmail")) $("btnDraftOutreachEmail").disabled = true;
 }
 
 async function hydrateWizardOutreachContacts_(jobKey, { showCard = false } = {}) {
@@ -2611,7 +2694,11 @@ async function hydrateWizardOutreachContacts_(jobKey, { showCard = false } = {})
     return;
   }
   const card = $("wizardNetworkingCard");
+  const section = $("appPackSection");
   if (!card) return;
+  if (section && !String(section.dataset.outreachChannel || "").trim()) {
+    section.dataset.outreachChannel = "LINKEDIN";
+  }
   card.classList.toggle("hidden", !showCard);
   if (!showCard) {
     resetWizardOutreachUi_({ hideCard: false });
@@ -2631,6 +2718,7 @@ async function hydrateWizardOutreachContacts_(jobKey, { showCard = false } = {})
     if ($("btnDraftOutreachLinkedin")) $("btnDraftOutreachLinkedin").disabled = contacts.length === 0;
     if ($("btnDraftOutreachEmail")) $("btnDraftOutreachEmail").disabled = contacts.length === 0;
     if ($("btnCopyOutreach")) $("btnCopyOutreach").disabled = !String($("wizardOutreachDraft")?.value || "").trim();
+    syncWizardOutreachLifecycleUi_();
   } catch (e) {
     if ($("wizardOutreachHint")) {
       $("wizardOutreachHint").textContent = `Contact load failed: ${String(e?.message || "unknown error")}`;
@@ -2639,6 +2727,7 @@ async function hydrateWizardOutreachContacts_(jobKey, { showCard = false } = {})
     if ($("btnDraftOutreachLinkedin")) $("btnDraftOutreachLinkedin").disabled = true;
     if ($("btnDraftOutreachEmail")) $("btnDraftOutreachEmail").disabled = true;
     if ($("btnCopyOutreach")) $("btnCopyOutreach").disabled = true;
+    syncWizardOutreachLifecycleUi_();
   }
 }
 
@@ -2648,9 +2737,11 @@ async function draftWizardOutreach(channel = "LINKEDIN") {
   const selectedContactId = String($("wizardOutreachContact")?.value || "").trim();
   const normalizedChannel = String(channel || "LINKEDIN").trim().toUpperCase() === "EMAIL" ? "EMAIL" : "LINKEDIN";
   const profileId = String(state.activeProfileId || "primary").trim() || "primary";
+  const section = $("appPackSection");
 
   try {
     spin(true);
+    if (section) section.dataset.outreachChannel = normalizedChannel;
     const path = selectedContactId
       ? `/jobs/${encodeURIComponent(jobKey)}/contacts/${encodeURIComponent(selectedContactId)}/draft`
       : `/jobs/${encodeURIComponent(jobKey)}/draft-outreach`;
@@ -2670,6 +2761,7 @@ async function draftWizardOutreach(channel = "LINKEDIN") {
     const contacts = Array.isArray(data?.contacts) ? data.contacts : [];
     const selectedId = String(data?.selected_contact?.id || selectedContactId || "").trim();
     setWizardOutreachContacts_(contacts, selectedId);
+    syncWizardOutreachLifecycleUi_();
 
     const selectedName = String(data?.selected_contact?.name || "").trim();
     const count = Number(data?.contacts_count || contacts.length || 0);
@@ -2681,6 +2773,57 @@ async function draftWizardOutreach(channel = "LINKEDIN") {
     toast(`${normalizedChannel === "EMAIL" ? "Email" : "LinkedIn DM"} draft generated`);
   } catch (e) {
     toast("Outreach draft failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function markWizardOutreachStatus(status = "SENT") {
+  const jobKey = String(state.activeJob?.job_key || "").trim();
+  if (!jobKey) return toast("Select a job first", { kind: "error" });
+  const contact = getSelectedOutreachContact_();
+  if (!contact || !String(contact.id || "").trim()) {
+    return toast("Select a contact first", { kind: "error" });
+  }
+  const section = $("appPackSection");
+  const channel = normalizeOutreachChannelUi_(section?.dataset?.outreachChannel || "LINKEDIN");
+  const normalizedStatus = String(status || "DRAFT").trim().toUpperCase();
+  if (!["DRAFT", "SENT", "REPLIED"].includes(normalizedStatus)) {
+    return toast("Invalid status", { kind: "error" });
+  }
+
+  try {
+    spin(true);
+    const res = await api(
+      `/jobs/${encodeURIComponent(jobKey)}/contacts/${encodeURIComponent(contact.id)}/touchpoint-status`,
+      {
+        method: "POST",
+        body: {
+          channel,
+          status: normalizedStatus,
+        },
+      }
+    );
+    const touchpoint = res?.data?.touchpoint || {};
+    const contacts = getWizardOutreachContacts_();
+    const nextContacts = contacts.map((item) => {
+      if (String(item?.id || "").trim() !== String(contact.id || "").trim()) return item;
+      const channelStatuses = (item?.channel_statuses && typeof item.channel_statuses === "object")
+        ? { ...item.channel_statuses }
+        : {};
+      channelStatuses[channel] = String(touchpoint?.status || normalizedStatus).trim().toUpperCase() || normalizedStatus;
+      return {
+        ...item,
+        status: channelStatuses[channel],
+        touchpoint_updated_at: touchpoint?.updated_at ?? item?.touchpoint_updated_at ?? null,
+        channel_statuses: channelStatuses,
+      };
+    });
+    setWizardOutreachContacts_(nextContacts, String(contact.id || "").trim());
+    syncWizardOutreachLifecycleUi_();
+    toast(`Outreach status set to ${normalizedStatus} (${channel})`);
+  } catch (e) {
+    toast("Status update failed: " + e.message, { kind: "error" });
   } finally {
     spin(false);
   }
@@ -3330,6 +3473,7 @@ window.approveWizardPack = approveWizardPack;
 window.copyWizardCoverLetter = copyWizardCoverLetter;
 window.draftWizardOutreach = draftWizardOutreach;
 window.copyWizardOutreach = copyWizardOutreach;
+window.markWizardOutreachStatus = markWizardOutreachStatus;
 window.togglePdfReadyMode = togglePdfReadyMode;
 window.printPdfReadyView = printPdfReadyView;
 window.copyPackSummary = copyPackSummary;

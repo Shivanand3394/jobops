@@ -1629,6 +1629,78 @@ export default {
         return json_({ ok: true, data: draftData.data }, env, 200);
       }
 
+      if (
+        path.startsWith("/jobs/") &&
+        path.includes("/contacts/") &&
+        path.endsWith("/touchpoint-status") &&
+        request.method === "POST"
+      ) {
+        const parts = path.split("/");
+        const jobKey = decodeURIComponent(parts[2] || "").trim();
+        const contactId = decodeURIComponent(parts[4] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        if (!contactId) return json_({ ok: false, error: "Missing contact_id" }, env, 400);
+
+        const storage = await hasContactsStorage_(env);
+        if (!storage?.enabled) {
+          return json_({ ok: false, error: "Contacts schema not enabled in DB." }, env, 400);
+        }
+
+        const job = await env.DB.prepare(`
+          SELECT job_key
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        if (!job?.job_key) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const contact = await env.DB.prepare(`
+          SELECT id, name
+          FROM contacts
+          WHERE id = ?
+          LIMIT 1;
+        `.trim()).bind(contactId).first();
+        if (!contact?.id) return json_({ ok: false, error: "Contact not found" }, env, 404);
+
+        const body = await request.json().catch(() => ({}));
+        const statusRaw = String(body.status || "").trim().toUpperCase();
+        const channelRaw = String(body.channel || "").trim().toUpperCase();
+        if (statusRaw && !["DRAFT", "SENT", "REPLIED"].includes(statusRaw)) {
+          return json_({ ok: false, error: "Invalid touchpoint status", allowed: ["DRAFT", "SENT", "REPLIED"] }, env, 400);
+        }
+        if (channelRaw && !["LINKEDIN", "EMAIL", "OTHER"].includes(channelRaw)) {
+          return json_({ ok: false, error: "Invalid touchpoint channel", allowed: ["LINKEDIN", "EMAIL", "OTHER"] }, env, 400);
+        }
+
+        const touchpoint = await upsertOutreachTouchpointStatus_(env, {
+          contact_id: contactId,
+          job_key: jobKey,
+          channel: channelRaw || "LINKEDIN",
+          status: statusRaw || "DRAFT",
+          content: String(body.content || "").trim(),
+        });
+        if (!touchpoint) return json_({ ok: false, error: "Failed to update touchpoint status." }, env, 500);
+
+        await logEvent_(env, "OUTREACH_TOUCHPOINT_STATUS_UPDATED", jobKey, {
+          contact_id: contactId,
+          contact_name: String(contact.name || "").trim() || null,
+          channel: touchpoint.channel,
+          status: touchpoint.status,
+          ts: Date.now(),
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: jobKey,
+            contact_id: contactId,
+            channel: touchpoint.channel,
+            status: touchpoint.status,
+            touchpoint,
+          },
+        }, env, 200);
+      }
+
       // ============================
       // UI: Resume profiles
       // ============================
@@ -3317,6 +3389,14 @@ function rankOutreachChannel_(channel) {
   return 1;
 }
 
+function normalizeOutreachTouchpointStatus_(status, fallback = "DRAFT") {
+  const s = String(status || "").trim().toUpperCase();
+  if (s === "SENT" || s === "REPLIED") return s;
+  const fb = String(fallback || "DRAFT").trim().toUpperCase();
+  if (fb === "SENT" || fb === "REPLIED") return fb;
+  return "DRAFT";
+}
+
 function normalizeOutreachContactRow_(row) {
   const src = row && typeof row === "object" ? row : {};
   const id = String(src.id || "").trim();
@@ -3336,7 +3416,8 @@ function normalizeOutreachContactRow_(row) {
     confidence: clampInt_(src.confidence ?? 0, 0, 100),
     source: String(src.source || "").trim() || null,
     channel,
-    status: String(src.touchpoint_status || src.status || "DRAFT").trim().toUpperCase() || "DRAFT",
+    status: normalizeOutreachTouchpointStatus_(src.touchpoint_status || src.status || "DRAFT"),
+    touchpoint_id: String(src.touchpoint_id || "").trim() || null,
     touchpoint_content: String(src.touchpoint_content || src.content || "").trim() || null,
     touchpoint_updated_at: numOrNull_(src.touchpoint_updated_at ?? src.updated_at),
     linked_to_job: Boolean(src.touchpoint_channel || src.touchpoint_updated_at),
@@ -3350,11 +3431,48 @@ function dedupeOutreachContacts_(rows = []) {
     if (!normalized) continue;
     const existing = map.get(normalized.id);
     if (!existing) {
-      map.set(normalized.id, { ...normalized, channels: [normalized.channel] });
+      map.set(normalized.id, {
+        ...normalized,
+        channels: [normalized.channel],
+        channel_statuses: {
+          [normalized.channel]: normalized.status,
+        },
+        channel_touchpoints: normalized.touchpoint_id
+          ? { [normalized.channel]: normalized.touchpoint_id }
+          : {},
+        channel_updated_at: (normalized.touchpoint_updated_at !== null)
+          ? { [normalized.channel]: normalized.touchpoint_updated_at }
+          : {},
+      });
       continue;
     }
     if (!existing.channels.includes(normalized.channel)) {
       existing.channels.push(normalized.channel);
+    }
+    existing.channel_statuses = {
+      ...(existing.channel_statuses && typeof existing.channel_statuses === "object"
+        ? existing.channel_statuses
+        : {}),
+      [normalized.channel]: normalizeOutreachTouchpointStatus_(
+        normalized.status,
+        existing.channel_statuses?.[normalized.channel] || "DRAFT"
+      ),
+    };
+    if (normalized.touchpoint_id) {
+      existing.channel_touchpoints = {
+        ...(existing.channel_touchpoints && typeof existing.channel_touchpoints === "object"
+          ? existing.channel_touchpoints
+          : {}),
+        [normalized.channel]: normalized.touchpoint_id,
+      };
+    }
+    if (normalized.touchpoint_updated_at !== null) {
+      existing.channel_updated_at = {
+        ...(existing.channel_updated_at && typeof existing.channel_updated_at === "object"
+          ? existing.channel_updated_at
+          : {}),
+        [normalized.channel]: normalized.touchpoint_updated_at,
+      };
     }
     const existingScore =
       (existing.confidence || 0) +
@@ -3365,7 +3483,13 @@ function dedupeOutreachContacts_(rows = []) {
       rankOutreachChannel_(normalized.channel) +
       (normalized.linked_to_job ? 2 : 0);
     if (nextScore > existingScore) {
-      map.set(normalized.id, { ...normalized, channels: existing.channels });
+      map.set(normalized.id, {
+        ...normalized,
+        channels: existing.channels,
+        channel_statuses: existing.channel_statuses,
+        channel_touchpoints: existing.channel_touchpoints,
+        channel_updated_at: existing.channel_updated_at,
+      });
       continue;
     }
     if (
@@ -3416,6 +3540,7 @@ async function listContactsForJobOutreach_(env, input = {}) {
       c.email,
       c.confidence,
       c.source,
+      ct.id AS touchpoint_id,
       ct.channel AS touchpoint_channel,
       ct.status AS touchpoint_status,
       ct.content AS touchpoint_content,
@@ -3602,6 +3727,61 @@ async function upsertOutreachTouchpointDraft_(env, input = {}) {
       job_key: row.job_key,
       channel: row.channel,
       status: row.status,
+      updated_at: numOrNull_(row.updated_at),
+    }
+    : null;
+}
+
+async function upsertOutreachTouchpointStatus_(env, input = {}) {
+  const contactId = String(input.contact_id || "").trim();
+  const jobKey = String(input.job_key || "").trim();
+  const channel = normalizeOutreachChannel_(input.channel || "LINKEDIN");
+  const status = normalizeOutreachTouchpointStatus_(input.status || "DRAFT");
+  const content = String(input.content || "").trim() || null;
+  if (!contactId || !jobKey) return null;
+
+  const now = Date.now();
+  await env.DB.prepare(`
+    INSERT INTO contact_touchpoints (
+      id, contact_id, job_key, channel, status, content, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(contact_id, job_key, channel) DO UPDATE SET
+      status = excluded.status,
+      content = COALESCE(excluded.content, contact_touchpoints.content),
+      updated_at = excluded.updated_at;
+  `.trim()).bind(
+    crypto.randomUUID(),
+    contactId,
+    jobKey,
+    channel,
+    status,
+    content,
+    now,
+    now
+  ).run();
+
+  const row = await env.DB.prepare(`
+    SELECT
+      id,
+      contact_id,
+      job_key,
+      channel,
+      status,
+      content,
+      updated_at
+    FROM contact_touchpoints
+    WHERE contact_id = ? AND job_key = ? AND channel = ?
+    LIMIT 1;
+  `.trim()).bind(contactId, jobKey, channel).first();
+
+  return row
+    ? {
+      id: String(row.id || "").trim(),
+      contact_id: String(row.contact_id || "").trim(),
+      job_key: String(row.job_key || "").trim(),
+      channel: normalizeOutreachChannel_(row.channel || channel),
+      status: normalizeOutreachTouchpointStatus_(row.status || status),
+      content: String(row.content || "").trim() || null,
       updated_at: numOrNull_(row.updated_at),
     }
     : null;
