@@ -2,6 +2,8 @@ function safeText_(v, maxLen = 5000) {
   return String(v || "").trim().slice(0, maxLen);
 }
 
+export { hasContactsStorage_, upsertPotentialContactsForJob_ } from "./adapter.js";
+
 export function buildContactMessageContext_(input = {}) {
   const job = (input.job && typeof input.job === "object") ? input.job : {};
   const profile = (input.profile && typeof input.profile === "object") ? input.profile : {};
@@ -27,4 +29,3 @@ export function buildContactMessageContext_(input = {}) {
     ts: Number.isFinite(Number(input.ts)) ? Number(input.ts) : Date.now(),
   };
 }
-

@@ -129,7 +129,7 @@ Auth headers:
 ```json
 { "ok": true, "data": { "picked": 10, "updated": 8, "jobs": [ { "job_key":"...", "ok":true, "status":"SCORED", "final_score":70 } ] } }
 ```
-- Side effects: scoring/status updates on selected rows.
+- Side effects: scoring/status updates on selected rows. When AI returns `potential_contacts[]` and `contacts` tables exist (`010_contacts_v2.sql`), worker also upserts recruiter contacts and links draft touchpoints to the job.
 - Failures: `400` no targets, `401`, `500` missing AI or DB
 
 ### GET /targets

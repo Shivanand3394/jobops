@@ -29,6 +29,9 @@ Baseline migration file: [worker/migrations/001_init.sql](/c:/Users/dell/Documen
 - tables expected: `jobs`, `targets`, `events`
 - `targets.reject_keywords_json` exists in baseline
 - checklist columns (`applied_note`, `follow_up_at`, `referral_status`) are not in baseline; worker now guards checklist routes and returns clear 400 if missing.
+- latest additive migrations also include:
+  - `009_scoring_runs.sql` (`scoring_runs` telemetry table)
+  - `010_contacts_v2.sql` (`contacts`, `contact_touchpoints` for recruiter persistence)
 
 ## 3) Pages Deployability (/ui)
 Cloudflare Pages settings:

@@ -12,6 +12,7 @@ Move JobOps from a single-runtime file shape to a domain-first layout without ch
   - `worker/src/domains/resume/index.js`
   - `worker/src/domains/tracking/index.js`
   - `worker/src/domains/contacts/index.js`
+  - `worker/src/domains/contacts/adapter.js` (Sprint F: persistence wiring)
   - `worker/src/domains/index.js`
 - New shared contract:
   - `worker/src/shared/contracts/candidate_ingest.js`
@@ -50,4 +51,3 @@ Move JobOps from a single-runtime file shape to a domain-first layout without ch
 
 ## Next Sprint Hook
 - Sprint B can move Gmail/RSS/manual adapters to consume and emit the shared ingest envelope consistently before scoring.
-

@@ -16,6 +16,9 @@ import {
 import {
   runScoringPipeline_ as runDomainScoringPipeline_,
 } from "./domains/scoring/index.js";
+import {
+  upsertPotentialContactsForJob_,
+} from "./domains/contacts/index.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -5015,6 +5018,12 @@ async function runScoringPipelineForJob_(env, input = {}) {
       reject_evidence: "",
       reason_top_matches: reasonTopMatches,
       potential_contacts: [],
+      contacts_persist: {
+        enabled: false,
+        upserted: 0,
+        touchpoints_linked: 0,
+        skipped: 0,
+      },
     };
 
     await persistScoringRun_(env, {
@@ -5063,11 +5072,33 @@ async function runScoringPipelineForJob_(env, input = {}) {
     created_at: Date.now(),
   });
 
+  let contactsPersist = {
+    enabled: false,
+    upserted: 0,
+    touchpoints_linked: 0,
+    skipped: 0,
+    error: null,
+  };
   if (potentialContacts.length) {
+    const persisted = await upsertPotentialContactsForJob_(env, {
+      job_key: jobKey,
+      company,
+      contacts: potentialContacts,
+      source,
+    });
+    contactsPersist = {
+      enabled: Boolean(persisted?.enabled),
+      upserted: numOr_(persisted?.upserted, 0),
+      touchpoints_linked: numOr_(persisted?.touchpoints_linked, 0),
+      skipped: numOr_(persisted?.skipped, 0),
+      error: String(persisted?.error || "").trim() || null,
+    };
+
     await logEvent_(env, "POTENTIAL_CONTACTS_IDENTIFIED", jobKey, {
       source,
       count: potentialContacts.length,
       contacts: potentialContacts,
+      persistence: contactsPersist,
       ts: Date.now(),
     });
   }
@@ -5085,6 +5116,7 @@ async function runScoringPipelineForJob_(env, input = {}) {
     reject_evidence: mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
     reason_top_matches: String(scoring.reason_top_matches || "").slice(0, 1000),
     potential_contacts: potentialContacts,
+    contacts_persist: contactsPersist,
   };
 }
 
