@@ -21,6 +21,8 @@ wrangler secret put GEMINI_API_KEY
 ```bash
 wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_TOKEN
 wrangler secret put VONAGE_MEDIA_AUTH_BEARER
+wrangler secret put VONAGE_APPLICATION_ID
+wrangler secret put VONAGE_PRIVATE_KEY
 ```
 
 ## Optional Vars
@@ -33,6 +35,11 @@ Configure in `wrangler.jsonc` (or with `wrangler secret/vars` policy):
 - `MEDIA_ALLOWED_MIME_TYPES` (CSV/newline)
 - `GEMINI_EXTRACTION_PROMPT`
 - `ALLOW_ORIGIN`
+
+Auth precedence for Vonage media fetch:
+1. Generated JWT from `VONAGE_APPLICATION_ID` + `VONAGE_PRIVATE_KEY`
+2. Static `VONAGE_MEDIA_AUTH_BEARER`
+3. Forwarded inbound auth header (`x-vonage-authorization`)
 
 ## Deploy
 From `extractor/`:

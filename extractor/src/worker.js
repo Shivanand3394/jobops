@@ -64,7 +64,10 @@ export default {
     };
     const forwardedVonageAuth = String(request.headers.get("x-vonage-authorization") || "").trim();
     const staticVonageAuth = String(env.VONAGE_MEDIA_AUTH_BEARER || "").trim();
-    if (staticVonageAuth) {
+    const generatedVonageAuth = await buildVonageMediaAuthorization_(env);
+    if (generatedVonageAuth) {
+      mediaHeaders.Authorization = generatedVonageAuth;
+    } else if (staticVonageAuth) {
       mediaHeaders.Authorization = staticVonageAuth;
     } else if (forwardedVonageAuth) {
       mediaHeaders.Authorization = forwardedVonageAuth;
@@ -345,6 +348,86 @@ function normalizeUrls_(values) {
     }
   }
   return out.slice(0, 20);
+}
+
+async function buildVonageMediaAuthorization_(env) {
+  const appId = String(env?.VONAGE_APPLICATION_ID || "").trim();
+  const privateKeyPem = normalizePrivateKeyPem_(env?.VONAGE_PRIVATE_KEY);
+  if (!appId || !privateKeyPem) return "";
+  const jwt = await generateRs256Jwt_(appId, privateKeyPem).catch(() => "");
+  return jwt ? `Bearer ${jwt}` : "";
+}
+
+function normalizePrivateKeyPem_(raw) {
+  const src = String(raw || "").trim();
+  if (!src) return "";
+  if (src.includes("-----BEGIN PRIVATE KEY-----")) return src;
+  const body = src.replace(/\s+/g, "");
+  if (!body) return "";
+  const chunks = body.match(/.{1,64}/g) || [];
+  return [
+    "-----BEGIN PRIVATE KEY-----",
+    ...chunks,
+    "-----END PRIVATE KEY-----",
+  ].join("\n");
+}
+
+async function generateRs256Jwt_(appId, privateKeyPem) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const payload = {
+    iat: now,
+    exp: now + 300,
+    jti: crypto.randomUUID(),
+    application_id: appId,
+  };
+  const headerB64 = base64UrlEncodeText_(JSON.stringify(header));
+  const payloadB64 = base64UrlEncodeText_(JSON.stringify(payload));
+  const signingInput = `${headerB64}.${payloadB64}`;
+
+  const key = await importPkcs8PrivateKey_(privateKeyPem);
+  const sig = await crypto.subtle.sign(
+    { name: "RSASSA-PKCS1-v1_5" },
+    key,
+    new TextEncoder().encode(signingInput)
+  );
+  const sigB64 = base64UrlEncodeBytes_(new Uint8Array(sig));
+  return `${signingInput}.${sigB64}`;
+}
+
+async function importPkcs8PrivateKey_(pem) {
+  const raw = String(pem || "")
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const bytes = base64DecodeToBytes_(raw);
+  return crypto.subtle.importKey(
+    "pkcs8",
+    bytes.buffer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+}
+
+function base64DecodeToBytes_(b64) {
+  const binary = atob(String(b64 || ""));
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function base64UrlEncodeText_(text) {
+  return base64UrlEncodeBytes_(new TextEncoder().encode(String(text || "")));
+}
+
+function base64UrlEncodeBytes_(bytes) {
+  const chunk = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 async function fetchWithTimeout_(url, init, timeoutMs) {
