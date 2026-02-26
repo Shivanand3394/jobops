@@ -1,6 +1,6 @@
 {
   "name": "get-job",
-  "main": "src/worker.js",
+  "main": "src/index.js",
   "compatibility_date": "2026-02-24",
   "d1_databases": [
     {

@@ -1,3 +1,5 @@
+import { isDraftLockedStatus_ } from "./domains/resume/versions.js";
+
 export const RR_EXPORT_CONTRACT_ID = "jobops.rr_export.v1";
 export const RR_EXPORT_SCHEMA_VERSION = 1;
 
@@ -203,6 +205,13 @@ export async function persistResumeDraft_({ env, jobKey, profileId, pack, force 
 
   const id = existing?.id || crypto.randomUUID();
   if (existing && !force) {
+    if (isDraftLockedStatus_(existing.status)) {
+      return {
+        draft_id: id,
+        locked: true,
+        locked_status: String(existing.status || "").trim().toUpperCase() || "READY_TO_APPLY",
+      };
+    }
     await env.DB.prepare(`
       UPDATE resume_drafts
       SET pack_json = ?, ats_json = ?, rr_export_json = ?, status = ?, error_text = ?, updated_at = ?
@@ -216,7 +225,7 @@ export async function persistResumeDraft_({ env, jobKey, profileId, pack, force 
       now,
       id
     ).run();
-    return { draft_id: id };
+    return { draft_id: id, locked: false };
   }
 
   await env.DB.prepare(`
@@ -243,7 +252,7 @@ export async function persistResumeDraft_({ env, jobKey, profileId, pack, force 
     now
   ).run();
 
-  return { draft_id: id };
+  return { draft_id: id, locked: false };
 }
 
 export async function ensurePrimaryProfile_(env) {

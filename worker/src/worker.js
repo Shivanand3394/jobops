@@ -13,6 +13,9 @@ import {
   processIngest as processDomainIngest_,
   sourceHealthCheck as checkIngestSourceHealth_,
 } from "./domains/ingest/index.js";
+import {
+  runScoringPipeline_ as runDomainScoringPipeline_,
+} from "./domains/scoring/index.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -878,26 +881,20 @@ export default {
         const location = String(extracted?.location || existing.location || "").trim();
         const seniority = String(extracted?.seniority || existing.seniority || "").trim();
 
-        const scoring = await scoreJobWithModel_(aiForManual, {
+        const pipelineResult = await runScoringPipelineForJob_(env, {
+          source: "manual-jd",
+          job_key: jobKey,
+          existing_job: existing,
+          ai: aiForManual,
+          targets,
+          cfg,
+          jd_clean: jdText,
           role_title: roleTitle,
           location,
           seniority,
-          jd_clean: jdText,
-        }, targets, cfg);
-
-        const rejectFromTargets = computeTargetReject_(jdText, scoring.primary_target_id, targets);
-        const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdText));
-        const rejectReasons = [];
-        if (hasRejectMarker_(jdText)) rejectReasons.push("Contains 'Reject:' marker in JD");
-        if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
-        if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
-
-        const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-        const transition = applyStatusTransition_(existing, "scored", {
-          final_score: finalScore,
-          reject_triggered: mergedRejectTriggered,
-          cfg,
         });
+        const finalScore = pipelineResult.final_score;
+        const transition = pipelineResult.transition;
 
         await env.DB.prepare(`
           UPDATE jobs
@@ -939,14 +936,14 @@ export default {
           JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
           JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
           JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
-          scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
-          clampInt_(scoring.score_must, 0, 100),
-          clampInt_(scoring.score_nice, 0, 100),
+          pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+          clampInt_(pipelineResult.score_must, 0, 100),
+          clampInt_(pipelineResult.score_nice, 0, 100),
           finalScore,
-          mergedRejectTriggered ? 1 : 0,
-          JSON.stringify(rejectReasons),
-          mergedRejectTriggered ? extractRejectEvidence_(jdText) : "",
-          String(scoring.reason_top_matches || "").slice(0, 1000),
+          pipelineResult.reject_triggered ? 1 : 0,
+          JSON.stringify(pipelineResult.reject_reasons || []),
+          String(pipelineResult.reject_evidence || "").slice(0, 220),
+          String(pipelineResult.reason_top_matches || "").slice(0, 1000),
           transition.next_status,
           transition.system_status,
           transition.status,
@@ -985,7 +982,7 @@ export default {
             job_key: jobKey,
             status: transition.status,
             final_score: finalScore,
-            primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+            primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
           }
         }, env, 200);
       }
@@ -1031,28 +1028,20 @@ export default {
         if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
 
         const cfg = await loadSysCfg_(env);
-        const scoring = await scoreJobWithModel_(ai, {
+        const pipelineResult = await runScoringPipelineForJob_(env, {
+          source: "rescore",
+          job_key: jobKey,
+          existing_job: job,
+          ai,
+          targets,
+          cfg,
+          jd_clean: jdClean,
           role_title: roleTitle,
           location,
           seniority,
-          jd_clean: jdClean,
-        }, targets, cfg);
-
-        // Apply target-based reject keyword scan too
-        const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
-
-        const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
-        const rejectReasons = []
-        if (hasRejectMarker_(jdClean)) rejectReasons.push("Contains 'Reject:' marker in JD");
-        if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
-        if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
-
-        const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-        const transition = applyStatusTransition_(job, "scored", {
-          final_score: finalScore,
-          reject_triggered: mergedRejectTriggered,
-          cfg,
         });
+        const finalScore = pipelineResult.final_score;
+        const transition = pipelineResult.transition;
 
         const now = Date.now();
         await env.DB.prepare(`
@@ -1098,14 +1087,14 @@ export default {
           JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
           JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
           JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
-          scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
-          clampInt_(scoring.score_must, 0, 100),
-          clampInt_(scoring.score_nice, 0, 100),
+          pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+          clampInt_(pipelineResult.score_must, 0, 100),
+          clampInt_(pipelineResult.score_nice, 0, 100),
           finalScore,
-          mergedRejectTriggered ? 1 : 0,
-          JSON.stringify(rejectReasons),
-          mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
-          String(scoring.reason_top_matches || "").slice(0, 1000),
+          pipelineResult.reject_triggered ? 1 : 0,
+          JSON.stringify(pipelineResult.reject_reasons || []),
+          String(pipelineResult.reject_evidence || "").slice(0, 220),
+          String(pipelineResult.reason_top_matches || "").slice(0, 1000),
           transition.next_status,
           transition.system_status,
           transition.status,
@@ -1145,7 +1134,15 @@ export default {
 
         await logEvent_(env, "RESCORED_ONE", jobKey, { final_score: finalScore, status: transition.status, ts: now });
 
-        return json_({ ok: true, data: { job_key: jobKey, final_score: finalScore, status: transition.status, primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID } }, env, 200);
+        return json_({
+          ok: true,
+          data: {
+            job_key: jobKey,
+            final_score: finalScore,
+            status: transition.status,
+            primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+          }
+        }, env, 200);
       }
 
       // ============================
@@ -1195,26 +1192,20 @@ export default {
         }
 
         const cfg = await loadSysCfg_(env);
-        const scoring = await scoreJobWithModel_(aiAuto, {
+        const pipelineResult = await runScoringPipelineForJob_(env, {
+          source: "auto-pilot",
+          job_key: jobKey,
+          existing_job: job,
+          ai: aiAuto,
+          targets,
+          cfg,
+          jd_clean: jdClean,
           role_title: roleTitle,
           location,
           seniority,
-          jd_clean: jdClean,
-        }, targets, cfg);
-
-        const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
-        const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
-        const rejectReasons = [];
-        if (hasRejectMarker_(jdClean)) rejectReasons.push("Contains 'Reject:' marker in JD");
-        if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
-        if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
-
-        const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-        const transition = applyStatusTransition_(job, "scored", {
-          final_score: finalScore,
-          reject_triggered: mergedRejectTriggered,
-          cfg,
         });
+        const finalScore = pipelineResult.final_score;
+        const transition = pipelineResult.transition;
 
         const scoredAt = Date.now();
         await env.DB.prepare(`
@@ -1260,14 +1251,14 @@ export default {
           JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
           JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
           JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
-          scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
-          clampInt_(scoring.score_must, 0, 100),
-          clampInt_(scoring.score_nice, 0, 100),
+          pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+          clampInt_(pipelineResult.score_must, 0, 100),
+          clampInt_(pipelineResult.score_nice, 0, 100),
           finalScore,
-          mergedRejectTriggered ? 1 : 0,
-          JSON.stringify(rejectReasons),
-          mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
-          String(scoring.reason_top_matches || "").slice(0, 1000),
+          pipelineResult.reject_triggered ? 1 : 0,
+          JSON.stringify(pipelineResult.reject_reasons || []),
+          String(pipelineResult.reject_evidence || "").slice(0, 220),
+          String(pipelineResult.reason_top_matches || "").slice(0, 1000),
           transition.next_status,
           transition.system_status,
           transition.status,
@@ -1392,6 +1383,19 @@ export default {
           pack: packData,
           force,
         });
+        if (saved?.locked) {
+          return json_({
+            ok: true,
+            data: {
+              job_key: scoredJob.job_key,
+              draft_id: saved.draft_id,
+              profile_id: profile.id,
+              status: saved.locked_status || "READY_TO_APPLY",
+              locked: true,
+              message: "Draft is locked after approval. Use force=true to regenerate.",
+            }
+          }, env, 200);
+        }
         const versionMeta = await createResumeDraftVersionFromLatest_(env, {
           draftId: saved.draft_id,
           jobKey: scoredJob.job_key,
@@ -1419,7 +1423,7 @@ export default {
             score: {
               final_score: finalScore,
               status: transition.status,
-              primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+              primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
             },
             pack: {
               draft_id: saved.draft_id,
@@ -1702,6 +1706,19 @@ export default {
           pack: packData,
           force,
         });
+        if (saved?.locked) {
+          return json_({
+            ok: true,
+            data: {
+              job_key: job.job_key,
+              draft_id: saved.draft_id,
+              profile_id: profile.id,
+              status: saved.locked_status || "READY_TO_APPLY",
+              locked: true,
+              message: "Draft is locked after approval. Use force=true to regenerate.",
+            }
+          }, env, 200);
+        }
         await createResumeDraftVersionFromLatest_(env, {
           draftId: saved.draft_id,
           jobKey: job.job_key,
@@ -4632,9 +4649,203 @@ function isLikelyCompanyName_(value) {
  * AI helpers
  * ========================================================= */
 
+async function hasScoringRunsTable_(env) {
+  try {
+    const row = await env.DB.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name = 'scoring_runs'
+      LIMIT 1;
+    `.trim()).first();
+    return Boolean(row?.name);
+  } catch {
+    return false;
+  }
+}
+
+function collectHeuristicBlockedKeywords_(targets) {
+  const out = [];
+  for (const target of (Array.isArray(targets) ? targets : [])) {
+    const reject = Array.isArray(target?.reject) ? target.reject : [];
+    for (const kw of reject) {
+      const v = String(kw || "").trim();
+      if (v) out.push(v);
+    }
+  }
+  return unique_(out).slice(0, 250);
+}
+
+async function persistScoringRun_(env, input = {}) {
+  if (!env?.DB) return false;
+  const enabled = await hasScoringRunsTable_(env);
+  if (!enabled) return false;
+
+  const stages = input?.stages && typeof input.stages === "object" ? input.stages : {};
+  const aiStage = stages.ai_reason && typeof stages.ai_reason === "object" ? stages.ai_reason : {};
+  const createdAt = numOrNull_(input.created_at) || Date.now();
+
+  try {
+    await env.DB.prepare(`
+      INSERT INTO scoring_runs (
+        id,
+        job_key,
+        source,
+        final_status,
+        heuristic_passed,
+        heuristic_reasons_json,
+        stage_metrics_json,
+        ai_model,
+        ai_tokens_in,
+        ai_tokens_out,
+        ai_tokens_total,
+        ai_latency_ms,
+        total_latency_ms,
+        final_score,
+        reject_triggered,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `.trim()).bind(
+      crypto.randomUUID(),
+      String(input.job_key || "").trim(),
+      String(input.source || "unknown").trim().toLowerCase(),
+      String(input.final_status || "COMPLETED").trim().toUpperCase(),
+      input.heuristic_passed ? 1 : 0,
+      JSON.stringify(Array.isArray(input.heuristic_reasons) ? input.heuristic_reasons : []),
+      JSON.stringify(stages),
+      String(input.ai_model || "").trim() || null,
+      clampInt_(aiStage.tokens_in, 0, 5_000_000),
+      clampInt_(aiStage.tokens_out, 0, 5_000_000),
+      clampInt_(aiStage.tokens_total, 0, 5_000_000),
+      clampInt_(aiStage.latency_ms, 0, 900_000),
+      clampInt_(input.total_latency_ms, 0, 900_000),
+      numOrNull_(input.final_score),
+      toBool_(input.reject_triggered, false) ? 1 : 0,
+      createdAt
+    ).run();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function runScoringPipelineForJob_(env, input = {}) {
+  const source = String(input.source || "unknown").trim().toLowerCase();
+  const jobKey = String(input.job_key || "").trim();
+  const existingJob = input.existing_job && typeof input.existing_job === "object" ? input.existing_job : null;
+  const ai = input.ai || null;
+  const targets = Array.isArray(input.targets) ? input.targets : [];
+  const cfg = input.cfg || { DEFAULT_TARGET_ID: "TGT-001", SCORE_THRESHOLD_SHORTLIST: 75, SCORE_THRESHOLD_ARCHIVE: 55 };
+
+  if (!ai) throw new Error("Missing Workers AI binding (env.AI or AI_BINDING)");
+  if (!targets.length) throw new Error("No targets configured");
+
+  const jdClean = String(input.jd_clean || "").trim();
+  const roleTitle = String(input.role_title || "").trim();
+  const location = String(input.location || "").trim();
+  const seniority = String(input.seniority || "").trim();
+  const blockedKeywords = collectHeuristicBlockedKeywords_(targets);
+
+  const pipeline = await runDomainScoringPipeline_({
+    role_title: roleTitle,
+    location,
+    seniority,
+    jd_clean: jdClean,
+    targets,
+    blocked_keywords: blockedKeywords,
+    min_jd_chars: 120,
+    min_target_signal: 8,
+    onAiReason: async () => {
+      const scoring = await scoreJobWithModel_(ai, {
+        role_title: roleTitle,
+        location,
+        seniority,
+        jd_clean: jdClean,
+      }, targets, cfg);
+      return { data: scoring, usage: scoring?._meta?.usage || null, meta: scoring?._meta || null };
+    },
+  });
+
+  if (pipeline.short_circuit) {
+    const heuristicReasons = Array.isArray(pipeline?.heuristic?.reasons) ? pipeline.heuristic.reasons : [];
+    const transition = applyStatusTransition_(existingJob, "heuristic_rejected");
+    const reasonTopMatches = `Heuristic reject: ${heuristicReasons.join("; ")}`.slice(0, 1000);
+    const out = {
+      pipeline,
+      heuristic_rejected: true,
+      transition,
+      primary_target_id: String(pipeline?.heuristic?.best_target_id || cfg.DEFAULT_TARGET_ID || "").trim() || null,
+      score_must: 0,
+      score_nice: 0,
+      final_score: 0,
+      reject_triggered: true,
+      reject_reasons: heuristicReasons,
+      reject_evidence: "",
+      reason_top_matches: reasonTopMatches,
+    };
+
+    await persistScoringRun_(env, {
+      job_key: jobKey,
+      source,
+      final_status: "REJECTED_HEURISTIC",
+      heuristic_passed: false,
+      heuristic_reasons: heuristicReasons,
+      stages: pipeline.stages,
+      ai_model: null,
+      total_latency_ms: pipeline.total_latency_ms,
+      final_score: 0,
+      reject_triggered: true,
+      created_at: Date.now(),
+    });
+    return out;
+  }
+
+  const scoring = pipeline?.scoring && typeof pipeline.scoring === "object" ? pipeline.scoring : {};
+  const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
+  const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
+  const rejectReasons = [];
+  if (hasRejectMarker_(jdClean)) rejectReasons.push("Contains 'Reject:' marker in JD");
+  if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
+  if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
+
+  const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
+  const transition = applyStatusTransition_(existingJob, "scored", {
+    final_score: finalScore,
+    reject_triggered: mergedRejectTriggered,
+    cfg,
+  });
+
+  await persistScoringRun_(env, {
+    job_key: jobKey,
+    source,
+    final_status: "COMPLETED",
+    heuristic_passed: true,
+    heuristic_reasons: [],
+    stages: pipeline.stages,
+    ai_model: String(scoring?._meta?.model || "").trim() || null,
+    total_latency_ms: pipeline.total_latency_ms,
+    final_score: finalScore,
+    reject_triggered: mergedRejectTriggered,
+    created_at: Date.now(),
+  });
+
+  return {
+    pipeline,
+    heuristic_rejected: false,
+    transition,
+    primary_target_id: String(scoring.primary_target_id || cfg.DEFAULT_TARGET_ID || "").trim() || null,
+    score_must: clampInt_(scoring.score_must, 0, 100),
+    score_nice: clampInt_(scoring.score_nice, 0, 100),
+    final_score: finalScore,
+    reject_triggered: mergedRejectTriggered,
+    reject_reasons: rejectReasons,
+    reject_evidence: mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
+    reason_top_matches: String(scoring.reason_top_matches || "").slice(0, 1000),
+  };
+}
+
 async function extractJdWithModel_(ai, text, opts = {}) {
   // Governance: JD extraction is pinned to deterministic runtime controls.
-  const maxTokens = 500;
+  const maxTokens = clampInt_(opts.maxTokens || 500, 128, 700);
   const prompt = `
 You are an information extraction engine.
 Return STRICT JSON only. No markdown. No commentary.
@@ -4840,6 +5051,7 @@ ${JSON.stringify(targets.map(t => ({
   const raw = pickModelText_(result);
   const parsed = safeJsonParse_(raw);
   if (!parsed) throw new Error("Model returned invalid JSON");
+  const usage = pickModelUsage_(result);
 
   return {
     primary_target_id: String(parsed.primary_target_id || "").trim() || cfg.DEFAULT_TARGET_ID,
@@ -4848,6 +5060,10 @@ ${JSON.stringify(targets.map(t => ({
     final_score: clampInt_(parsed.final_score, 0, 100),
     reject_triggered: Boolean(parsed.reject_triggered),
     reason_top_matches: String(parsed.reason_top_matches || "").slice(0, 1000),
+    _meta: {
+      model: "@cf/meta/llama-3.1-8b-instruct",
+      usage,
+    },
   };
 }
 
@@ -5410,6 +5626,9 @@ function applyStatusTransition_(job, reason, opts = {}) {
       next_status: null,
     };
   }
+  if (reason === "heuristic_rejected") {
+    return { status: "REJECTED", system_status: "REJECTED_HEURISTIC", next_status: null };
+  }
   if (reason === "scored") {
     const cfg = opts.cfg || { SCORE_THRESHOLD_SHORTLIST: 75, SCORE_THRESHOLD_ARCHIVE: 55 };
     const status = computeSystemStatus_(
@@ -5507,30 +5726,29 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
     const nice = Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [];
     const reject = Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [];
 
-    let scoring = null;
+    let pipelineResult = null;
     let finalScore = null;
-    let mergedRejectTriggered = false;
-    let rejectReasons = [];
     if (!needsManual && canAutoScore && jdText && jdText.length >= 180) {
       const roleTitleForScore = String(extracted?.role_title || "").trim();
       const locationForScore = String(extracted?.location || "").trim();
       const seniorityForScore = String(extracted?.seniority || "").trim();
       if (roleTitleForScore || jdText) {
-        scoring = await scoreJobWithModel_(aiForIngest, {
+        pipelineResult = await runScoringPipelineForJob_(env, {
+          source: `ingest-${channel}`,
+          job_key: norm.job_key,
+          existing_job: null,
+          ai: aiForIngest,
+          targets,
+          cfg,
+          jd_clean: jdText,
           role_title: roleTitleForScore,
           location: locationForScore,
           seniority: seniorityForScore,
-          jd_clean: jdText,
-        }, targets, cfg).catch(() => null);
+        }).catch(() => null);
       }
 
-      if (scoring) {
-        const rejectFromTargets = computeTargetReject_(jdText, scoring.primary_target_id, targets);
-        mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdText));
-        if (hasRejectMarker_(jdText)) rejectReasons.push("Contains 'Reject:' marker in JD");
-        if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
-        if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
-        finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
+      if (pipelineResult) {
+        finalScore = pipelineResult.final_score;
       }
     }
 
@@ -5554,12 +5772,8 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       : (needsManual
         ? applyStatusTransition_(null, "ingest_needs_manual")
         : applyStatusTransition_(null, "ingest_ready"));
-    if (scoring) {
-      transition = applyStatusTransition_(null, "scored", {
-        final_score: finalScore,
-        reject_triggered: mergedRejectTriggered,
-        cfg,
-      });
+    if (pipelineResult) {
+      transition = pipelineResult.transition;
     }
 
     const r = await env.DB.prepare(`
@@ -5633,7 +5847,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       now
     ).run();
 
-    if (scoring) {
+    if (pipelineResult) {
       const scoreNow = Date.now();
       await env.DB.prepare(`
         UPDATE jobs SET
@@ -5661,14 +5875,14 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
           updated_at = ?
         WHERE job_key = ?;
       `.trim()).bind(
-        scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
-        clampInt_(scoring.score_must, 0, 100),
-        clampInt_(scoring.score_nice, 0, 100),
+        pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+        clampInt_(pipelineResult.score_must, 0, 100),
+        clampInt_(pipelineResult.score_nice, 0, 100),
         finalScore,
-        mergedRejectTriggered ? 1 : 0,
-        JSON.stringify(rejectReasons),
-        mergedRejectTriggered ? extractRejectEvidence_(jdText) : "",
-        String(scoring.reason_top_matches || "").slice(0, 1000),
+        pipelineResult.reject_triggered ? 1 : 0,
+        JSON.stringify(pipelineResult.reject_reasons || []),
+        String(pipelineResult.reject_evidence || "").slice(0, 220),
+        String(pipelineResult.reason_top_matches || "").slice(0, 1000),
         transition.status,
         transition.system_status,
         transition.next_status,
@@ -5715,7 +5929,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       fallback_reason: fallbackDecision.reason,
       fallback_policy: fallbackDecision.policy?.label || "default",
       final_score: finalScore,
-      primary_target_id: scoring?.primary_target_id || null
+      primary_target_id: pipelineResult?.primary_target_id || null
     });
   }
 
@@ -5892,27 +6106,20 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
         }
       }
 
-      const scoring = await scoreJobWithModel_(ai, {
+      const pipelineResult = await runScoringPipelineForJob_(env, {
+        source: "score-pending",
+        job_key: j.job_key,
+        existing_job: j,
+        ai,
+        targets,
+        cfg,
+        jd_clean: jdClean,
         role_title: roleTitle,
         location,
         seniority,
-        jd_clean: jdClean,
-      }, targets, cfg);
-
-      const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
-      const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
-
-      const rejectReasons = [];
-      if (hasRejectMarker_(jdClean)) rejectReasons.push("Contains 'Reject:' marker in JD");
-      if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
-      if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
-
-      const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
-      const transition = applyStatusTransition_(j, "scored", {
-        final_score: finalScore,
-        reject_triggered: mergedRejectTriggered,
-        cfg,
       });
+      const finalScore = pipelineResult.final_score;
+      const transition = pipelineResult.transition;
 
       const now = Date.now();
       const r = await env.DB.prepare(`
@@ -5958,14 +6165,14 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
         JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
         JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
         JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
-        scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
-        clampInt_(scoring.score_must, 0, 100),
-        clampInt_(scoring.score_nice, 0, 100),
+        pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+        clampInt_(pipelineResult.score_must, 0, 100),
+        clampInt_(pipelineResult.score_nice, 0, 100),
         finalScore,
-        mergedRejectTriggered ? 1 : 0,
-        JSON.stringify(rejectReasons),
-        mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
-        String(scoring.reason_top_matches || "").slice(0, 1000),
+        pipelineResult.reject_triggered ? 1 : 0,
+        JSON.stringify(pipelineResult.reject_reasons || []),
+        String(pipelineResult.reject_evidence || "").slice(0, 220),
+        String(pipelineResult.reason_top_matches || "").slice(0, 1000),
         transition.next_status,
         transition.system_status,
         transition.status,
@@ -5980,7 +6187,7 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
         ok: true,
         final_score: finalScore,
         status: transition.status,
-        primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID
+        primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID
       });
     } catch (e) {
       results.push({ job_key: j.job_key, ok: false, error: String(e?.message || e) });
@@ -7531,6 +7738,18 @@ function pickModelText_(result) {
     result?.choices?.[0]?.message?.content ||
     ""
   );
+}
+
+function pickModelUsage_(result) {
+  const usage = result?.usage || result?.meta?.usage || {};
+  const inputTokens = numOr_(usage.input_tokens ?? usage.prompt_tokens, 0);
+  const outputTokens = numOr_(usage.output_tokens ?? usage.completion_tokens, 0);
+  const totalTokens = numOr_(usage.total_tokens, inputTokens + outputTokens);
+  return {
+    input_tokens: clampInt_(inputTokens, 0, 5_000_000),
+    output_tokens: clampInt_(outputTokens, 0, 5_000_000),
+    total_tokens: clampInt_(totalTokens, 0, 5_000_000),
+  };
 }
 
 function safeJsonParse_(s) {
