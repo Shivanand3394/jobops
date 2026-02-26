@@ -136,6 +136,20 @@ function pushSkippedStep(name, reason) {
   });
 }
 
+function isExpectedWebhookAuthFailure_(status, json, text) {
+  if (status === 401) {
+    const err = asString(json?.error || text, 500).toLowerCase();
+    if (err.includes("authorization bearer token")) return true;
+    if (err.includes("invalid vonage signature token")) return true;
+    return false;
+  }
+  if (status === 403) {
+    const err = asString(json?.error || text, 500).toLowerCase();
+    return err.includes("forbidden sender");
+  }
+  return false;
+}
+
 function toBase64Url(input) {
   const s = Buffer.from(String(input ?? ""), "utf8").toString("base64");
   return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -310,11 +324,12 @@ async function main() {
   });
 
   if (!cfg.whatsappWebhookKey) {
-    pushSkippedStep(
-      "whatsapp.vonage.sim",
-      "Set WHATSAPP_VONAGE_KEY (or WHATSAPP_WEBHOOK_KEY) to enable this step."
-    );
+    const reason = "Set WHATSAPP_VONAGE_KEY (or WHATSAPP_WEBHOOK_KEY) to enable this step.";
+    pushSkippedStep("whatsapp.vonage.sim", reason);
+    pushSkippedStep("whatsapp.vonage.media.sim", reason);
   } else {
+    const webhookPath = `${cfg.whatsappWebhookPath}?key=${encodeURIComponent(cfg.whatsappWebhookKey)}`;
+
     const webhookBody = {
       from: cfg.whatsappSender,
       text: `Smoke test lead ${cfg.baseUrl}/health`,
@@ -322,7 +337,6 @@ async function main() {
     };
     const webhookRaw = JSON.stringify(webhookBody);
     const signedJwt = cfg.whatsappJwt || buildVonageHs256Jwt(cfg.whatsappSignatureSecret, webhookRaw);
-    const webhookPath = `${cfg.whatsappWebhookPath}?key=${encodeURIComponent(cfg.whatsappWebhookKey)}`;
     const webhookStep = await runStep({
       name: "whatsapp.vonage.sim",
       method: "POST",
@@ -330,7 +344,7 @@ async function main() {
       auth: "none",
       body: webhookBody,
       extraHeaders: signedJwt ? { authorization: `Bearer ${signedJwt}` } : null,
-      expectedStatus: [200, 401],
+      expectedStatus: [200, 401, 403],
       validate: ({ status, json, text }) => {
         if (status === 200) {
           if (json?.ok !== true) return "Expected { ok: true }";
@@ -339,17 +353,53 @@ async function main() {
             ? true
             : `Expected provider=vonage, got "${provider || "EMPTY"}"`;
         }
-        const err = asString(json?.error || text, 500).toLowerCase();
-        if (err.includes("authorization bearer token")) {
-          return true;
-        }
-        if (err.includes("invalid vonage signature token")) {
-          return true;
-        }
-        return `Unexpected webhook auth failure: ${asString(json?.error || text, 200)}`;
+        if (isExpectedWebhookAuthFailure_(status, json, text)) return true;
+        return `Unexpected webhook auth failure (${status}): ${asString(json?.error || text, 200)}`;
       },
     });
     runLog.config.whatsapp_sim_http_status = webhookStep.status;
+
+    const mediaBody = {
+      from: cfg.whatsappSender,
+      message_uuid: `smoke-wa-media-${Date.now()}`,
+      message_type: "document",
+      file: {
+        url: "https://example.com/mock-jd.pdf",
+        mime_type: "application/pdf",
+        name: "mock-jd.pdf",
+        caption: "Attached job description document for smoke validation",
+      },
+    };
+    const mediaRaw = JSON.stringify(mediaBody);
+    const mediaJwt = cfg.whatsappJwt || buildVonageHs256Jwt(cfg.whatsappSignatureSecret, mediaRaw);
+    const mediaStep = await runStep({
+      name: "whatsapp.vonage.media.sim",
+      method: "POST",
+      path: webhookPath,
+      auth: "none",
+      body: mediaBody,
+      extraHeaders: mediaJwt ? { authorization: `Bearer ${mediaJwt}` } : null,
+      expectedStatus: [200, 401, 403],
+      validate: ({ status, json, text }) => {
+        if (status === 200) {
+          if (json?.ok !== true) return "Expected { ok: true }";
+          const provider = asString(json?.data?.provider, 40).toLowerCase();
+          if (provider !== "vonage") return `Expected provider=vonage, got "${provider || "EMPTY"}"`;
+          if (json?.data?.media_detected !== true) return "Expected media_detected=true";
+          if (json?.data?.media_queued_for_extraction !== true) return "Expected media_queued_for_extraction=true";
+          const mediaType = asString(json?.data?.media?.type, 40).toLowerCase();
+          if (mediaType && mediaType !== "document") return `Expected media.type=document, got "${mediaType}"`;
+          const extractionStatus = asString(json?.data?.extraction?.status, 80).toLowerCase();
+          if (!["queued", "queued_unconfigured"].includes(extractionStatus)) {
+            return `Unexpected extraction.status "${extractionStatus || "EMPTY"}"`;
+          }
+          return true;
+        }
+        if (isExpectedWebhookAuthFailure_(status, json, text)) return true;
+        return `Unexpected webhook auth failure (${status}): ${asString(json?.error || text, 200)}`;
+      },
+    });
+    runLog.config.whatsapp_media_sim_http_status = mediaStep.status;
   }
 
   const jobs = await runStep({
