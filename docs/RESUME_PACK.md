@@ -23,6 +23,12 @@ Reactive Resume is not a runtime dependency; it is an export format target.
 - `DRAFT_READY`: full pack generated
 - `NEEDS_AI`: saved with deterministic tailoring, AI polish unavailable
 - `ERROR`: generation failed; check `error_text`
+- `READY_FOR_EXPORT`: reviewed draft saved, waiting for approval/export
+- `READY_TO_APPLY`: approved draft locked for apply flow
+
+Lock behavior:
+- Once a draft is `READY_TO_APPLY` or `APPLIED`, non-force generate/regenerate calls do not overwrite it.
+- Use `force=true` to intentionally regenerate a locked draft.
 
 ## Endpoints (UI key)
 - `GET /resume/profiles`
@@ -160,3 +166,4 @@ From job detail in UI:
 2. Save profile JSON if needed.
 3. Tap `Generate` or `Regenerate`.
 4. Use `Copy tailored summary`, `Copy tailored bullets`, or `Download RR JSON`.
+5. In wizard `Finish`, use `PDF-ready view` + `Print / Save PDF` for portal uploads that require a file.

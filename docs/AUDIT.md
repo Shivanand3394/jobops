@@ -1,120 +1,125 @@
 ﻿# JobOps V2 Audit Report
 
 ## 1) North Star requirements (A-H) - Status
-- A) Job intake from alerts (URLs / raw email): **Implemented** - `POST /ingest` supports `raw_urls[]` plus `email_text`/`email_html`.
-- B) Normalization + dedupe (`job_key`) across sources: **Implemented** - canonicalization + deterministic hash + upsert on `job_key`.
-- C) JD resolution + cleaning/window extraction: **Implemented** - fetch/email fallback and low-quality detection are present.
-- D) AI extraction + target scoring: **Implemented** - extract/score endpoints, batch score, single rescore, manual JD score path.
-- E) Pipeline statuses + timestamps: **Partial** - fields are populated, but status semantics still overlap across flows.
-- F) Android-friendly UI workflow: **Implemented** - list/filter/detail/status/rescore/manual JD plus Targets list/edit are available.
-- G) Git-based deploy (Worker + D1 + Pages): **Implemented** - structure/config support this; operational checklist documented.
-- H) Resume integration readiness: **Partial** - resume payload endpoint exists; no external integration yet.
+- A) Job intake from alerts (URLs/raw email): **Implemented**.
+- B) Normalization + dedupe (`job_key`) across sources: **Implemented**.
+- C) JD resolution (fetch/email fallback) + cleaning/window extraction: **Implemented**.
+- D) AI extraction + target-based scoring: **Implemented**.
+- E) Pipeline tracking/status semantics: **Partial**.
+- F) Android-friendly UI for ingest/list/filter/detail/status/rescore/manual JD/targets: **Implemented**.
+- G) Git-based deploy model (Worker + D1 + Pages): **Implemented**.
+- H) Resume integration readiness: **Partial**.
 
 ## 2) Evidence map (as-built)
 ### A) Intake
-- Evidence: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js) route `POST /ingest`.
+- Evidence: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:833) `POST /ingest`.
 - What it does:
-  - accepts URL list + optional email fallback text.
-  - resolves JD and upserts `jobs` rows.
+  - Accepts `raw_urls[]` plus optional `email_text`/`email_html`.
+  - Normalizes URL, resolves JD, upserts `jobs`.
 - Limitations:
-  - no dedicated dedupe UX message in UI.
+  - Response does not include deterministic per-row `was_existing`.
 
 ### B) Normalize + dedupe
-- Evidence: `normalizeJobUrl_`, `jobs.job_key` PK in [worker/migrations/001_init.sql](/c:/Users/dell/Documents/GitHub/jobops/worker/migrations/001_init.sql).
+- Evidence: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:1235) `normalizeJobUrl_`; [worker/migrations/001_init.sql](/c:/Users/dell/Documents/GitHub/jobops/worker/migrations/001_init.sql) `job_key TEXT PRIMARY KEY`.
 - What it does:
-  - source-aware URL normalization (LinkedIn/IIMJobs/Naukri/generic).
-  - dedupe by `ON CONFLICT(job_key) DO UPDATE`.
+  - Source-aware canonicalization for LinkedIn/IIMJobs/Naukri/generic URLs.
+  - Dedupes through `ON CONFLICT(job_key)` upsert.
 - Limitations:
-  - dedupe reason is not surfaced as a dedicated API field.
+  - Upsert path not exposed as explicit row-level signal.
 
 ### C) JD resolution
-- Evidence: `resolveJd_`, `extractJdWindow_`, `extractJdFromEmail_`, `isLowQualityJd_` in [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js).
+- Evidence: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:1297) `resolveJd_`, [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:1359) `isLowQualityJd_`.
 - What it does:
-  - fetches HTML and extracts clean JD window.
-  - marks low-quality/blocked content.
+  - Fetch + cleanup + extraction-window heuristic.
+  - Fallback from fetched page to email content.
 - Limitations:
-  - heuristic tuning may need source-specific refinements.
+  - Heuristic may still produce false positives/negatives.
 
 ### D) Extract + score
-- Evidence: `/extract-jd`, `/score-jd`, `/score-pending`, `/jobs/:job_key/rescore`, `/jobs/:job_key/manual-jd` in [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js).
+- Evidence: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:679) `/extract-jd`, [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:691) `/score-jd`, [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:729) `/score-pending`, [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:342) `/jobs/:job_key/rescore`, [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:198) `/jobs/:job_key/manual-jd`.
 - What it does:
-  - extracts structured fields.
-  - scores against targets and reject keywords.
+  - Structured extraction + score against targets.
+  - Reject keyword checks from target + inline marker support.
 - Limitations:
-  - score quality depends on model output stability.
+  - Model output quality is prompt/model dependent.
 
-### E) Pipeline tracking
-- Evidence: jobs status/timestamp columns in [worker/migrations/001_init.sql](/c:/Users/dell/Documents/GitHub/jobops/worker/migrations/001_init.sql), status update/scoring updates in [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js).
+### E) Pipeline/status tracking
+- Evidence: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:1509) `applyStatusTransition_`; writes in ingest/manual/rescore/batch-scoring and status route.
 - What it does:
-  - updates `status`, `system_status`, `last_scored_at`, and status timestamps.
+  - Central helper covers ingest/scoring transitions.
+  - `status`, `system_status`, `next_status` are written per transition reason.
 - Limitations:
-  - `next_status` often mirrors `status/system_status`.
+  - `/jobs/:job_key/status` updates only lifecycle `status` and timestamp fields; it does not reconcile `system_status`.
 
-### F) UI flow
+### F) UI workflow
 - Evidence: [ui/app.js](/c:/Users/dell/Documents/GitHub/jobops/ui/app.js), [ui/index.html](/c:/Users/dell/Documents/GitHub/jobops/ui/index.html).
 - What it does:
-  - ingest, list/search/filter, detail, status update, rescore, manual JD textarea.
-  - list uses `display_title` fallback and clickable cards.
+  - Jobs flow: ingest/list/filter/detail/status/rescore/manual JD.
+  - Targets flow: list/select/edit/save with schema-aware reject-field behavior.
 - Limitations:
-  - no Targets UI entry/CRUD.
+  - Dedupe notice in UI remains heuristic.
 
 ### G) Deploy model
-- Evidence: [worker/wrangler.jsonc](/c:/Users/dell/Documents/GitHub/jobops/worker/wrangler.jsonc), static `ui/` folder.
+- Evidence: [worker/wrangler.jsonc](/c:/Users/dell/Documents/GitHub/jobops/worker/wrangler.jsonc), static `ui/` for Pages.
 - What it does:
-  - Worker deploy with D1 binding `DB`, optional AI binding selector.
-  - Pages static deploy from `ui`.
+  - Worker bound to D1 via `DB`; `ALLOW_ORIGIN` var present.
+  - Static Pages-ready UI directory.
 - Limitations:
-  - production CORS is still `*` unless env var is tightened.
+  - `ALLOW_ORIGIN` still defaults to `*` in config; production tightening is manual.
 
 ### H) Resume readiness
-- Evidence: `/jobs/:job_key/resume-payload` route in [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js).
+- Evidence: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:507) `/jobs/:job_key/resume-payload`.
 - What it does:
-  - emits compact payload for downstream resume tailoring.
+  - Returns compact resume-bridge payload (job metadata + keyword focus).
 - Limitations:
-  - no end-to-end Reactive Resume integration.
+  - No direct Reactive Resume API adapter or push endpoint.
 
 ## 3) Gaps / Risks
 1. Ingest dedupe signaling is heuristic.
-- Impact: noisy operator workflow and unclear upsert outcome.
-- Where found: [ui/app.js](/c:/Users/dell/Documents/GitHub/jobops/ui/app.js) `doIngest()`.
-- Recommended fix: return explicit `was_existing` per row from Worker for deterministic dedupe messaging.
+- Impact: operator message may miss true update-vs-insert distinction.
+- Where found: [ui/app.js](/c:/Users/dell/Documents/GitHub/jobops/ui/app.js:522) `doIngest()`.
+- Recommended fix: add `was_existing` boolean per ingest row from Worker.
 
-2. Status semantics are loosely coupled.
-- Impact: confusing downstream analytics/automation.
-- Where found: multiple status writes in [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js).
-- Recommended fix: centralize status transition logic.
+2. Checklist schema is intentionally guarded when columns are missing.
+- Impact: checklist feature is unavailable on baseline schema until migration is applied, but API now fails safely (400) instead of 500.
+- Where found: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:467), [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:484), [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:1032), [worker/migrations/001_init.sql](/c:/Users/dell/Documents/GitHub/jobops/worker/migrations/001_init.sql).
+- Recommended fix: add migration for checklist columns to fully enable checklist endpoints.
+
+3. Status semantics still partially coupled.
+- Impact: lifecycle/internal statuses can become confusing in edge/manual override paths.
+- Where found: [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:161), [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js:1509).
+- Recommended fix: decide canonical behavior when manual status updates should clear or preserve `system_status`.
 
 ## 4) Security & Auth review
-- UI_KEY usage: all UI requests use `api()` helper and send `x-ui-key`.
-- API_KEY usage: admin routes (`/normalize-job`, `/resolve-jd`, `/extract-jd`, `/score-jd`) require `x-api-key`; `/score-pending` accepts either valid `x-ui-key` or `x-api-key`.
-- API_KEY exposure in UI: no API key usage in `ui/` files.
+- UI key usage: all UI requests in [ui/app.js](/c:/Users/dell/Documents/GitHub/jobops/ui/app.js:38) use `api()` with `x-ui-key`.
+- API key usage: admin routes require `x-api-key`; `/score-pending` accepts either key via route mode `either`.
+- API key leakage in UI: no `x-api-key` usage in `ui/` code.
 - CORS:
-  - preflight (`OPTIONS`) is handled.
-  - `Access-Control-Allow-Origin` is derived from `ALLOW_ORIGIN` with safe fallback to `*`.
-  - production should set `ALLOW_ORIGIN=https://getjobs.shivanand-shah94.workers.dev`.
+  - OPTIONS preflight handled globally.
+  - `Access-Control-Allow-Headers` includes `Content-Type,x-api-key,x-ui-key`.
+  - origin is `ALLOW_ORIGIN` or safe fallback `*`.
 
 ## 5) Data integrity & status model
-- `job_key` dedupe: enforced by PK + upsert.
-- status vs system_status:
-  - `status` drives visible lifecycle (`NEW/SCORED/SHORTLISTED/...`).
-  - `system_status` includes pipeline/internal states like `NEEDS_MANUAL_JD`.
+- Dedupe: `jobs.job_key` PK + `ON CONFLICT(job_key)` upsert in ingest.
+- `status`/`system_status`/`next_status`:
+  - `status` = lifecycle (NEW, SCORED, SHORTLISTED, APPLIED, REJECTED, ARCHIVED, LINK_ONLY).
+  - `system_status` = internal pipeline markers (NEEDS_MANUAL_JD, AI_UNAVAILABLE, or null).
+  - `next_status` currently mostly null through transition helper.
 - timestamps:
-  - `applied_at/rejected_at/archived_at` set by `/jobs/:job_key/status`.
-  - `updated_at/last_scored_at` updated in scoring/manual flows.
-- target + reject behavior:
-  - scoring returns a `primary_target_id`.
-  - target reject keywords and inline reject markers can force reject/score=0.
+  - `updated_at` widely maintained.
+  - `last_scored_at` updated in scoring routes.
+  - `applied_at/rejected_at/archived_at` set in explicit status route.
 
-## 6) "Daily usable?" verdict
-**Yes, with operational caveats.**
-- Core daily workflow works: ingest -> inspect -> manual JD if needed -> rescore/status updates.
-- Auth and route contracts are now consistent for UI vs API usage.
-- Ingest/manual save now tolerate missing AI binding without hard-failing intake (`fetch_status=ai_unavailable` for ingest rows when AI is absent).
-- Remaining gap is explicit per-row dedupe metadata for ingest outcomes.
+## 6) Daily usable verdict
+**Yes, with caveats.**
+- Core daily flows work in current code and UI.
+- Auth and CORS behavior align with intended model.
+- Manual recovery remains available when AI is missing.
+- Remaining operational caveats: checklist schema drift and heuristic dedupe messaging.
 
-## 7) Next 5 actions (recommended order)
-1. Build Targets UI (list/edit/update) using existing `/targets` routes.
-2. Add ingest dedupe UX (`cleared input`, concise result summary, duplicate signal).
-3. Consolidate status transition writes behind one helper.
-4. Add automated smoke script for auth matrix + manual recovery flow.
-5. Pin production `ALLOW_ORIGIN` and add deploy checklist enforcement.
+## 7) Next actions (recommended order)
+1. Add deterministic `was_existing` per ingest result row.
+2. Resolve checklist schema drift (migration or schema-gated route behavior).
+3. Clarify status override policy for `/jobs/:job_key/status` vs `system_status`.
+4. Pin `ALLOW_ORIGIN` to Pages origin in production environment.
+5. Add CI smoke checks for auth + ingest + manual recovery + targets.

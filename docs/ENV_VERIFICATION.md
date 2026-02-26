@@ -229,7 +229,7 @@ Expected:
 | `/resume/rr/health` returns `endpoint_not_found` | Health path mismatch for RR deployment | Check `data.attempted_paths` | Set `RR_HEALTH_PATH` to a valid endpoint path and redeploy |
 | `/jobs/:job_key/push-reactive-resume` returns import path error | RR import endpoint path mismatch | Inspect response `data.import_path` and HTTP status | Set `RR_IMPORT_PATH` var to the correct RR import route and redeploy |
 | `/gmail/poll` returns `ok:true` but `scanned=0` | Query too narrow (label mismatch / mailbox visibility) | Inspect `data.query_used` in poll response | Temporarily set `GMAIL_QUERY` to `in:anywhere newer_than:7d`, or call `/gmail/poll` with body override `{ "query":"in:anywhere newer_than:7d","max_per_run":50 }` |
-| D1 errors / missing migrations | DB binding wrong or migrations not applied | Endpoint errors and `wrangler d1 list` | Bind D1 as `DB` and apply `001_init.sql` + `002_gmail.sql` |
+| D1 errors / missing migrations | DB binding wrong or migrations not applied | Endpoint errors and `wrangler d1 list` | Bind D1 as `DB` and apply migrations through latest (`008_job_evidence.sql`) |
 | CORS/origin failures | `ALLOW_ORIGIN` not set for UI origin | Check response headers and browser console | Set `ALLOW_ORIGIN` to Pages URL in prod (`https://getjobs.shivanand-shah94.workers.dev`) |
 | Pages not deploying | Pages config mismatch (branch/root/output/build) | Inspect Pages deploy logs/settings | Set branch `main`, root repo root, output `ui`, no build command |
 | Wrangler permission error on `C:\Users\dell\Application Data` | Local Windows profile/path permission issue | `wrangler whoami` or deploy fails before network call | Open fresh shell as same user, re-auth (`wrangler logout/login`), retry from `worker/` |
@@ -238,6 +238,7 @@ Expected:
 
 - `worker/migrations/001_init.sql` baseline does not include checklist columns (`applied_note`, `follow_up_at`, `referral_status`).
 - Runtime Worker checks schema via `getJobsSchema_` and returns clear `400` for checklist routes when absent.
+- Evidence schema (`job_evidence`) is now active in remote D1 via `008_job_evidence.sql`.
 - If your live DB includes those columns from later migration/manual alter, checklist routes will work.
 
 Optional query:

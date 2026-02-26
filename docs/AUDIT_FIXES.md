@@ -1,20 +1,18 @@
 ﻿# Critical Fixes Needed
 
-No open critical fixes at this time after current patch set.
+No P0 issues were found in current `main` during this verification pass.
 
-## Resolved in this pass
+## P1 issues to address next
 
-### 1) `/score-pending` auth consistency
-- Symptom: route-level comments/behavior diverged from top-level route gating.
-- Root cause: duplicated auth checks in different layers.
-- Patch applied: centralized auth via `requireAuth_()` in [worker/src/worker.js](/c:/Users/dell/Documents/GitHub/jobops/worker/src/worker.js) and removed contradictory route-level override logic.
-- Residual risk: low; keep matrix docs updated when adding routes.
+### 1) Checklist schema drift
+- Symptom: checklist columns are absent on baseline DB.
+- Root cause: `001_init.sql` does not include `applied_note`, `follow_up_at`, `referral_status`.
+- Current protection in code: worker now checks schema and returns clear `400 Checklist fields not enabled in DB schema` for checklist routes instead of runtime 500.
+- Remaining action: add a forward migration with these columns to enable checklist functionality everywhere.
 
-### 2) AI hard dependency blocking intake/manual save
-- Symptom: `/ingest` hard-failed without AI binding.
-- Root cause: global `needsAI` included `/ingest` and `/manual-jd` paths.
-- Patch applied:
-  - removed `/ingest` and `/manual-jd` from global required-AI gate.
-  - ingest now stores records and marks manual path when AI is unavailable.
-  - manual JD endpoint now persists text and returns a clear `saved_only` response when AI is unavailable.
-- Residual risk: scoring endpoints still require AI (expected behavior).
+### 2) Ingest dedupe signal is non-deterministic
+- Symptom: UI dedupe message relies on repeated keys heuristic.
+- Root cause: ingest response does not return per-row `was_existing`.
+- Minimal patch suggestion:
+  - In `/ingest`, detect insert vs update from D1 result and return `was_existing` boolean per row.
+- Risk if not fixed: operator may misinterpret whether a row was newly created or updated.

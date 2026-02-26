@@ -725,3 +725,32 @@ Expected:
 - `data.rr_last_pushed_at` and `data.rr_last_push_status` populated after push
 - `data.rr_pdf_url` populated after PDF export
 - `data.rr_pdf_last_exported_at` and `data.rr_pdf_last_export_status` populated
+
+## 29) Evidence API (UI key)
+Purpose: verify evidence mapping is readable and returns `404` when missing.
+
+### curl
+```bash
+curl -i "$BASE_URL/jobs/$JOB_KEY/evidence?limit=200" -H "x-ui-key: $UI_KEY"
+```
+
+### PowerShell
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/jobs/$JOB_KEY/evidence?limit=200" -Method GET -Headers @{ "x-ui-key" = $UI_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- If evidence rows exist: `200` with `data[]`.
+- If no evidence rows exist: `404` with `Evidence not found`.
+
+## 30) Evidence stale troubleshooting
+If rescoring looks stale, check events for evidence upsert failures.
+
+### D1 query (remote)
+```bash
+wrangler d1 execute jobops-db --cwd worker --remote --command "SELECT event_type, job_key, payload_json, ts FROM events WHERE event_type='EVIDENCE_UPSERT_FAILED' ORDER BY ts DESC LIMIT 20;"
+```
+
+Expected:
+- No recent failures in healthy runs.
+- If failures exist, inspect `payload_json.error` and route (`manual-jd` or `rescore`).

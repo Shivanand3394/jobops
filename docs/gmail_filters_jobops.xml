@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns='http://www.w3.org/2005/Atom' xmlns:apps='http://schemas.google.com/apps/2006'>
+  <title>Mail Filters</title>
+  <id>tag:mail.google.com,2008:filters:jobops-v2</id>
+  <updated>2026-02-24T22:45:00Z</updated>
+
+  <!-- High-signal alerts: known job platforms with job-link patterns -->
+  <entry>
+    <category term='filter'></category>
+    <title>Mail Filter</title>
+    <id>tag:mail.google.com,2008:filter:900000001</id>
+    <updated>2026-02-24T22:45:00Z</updated>
+    <content></content>
+    <apps:property name='from' value='linkedin.com OR iimjobs.com OR naukri.com'/>
+    <apps:property name='hasTheWord' value='linkedin.com/jobs OR iimjobs.com/j/ OR naukri.com/job-listings-'/>
+    <apps:property name='label' value='JobOps/Hot'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+
+  <!-- Broad candidate catch for job-like messages -->
+  <entry>
+    <category term='filter'></category>
+    <title>Mail Filter</title>
+    <id>tag:mail.google.com,2008:filter:900000002</id>
+    <updated>2026-02-24T22:45:00Z</updated>
+    <content></content>
+    <apps:property name='hasTheWord' value='job OR hiring OR opportunity OR opening OR recommendation OR linkedin.com/jobs OR iimjobs.com/j/ OR naukri.com/job-listings-'/>
+    <apps:property name='label' value='JobOps/Raw'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+
+  <!-- Likely low-quality/tracking-heavy alerts for manual JD triage -->
+  <entry>
+    <category term='filter'></category>
+    <title>Mail Filter</title>
+    <id>tag:mail.google.com,2008:filter:900000003</id>
+    <updated>2026-02-24T22:45:00Z</updated>
+    <content></content>
+    <apps:property name='hasTheWord' value='easy apply OR viewed your profile OR recommended for you OR comm/mynetwork/send-invite'/>
+    <apps:property name='label' value='JobOps/ManualJD'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+</feed>

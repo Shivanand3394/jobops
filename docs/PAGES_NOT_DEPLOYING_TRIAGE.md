@@ -1,35 +1,42 @@
-# Pages Not Deploying — Triage
+ï»¿# Pages Not Deploying - Triage
 
-## 1) Check branch / repo connection
-- Confirm Pages project is connected to `Shivanand3394/jobops`.
-- Confirm production branch is `main`.
-- Confirm recent commits exist in GitHub and are visible to Pages.
+## 1) Confirm repo + branch wiring
+- Repo: `Shivanand3394/jobops`
+- Production branch: `main`
+- Latest commit visible in GitHub and Cloudflare Pages dashboard
 
-## 2) Check build settings (root dir, output dir)
-- Static UI should deploy from `ui` directory.
-- Build command should be empty/none for this static setup.
-- Output directory should point to `ui`.
+## 2) Confirm build settings (static UI)
+- Framework preset: `None`
+- Build command: empty
+- Output directory: `ui`
 
-## 3) Check build logs for output dir errors
-- Look for:
-  - "Output directory not found"
-  - "No index.html"
-  - build command failures (if command mistakenly configured)
+## 3) Confirm artifact presence in repo
+- `ui/index.html`
+- `ui/app.js`
+- `ui/styles.css`
+- Relative references in `index.html` are correct
 
-## 4) Check GitHub integration/webhooks
-- In Pages -> Settings -> Git integration, verify repo auth is still valid.
-- Check webhook/delivery logs for 4xx/5xx failures.
-- Reconnect integration if tokens were rotated/revoked.
+## 4) Check build logs for deterministic failures
+- `Output directory not found`
+- `No index.html`
+- accidental build command failures
+- repository integration/token failures
 
-## 5) Force redeploy options
-- Retry deploy from Cloudflare dashboard.
-- Push empty commit:
-  - `git commit --allow-empty -m "chore: trigger pages redeploy"`
-  - `git push origin main`
+## 5) Check GitHub integration + webhooks
+- Verify Pages Git integration is healthy
+- Validate webhook deliveries are 2xx
+- Reconnect integration if token was revoked/rotated
 
-## 6) File checklist for `/ui`
-- `ui/index.html` exists
-- `ui/app.js` exists
-- `ui/styles.css` exists
-- No broken relative references in `index.html`
-- Assets committed to `main` (not only local)
+## 6) Force redeploy safely
+1. Retry deployment in Pages dashboard
+2. Push empty commit:
+```bash
+git commit --allow-empty -m "chore: trigger pages redeploy"
+git push origin main
+```
+
+## 7) Runtime sanity after successful deploy
+- Open `https://getjobs.shivanand-shah94.workers.dev`
+- Verify Jobs and Targets tabs render
+- Verify API requests include `x-ui-key`
+- If API calls fail, validate Worker CORS (`ALLOW_ORIGIN`) and Worker secrets (`UI_KEY`/`API_KEY`)
