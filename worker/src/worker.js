@@ -898,6 +898,7 @@ export default {
         const cfg = await loadSysCfg_(env);
 
         const roleTitle = String(extracted?.role_title || existing.role_title || "").trim();
+        const company = String(extracted?.company || existing.company || "").trim();
         const location = String(extracted?.location || existing.location || "").trim();
         const seniority = String(extracted?.seniority || existing.seniority || "").trim();
 
@@ -909,6 +910,7 @@ export default {
           targets,
           cfg,
           jd_clean: jdText,
+          company,
           role_title: roleTitle,
           location,
           seniority,
@@ -1003,6 +1005,7 @@ export default {
             status: transition.status,
             final_score: finalScore,
             primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+            potential_contacts: Array.isArray(pipelineResult.potential_contacts) ? pipelineResult.potential_contacts : [],
           }
         }, env, 200);
       }
@@ -1056,6 +1059,7 @@ export default {
           targets,
           cfg,
           jd_clean: jdClean,
+          company,
           role_title: roleTitle,
           location,
           seniority,
@@ -1161,6 +1165,7 @@ export default {
             final_score: finalScore,
             status: transition.status,
             primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+            potential_contacts: Array.isArray(pipelineResult.potential_contacts) ? pipelineResult.potential_contacts : [],
           }
         }, env, 200);
       }
@@ -1220,6 +1225,7 @@ export default {
           targets,
           cfg,
           jd_clean: jdClean,
+          company,
           role_title: roleTitle,
           location,
           seniority,
@@ -1444,6 +1450,7 @@ export default {
               final_score: finalScore,
               status: transition.status,
               primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+              potential_contacts: Array.isArray(pipelineResult.potential_contacts) ? pipelineResult.potential_contacts : [],
             },
             pack: {
               draft_id: saved.draft_id,
@@ -2950,7 +2957,13 @@ export default {
           reject: safeJsonParseArray_(t.reject_keywords_json || t.reject_keywords || t.reject_keywords_json),
         })).filter((t) => t.id);
 
-        const scoring = await scoreJobWithModel_(ai, { role_title: roleTitle, location, seniority, jd_clean: jdClean }, targets, cfg);
+        const scoring = await scoreJobWithModel_(ai, {
+          role_title: roleTitle,
+          company: String(job.company || "").trim(),
+          location,
+          seniority,
+          jd_clean: jdClean,
+        }, targets, cfg);
         return json_({ ok: true, data: scoring }, env, 200);
       }
 
@@ -3556,6 +3569,13 @@ async function loadSysCfg_(env) {
   } catch {
     return defaults;
   }
+}
+
+function loadScoringHeuristicCfg_(env) {
+  return {
+    min_jd_chars: clampInt_(env?.SCORING_MIN_JD_CHARS ?? 120, 60, 2000),
+    min_target_signal: clampInt_(env?.SCORING_MIN_TARGET_SIGNAL ?? 8, 0, 100),
+  };
 }
 
 async function loadLatestResumeTailoringForEvidence_(env, jobKey) {
@@ -4752,6 +4772,7 @@ async function buildScoringRunsEfficiencyReport_(env, input = {}) {
   if (!env?.DB) return { enabled: false, error: "Missing D1 binding env.DB" };
 
   const enabled = await hasScoringRunsTable_(env);
+  const heuristicConfig = loadScoringHeuristicCfg_(env);
   const now = Date.now();
   const windowDays = clampInt_(input.window_days ?? input.windowDays ?? 14, 1, 180);
   const trendDays = clampInt_(input.trend_days ?? input.trendDays ?? Math.min(windowDays, 30), 1, 180);
@@ -4764,6 +4785,7 @@ async function buildScoringRunsEfficiencyReport_(env, input = {}) {
     return {
       enabled: false,
       source: source || null,
+      heuristic_config: heuristicConfig,
       window: { days: windowDays, start_at: windowStart, end_at: now },
       trend: { days: trendDays, start_at: trendStart, end_at: now },
       totals: {
@@ -4908,6 +4930,7 @@ async function buildScoringRunsEfficiencyReport_(env, input = {}) {
   return {
     enabled: true,
     source: source || null,
+    heuristic_config: heuristicConfig,
     window: { days: windowDays, start_at: windowStart, end_at: now },
     trend: { days: trendDays, start_at: trendStart, end_at: now },
     totals: {
@@ -4947,21 +4970,25 @@ async function runScoringPipelineForJob_(env, input = {}) {
 
   const jdClean = String(input.jd_clean || "").trim();
   const roleTitle = String(input.role_title || "").trim();
+  const company = String(input.company || "").trim();
   const location = String(input.location || "").trim();
   const seniority = String(input.seniority || "").trim();
   const blockedKeywords = collectHeuristicBlockedKeywords_(targets);
+  const heuristicCfg = loadScoringHeuristicCfg_(env);
 
   const pipeline = await runDomainScoringPipeline_({
+    company,
     role_title: roleTitle,
     location,
     seniority,
     jd_clean: jdClean,
     targets,
     blocked_keywords: blockedKeywords,
-    min_jd_chars: 120,
-    min_target_signal: 8,
+    min_jd_chars: heuristicCfg.min_jd_chars,
+    min_target_signal: heuristicCfg.min_target_signal,
     onAiReason: async () => {
       const scoring = await scoreJobWithModel_(ai, {
+        company,
         role_title: roleTitle,
         location,
         seniority,
@@ -4987,6 +5014,7 @@ async function runScoringPipelineForJob_(env, input = {}) {
       reject_reasons: heuristicReasons,
       reject_evidence: "",
       reason_top_matches: reasonTopMatches,
+      potential_contacts: [],
     };
 
     await persistScoringRun_(env, {
@@ -5006,6 +5034,7 @@ async function runScoringPipelineForJob_(env, input = {}) {
   }
 
   const scoring = pipeline?.scoring && typeof pipeline.scoring === "object" ? pipeline.scoring : {};
+  const potentialContacts = Array.isArray(scoring.potential_contacts) ? scoring.potential_contacts : [];
   const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
   const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
   const rejectReasons = [];
@@ -5034,6 +5063,15 @@ async function runScoringPipelineForJob_(env, input = {}) {
     created_at: Date.now(),
   });
 
+  if (potentialContacts.length) {
+    await logEvent_(env, "POTENTIAL_CONTACTS_IDENTIFIED", jobKey, {
+      source,
+      count: potentialContacts.length,
+      contacts: potentialContacts,
+      ts: Date.now(),
+    });
+  }
+
   return {
     pipeline,
     heuristic_rejected: false,
@@ -5046,6 +5084,7 @@ async function runScoringPipelineForJob_(env, input = {}) {
     reject_reasons: rejectReasons,
     reject_evidence: mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
     reason_top_matches: String(scoring.reason_top_matches || "").slice(0, 1000),
+    potential_contacts: potentialContacts,
   };
 }
 
@@ -5199,8 +5238,67 @@ function sanitizeExtracted_(raw, jdText, ctx = {}) {
   return out;
 }
 
+function sanitizePotentialContacts_(rawContacts, ctx = {}) {
+  const seedCompany = cleanHumanLabel_(String(ctx?.company || "").trim()).slice(0, 120);
+  const contacts = Array.isArray(rawContacts) ? rawContacts : [];
+  const out = [];
+  const seen = new Set();
+  const bannedNames = new Set([
+    "hiring manager",
+    "hiring team",
+    "head of engineering",
+    "head of product",
+    "head of marketing",
+    "talent acquisition",
+    "recruiter",
+    "hr team",
+  ]);
+
+  for (const row of contacts) {
+    const item = row && typeof row === "object" ? row : {};
+    const rawName = typeof row === "string"
+      ? row
+      : (item.name ?? item.full_name ?? item.person_name ?? item.contact_name ?? "");
+    const rawTitle = item.title ?? item.role ?? item.designation ?? "";
+    const rawContext = item.context_snippet ?? item.context ?? item.snippet ?? "";
+    const rawCompany = item.company ?? item.company_name ?? seedCompany;
+
+    const name = cleanHumanLabel_(String(rawName || "").trim()).slice(0, 120);
+    if (!name) continue;
+    if (name.length < 3) continue;
+    if (/\d/.test(name)) continue;
+    if (bannedNames.has(name.toLowerCase())) continue;
+
+    const tokenCount = name.split(/\s+/g).filter(Boolean).length;
+    if (tokenCount < 2 && !/^[A-Z][a-z]{3,}$/.test(name)) continue;
+
+    const title = cleanHumanLabel_(String(rawTitle || "").trim()).slice(0, 160);
+    const contextSnippet = String(rawContext || "").replace(/\s+/g, " ").trim().slice(0, 280);
+    const company = cleanHumanLabel_(String(rawCompany || "").trim()).slice(0, 120);
+    const confidence = clampInt_(item.confidence ?? item.score ?? 70, 0, 100);
+
+    const dedupeKey = `${name.toLowerCase()}|${title.toLowerCase()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    out.push({
+      name,
+      title,
+      company: company || seedCompany || "",
+      context_snippet: contextSnippet,
+      confidence,
+      source: "jd_mention",
+    });
+
+    if (out.length >= 5) break;
+  }
+
+  return out;
+}
+
 async function scoreJobWithModel_(ai, job, targets, cfg) {
   const roleTitle = String(job.role_title || "").trim();
+  const company = String(job.company || "").trim();
   const location = String(job.location || "").trim();
   const seniority = String(job.seniority || "").trim();
   const jdClean = String(job.jd_clean || "").trim();
@@ -5219,7 +5317,15 @@ OUTPUT JSON EXACTLY IN THIS FORMAT:
   "score_nice": number,       // 0-100
   "final_score": number,      // 0-100
   "reject_triggered": boolean,
-  "reason_top_matches": string
+  "reason_top_matches": string,
+  "potential_contacts": [
+    {
+      "name": string,
+      "title": string,
+      "context_snippet": string,
+      "confidence": number
+    }
+  ]
 }
 
 Rules:
@@ -5230,9 +5336,14 @@ Rules:
   where signal_score (0-100) measures JD clarity/structure.
 - Do not invent facts; base only on provided text.
 - If you see explicit disqualifiers, set reject_triggered=true and mention why in reason_top_matches.
+- potential_contacts:
+  - include only people explicitly mentioned in JD/company context
+  - if no specific person is mentioned, return []
+  - never fabricate names
 
 JOB:
 {
+  "company": ${jsonString_(company)},
   "role_title": ${jsonString_(roleTitle)},
   "location": ${jsonString_(location)},
   "seniority": ${jsonString_(seniority)},
@@ -5258,6 +5369,7 @@ ${JSON.stringify(targets.map(t => ({
   const parsed = safeJsonParse_(raw);
   if (!parsed) throw new Error("Model returned invalid JSON");
   const usage = pickModelUsage_(result);
+  const potentialContacts = sanitizePotentialContacts_(parsed.potential_contacts, { company });
 
   return {
     primary_target_id: String(parsed.primary_target_id || "").trim() || cfg.DEFAULT_TARGET_ID,
@@ -5266,6 +5378,7 @@ ${JSON.stringify(targets.map(t => ({
     final_score: clampInt_(parsed.final_score, 0, 100),
     reject_triggered: Boolean(parsed.reject_triggered),
     reason_top_matches: String(parsed.reason_top_matches || "").slice(0, 1000),
+    potential_contacts: potentialContacts,
     _meta: {
       model: "@cf/meta/llama-3.1-8b-instruct",
       usage,
@@ -5947,6 +6060,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
           targets,
           cfg,
           jd_clean: jdText,
+          company: String(extracted?.company || "").trim(),
           role_title: roleTitleForScore,
           location: locationForScore,
           seniority: seniorityForScore,
@@ -6135,7 +6249,8 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
       fallback_reason: fallbackDecision.reason,
       fallback_policy: fallbackDecision.policy?.label || "default",
       final_score: finalScore,
-      primary_target_id: pipelineResult?.primary_target_id || null
+      primary_target_id: pipelineResult?.primary_target_id || null,
+      potential_contacts: Array.isArray(pipelineResult?.potential_contacts) ? pipelineResult.potential_contacts : [],
     });
   }
 
@@ -6320,6 +6435,7 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
         targets,
         cfg,
         jd_clean: jdClean,
+        company,
         role_title: roleTitle,
         location,
         seniority,
@@ -6393,7 +6509,8 @@ async function runScorePending_(env, ai, body = {}, opts = {}) {
         ok: true,
         final_score: finalScore,
         status: transition.status,
-        primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID
+        primary_target_id: pipelineResult.primary_target_id || cfg.DEFAULT_TARGET_ID,
+        potential_contacts: Array.isArray(pipelineResult.potential_contacts) ? pipelineResult.potential_contacts : [],
       });
     } catch (e) {
       results.push({ job_key: j.job_key, ok: false, error: String(e?.message || e) });

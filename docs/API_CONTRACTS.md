@@ -234,7 +234,7 @@ Auth headers:
 ### POST /score-jd
 - Auth: `x-api-key`
 - Body: `{ "job":{...}, "targets":[...], "cfg":{...} }`
-- Response: `{primary_target_id,score_must,score_nice,final_score,reject_triggered,reason_top_matches}`.
+- Response: `{primary_target_id,score_must,score_nice,final_score,reject_triggered,reason_top_matches,potential_contacts[]}`.
 
 ### GET /admin/scoring-runs/report
 - Auth: `x-api-key`
@@ -244,6 +244,7 @@ Auth headers:
   - `stage_sample_limit` (default `1500`, range `50..5000`)
   - `source` (example: `score_pending`, `rescore`, `manual_jd`)
 - Response:
+  - `heuristic_config.{min_jd_chars,min_target_signal}`
   - `totals.total_runs`
   - `heuristic_reject_rate.percent`
   - `latency_ms.stage_avg_latency_ms`

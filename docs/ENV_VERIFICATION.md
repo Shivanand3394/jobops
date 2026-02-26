@@ -43,6 +43,8 @@ Source: `worker/wrangler.jsonc`
 - `vars.RECOVERY_ENABLED`: optional (`1` default, set `0` to disable cron recovery)
 - `vars.RECOVER_BACKFILL_LIMIT`: optional (default `30`)
 - `vars.RECOVER_RESCORE_LIMIT`: optional (default `30`)
+- `vars.SCORING_MIN_JD_CHARS`: optional (default `120`, range `60..2000`)
+- `vars.SCORING_MIN_TARGET_SIGNAL`: optional (default `8`, range `0..100`)
 - `vars.ALLOW_ORIGIN`: present
 
 ### If missing, what to do
@@ -250,7 +252,8 @@ PRAGMA table_info(jobs);
 1. Run `wrangler whoami`, `wrangler secret list`, `wrangler d1 list`.
 2. Confirm secret names exist: `API_KEY`, `UI_KEY`, `GMAIL_CLIENT_SECRET`, `TOKEN_ENC_KEY`.
 3. Confirm vars exist: `ALLOW_ORIGIN`, `GMAIL_CLIENT_ID`, `GMAIL_QUERY`, `GMAIL_MAX_PER_RUN` (and `RR_BASE_URL` if using RR bridge).
-4. Confirm secrets exist: `API_KEY`, `UI_KEY`, `GMAIL_CLIENT_SECRET`, `TOKEN_ENC_KEY` (and `RR_KEY` if using RR bridge).
-5. Run `/health`, `/jobs?limit=1`, `/gmail/auth`, `/gmail/poll` checks.
-6. If RR bridge is enabled, run `/resume/rr/health`.
-7. If failures occur, use troubleshooting table and retest.
+4. Optional scoring gate vars: `SCORING_MIN_JD_CHARS`, `SCORING_MIN_TARGET_SIGNAL` (used by `/admin/scoring-runs/report` as `heuristic_config` context).
+5. Confirm secrets exist: `API_KEY`, `UI_KEY`, `GMAIL_CLIENT_SECRET`, `TOKEN_ENC_KEY` (and `RR_KEY` if using RR bridge).
+6. Run `/health`, `/jobs?limit=1`, `/gmail/auth`, `/gmail/poll` checks.
+7. If RR bridge is enabled, run `/resume/rr/health`.
+8. If failures occur, use troubleshooting table and retest.

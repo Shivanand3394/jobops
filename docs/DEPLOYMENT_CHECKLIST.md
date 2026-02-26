@@ -11,6 +11,8 @@ Required Worker secrets/vars in Cloudflare:
 - `UI_KEY` (UI auth)
 - `API_KEY` (admin/api auth)
 - `ALLOW_ORIGIN` (production: `https://getjobs.shivanand-shah94.workers.dev`)
+- `SCORING_MIN_JD_CHARS` (optional, default `120`)
+- `SCORING_MIN_TARGET_SIGNAL` (optional, default `8`)
 - AI binding:
   - preferred binding name: `AI`
   - or set `AI_BINDING` to another binding name
