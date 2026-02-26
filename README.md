@@ -32,6 +32,7 @@ DB schema baseline:
 From current Worker routing:
 - UI-auth group includes `/jobs*`, `/ingest`, `/score-pending`, `/targets*`
 - Public ingest webhook: `/ingest/whatsapp/vonage` (gated by `WHATSAPP_VONAGE_KEY`; optionally JWT-verified with `WHATSAPP_VONAGE_SIGNATURE_SECRET`; optional sender allowlist via `WHATSAPP_VONAGE_ALLOWED_SENDERS`)
+  - Media-aware behavior: document/image payloads are detected. If no URL can be ingested directly, Worker records a queued media extraction event (`WHATSAPP_VONAGE_MEDIA_QUEUED`) and returns `200` without failing the webhook.
 - Admin-auth group includes `/normalize-job`, `/resolve-jd`, `/extract-jd`, `/score-jd`
 - `/score-pending` is implemented to accept either valid UI key or API key
 
@@ -137,6 +138,12 @@ Optional: restrict webhook to known sender IDs (comma/newline list):
 
 ```bash
 wrangler secret put WHATSAPP_VONAGE_ALLOWED_SENDERS
+```
+
+Optional (future extractor integration): configure media extractor endpoint for WhatsApp attachments:
+
+```bash
+wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_URL
 ```
 
 ### UI

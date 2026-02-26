@@ -3378,20 +3378,78 @@ export default {
         const emailHtml = typeof processed?.ingest_input?.email_html === "string" ? processed.ingest_input.email_html : "";
         const emailSubject = typeof processed?.ingest_input?.email_subject === "string" ? processed.ingest_input.email_subject : "";
         const emailFrom = typeof processed?.ingest_input?.email_from === "string" ? processed.ingest_input.email_from : "";
+        const mediaMetaRaw = (processed?.metadata?.media && typeof processed.metadata.media === "object")
+          ? processed.metadata.media
+          : {};
+        const mediaDetected = toBool_(mediaMetaRaw?.present, false);
+        const mediaUrl = String(mediaMetaRaw?.url || "").trim();
+        const mediaType = String(mediaMetaRaw?.type || "").trim().toLowerCase();
+        const mediaMimeType = String(mediaMetaRaw?.mime_type || "").trim().toLowerCase();
+        const mediaFileName = String(mediaMetaRaw?.file_name || "").trim();
+        const mediaCaption = String(mediaMetaRaw?.caption || "").trim();
+        const mediaSizeIn = mediaMetaRaw?.size_bytes;
+        const mediaSizeBytes = (mediaSizeIn === null || mediaSizeIn === undefined || mediaSizeIn === "")
+          ? null
+          : (Number.isFinite(Number(mediaSizeIn)) ? Math.max(0, Math.floor(Number(mediaSizeIn))) : null);
+        const mediaSummary = mediaDetected
+          ? {
+            type: mediaType || null,
+            mime_type: mediaMimeType || null,
+            file_name: mediaFileName || null,
+            size_bytes: mediaSizeBytes,
+            caption_preview: mediaCaption ? mediaCaption.slice(0, 200) : null,
+            url_host: sourceDomainFromUrl_(mediaUrl) || null,
+          }
+          : null;
+        const mediaNeedsExtraction = mediaDetected && rawUrls.length === 0;
+        const extractorConfigured = Boolean(String(env.WHATSAPP_MEDIA_EXTRACTOR_URL || "").trim());
 
         const runWebhookIngest = async () => {
-          await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
-            route: "/ingest/whatsapp/vonage",
-            source: "WHATSAPP_VONAGE",
-          });
-          const data = await ingestRawUrls_(env, {
-            rawUrls,
-            emailText,
-            emailHtml,
-            emailSubject,
-            emailFrom,
-            ingestChannel: "whatsapp_vonage",
-          });
+          if (!mediaNeedsExtraction) {
+            await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
+              route: "/ingest/whatsapp/vonage",
+              source: "WHATSAPP_VONAGE",
+            });
+          }
+
+          const data = rawUrls.length
+            ? await ingestRawUrls_(env, {
+              rawUrls,
+              emailText,
+              emailHtml,
+              emailSubject,
+              emailFrom,
+              ingestChannel: "whatsapp_vonage",
+            })
+            : {
+              count_in: 0,
+              inserted_or_updated: 0,
+              inserted_count: 0,
+              updated_count: 0,
+              ignored: 0,
+              link_only: 0,
+              results: [],
+              source_summary: [],
+            };
+
+          if (mediaNeedsExtraction) {
+            await logEvent_(env, "WHATSAPP_VONAGE_MEDIA_QUEUED", null, {
+              message_id: messageId,
+              route: "/ingest/whatsapp/vonage",
+              sender: sender || null,
+              media_type: mediaType || null,
+              media_mime_type: mediaMimeType || null,
+              media_file_name: mediaFileName || null,
+              media_size_bytes: mediaSizeBytes,
+              media_url: mediaUrl || null,
+              media_url_host: sourceDomainFromUrl_(mediaUrl) || null,
+              extractor_configured: extractorConfigured,
+              extraction_status: extractorConfigured ? "queued" : "queued_unconfigured",
+              source_health,
+              ts: Date.now(),
+            });
+          }
+
           await logEvent_(env, "WHATSAPP_VONAGE_INGEST", null, {
             message_id: messageId,
             route: "/ingest/whatsapp/vonage",
@@ -3399,6 +3457,14 @@ export default {
             inserted_or_updated: data?.inserted_or_updated || 0,
             ignored: data?.ignored || 0,
             link_only: data?.link_only || 0,
+            media_detected: mediaDetected,
+            media_queued_for_extraction: mediaNeedsExtraction,
+            media_type: mediaType || null,
+            media_mime_type: mediaMimeType || null,
+            media_file_name: mediaFileName || null,
+            extraction_status: mediaNeedsExtraction
+              ? (extractorConfigured ? "queued" : "queued_unconfigured")
+              : null,
             signature_verified: Boolean(signatureCheck.enabled),
             signature_mode: signatureCheck.mode || "disabled",
             signature_issuer: String(signatureCheck?.claims?.iss || "").trim() || null,
@@ -3421,6 +3487,20 @@ export default {
             sender_whitelist_enabled: allowedSenders.length > 0,
             signature_verified: Boolean(signatureCheck.enabled),
             source_health: sourceHealth,
+            media_detected: mediaDetected,
+            media_queued_for_extraction: mediaNeedsExtraction,
+            media: mediaSummary,
+            extraction: mediaNeedsExtraction
+              ? {
+                queued: true,
+                configured: extractorConfigured,
+                status: extractorConfigured ? "queued" : "queued_unconfigured",
+              }
+              : {
+                queued: false,
+                configured: extractorConfigured,
+                status: "not_applicable",
+              },
           },
         };
 
@@ -3451,6 +3531,20 @@ export default {
             sender_whitelist_enabled: allowedSenders.length > 0,
             signature_verified: Boolean(signatureCheck.enabled),
             source_health: sourceHealth,
+            media_detected: mediaDetected,
+            media_queued_for_extraction: mediaNeedsExtraction,
+            media: mediaSummary,
+            extraction: mediaNeedsExtraction
+              ? {
+                queued: true,
+                configured: extractorConfigured,
+                status: extractorConfigured ? "queued" : "queued_unconfigured",
+              }
+              : {
+                queued: false,
+                configured: extractorConfigured,
+                status: "not_applicable",
+              },
             ingest: data,
           },
         }, env, 200);

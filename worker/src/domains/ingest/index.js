@@ -60,6 +60,9 @@ export function processIngest(payload = {}, source = "MANUAL") {
   const passthrough = (adapted?.passthrough && typeof adapted.passthrough === "object")
     ? adapted.passthrough
     : {};
+  const metadata = (adapted?.metadata && typeof adapted.metadata === "object")
+    ? adapted.metadata
+    : {};
 
   const envelopes = canonicalJobs.map((job, idx) => buildCandidateIngestEnvelope_({
     source: normalizedSource,
@@ -92,6 +95,7 @@ export function processIngest(payload = {}, source = "MANUAL") {
       email_subject: typeof passthrough.email_subject === "string" ? passthrough.email_subject : "",
       email_from: typeof passthrough.email_from === "string" ? passthrough.email_from : "",
     },
+    metadata,
   };
 }
 
