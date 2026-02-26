@@ -261,7 +261,7 @@ body{
   border-radius:14px;
   background: rgba(17,28,51,.55);
   margin-bottom:12px;
-  padding:10px;
+  padding:10px 10px 78px;
 }
 
 .workspace-tabbar{
@@ -370,6 +370,88 @@ body{
   margin-top:6px;
 }
 
+.advanced-drawer{
+  margin-top:10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background: linear-gradient(180deg, rgba(15,26,48,.72), rgba(10,18,34,.78));
+  overflow:hidden;
+}
+
+.advanced-drawer > summary{
+  cursor:pointer;
+  padding:10px 12px;
+  user-select:none;
+  color:var(--muted);
+  font-size:12px;
+  list-style:none;
+}
+
+.advanced-drawer > summary::-webkit-details-marker{
+  display:none;
+}
+
+.advanced-drawer > summary::after{
+  content:"Open";
+  float:right;
+  font-size:11px;
+  color:var(--text);
+  opacity:.72;
+}
+
+.advanced-drawer[open] > summary::after{
+  content:"Close";
+}
+
+.advanced-drawer-body{
+  border-top:1px solid var(--line);
+  padding:10px;
+  display:grid;
+  gap:10px;
+}
+
+.wizard-sticky-bar{
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top:12px;
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background: rgba(8,13,25,.92);
+  backdrop-filter: blur(10px);
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+.wizard-sticky-bar .btn{
+  min-width: 160px;
+}
+
+.wizard-kv-compact{
+  margin-top:10px;
+}
+
+.pitch-hero-wrap{
+  width:min(80vw, 980px);
+  max-width:100%;
+}
+
+.pitch-hero{
+  width:100%;
+  min-height:320px;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  line-height:1.6;
+  font-size:15px;
+}
+
+.btn-success{
+  background: linear-gradient(180deg, rgba(34,197,94,1), rgba(22,163,74,1));
+  border-color: rgba(34,197,94,.8);
+  box-shadow: 0 8px 18px rgba(34,197,94,.25);
+}
+
 body.pdf-ready-mode .topbar,
 body.pdf-ready-mode .notice,
 body.pdf-ready-mode .panel-left,
@@ -398,6 +480,7 @@ body.pdf-ready-mode .panel-right{
 
 #appPackSection.pdf-ready .next-action-card,
 #appPackSection.pdf-ready .wizard-progress,
+#appPackSection.pdf-ready #wizardStickyBar,
 #appPackSection.pdf-ready [data-wizard-pane]:not([data-wizard-pane="finish"]){
   display:none !important;
 }
@@ -406,7 +489,7 @@ body.pdf-ready-mode .panel-right{
   display:block !important;
   border:none;
   background: transparent;
-  padding:0;
+  padding:0 0 10px;
 }
 
 #appPackSection.pdf-ready [data-wizard-pane="finish"] .actions-grid{
@@ -908,6 +991,21 @@ textarea, input{
   }
   .tracking-col-body{
     max-height: 54vh;
+  }
+  .wizard-sticky-bar{
+    left:0;
+    right:0;
+    justify-content:stretch;
+  }
+  .wizard-sticky-bar .btn{
+    flex:1;
+    min-width:0;
+  }
+  .pitch-hero-wrap{
+    width:100%;
+  }
+  .pitch-hero{
+    min-height:260px;
   }
   .mobile-quick-actions{
     position: fixed;

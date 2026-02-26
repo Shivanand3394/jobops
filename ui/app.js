@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-26-resume-wizard-v2";
+const UI_BUILD_ID = "2026-02-26-resume-wizard-v3";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -934,6 +934,7 @@ function setWizardStep_(stepName, opts = {}) {
   if (persist && jobKey) {
     saveWizardStepPref_(jobKey, step);
   }
+  syncWizardStickyCta_();
 }
 
 function resolveWizardStep_(job, packStatus = "") {
@@ -992,7 +993,7 @@ async function runNextAction() {
   if (!action) return;
   if (action === "go_jd") {
     setWizardStep_("matches");
-    $("jdCurrentText")?.focus();
+    openWizardAdvancedDrawer_({ focusJd: true });
     return;
   }
   if (action === "go_action") return;
@@ -1008,6 +1009,64 @@ async function runNextAction() {
     await generateApplicationPack(jobKey, false);
     return;
   }
+}
+
+function openWizardAdvancedDrawer_({ focusJd = false } = {}) {
+  const drawer = $("wizardAdvancedDrawer");
+  if (drawer) {
+    drawer.open = true;
+    drawer.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  if (focusJd) $("jdCurrentText")?.focus();
+}
+
+function syncWizardStickyCta_() {
+  const section = $("appPackSection");
+  const bar = $("wizardStickyBar");
+  const primary = $("wizardStickyPrimary");
+  const secondary = $("wizardStickySecondary");
+  if (!section || !bar || !primary || !secondary) return;
+
+  const jobKey = String(state.activeJob?.job_key || "").trim();
+  if (!jobKey) {
+    bar.classList.add("hidden");
+    return;
+  }
+
+  const step = normalizeWizardStep_(section.dataset.wizardStep || "matches");
+  bar.classList.remove("hidden");
+  primary.classList.remove("btn-success");
+  primary.disabled = false;
+  secondary.disabled = false;
+
+  if (step === "matches") {
+    const needsManual = String(state.activeJob?.system_status || "").trim().toUpperCase() === "NEEDS_MANUAL_JD";
+    if (needsManual) {
+      primary.textContent = "Fix JD First";
+      primary.onclick = () => openWizardAdvancedDrawer_({ focusJd: true });
+      secondary.textContent = "Rescore";
+      secondary.onclick = () => rescoreOne(jobKey);
+      return;
+    }
+    primary.textContent = "Generate Pitch";
+    primary.onclick = () => autoPilotJob(jobKey, { force: false });
+    secondary.textContent = "Open Advanced";
+    secondary.onclick = () => openWizardAdvancedDrawer_({ focusJd: false });
+    return;
+  }
+
+  if (step === "pitch") {
+    primary.textContent = "Approve";
+    primary.onclick = () => approveWizardPack();
+    secondary.textContent = "Save Draft";
+    secondary.onclick = () => saveWizardDraft();
+    return;
+  }
+
+  primary.textContent = "Copy Cover Letter";
+  primary.onclick = () => copyWizardCoverLetter(primary);
+  secondary.textContent = "Mark APPLIED";
+  secondary.onclick = () => updateStatus(jobKey, "APPLIED");
 }
 
 function renderDetail(j) {
@@ -1097,39 +1156,63 @@ function renderDetail(j) {
       <div class="workspace-pane" data-wizard-pane="matches">
         <div class="workspace-pane-head">
           <div class="h3">Matches</div>
-          <div class="muted tiny">Fix JD if needed, then generate the pitch.</div>
+          <div class="muted tiny">Use the fastest path: Generate Pitch, then approve and copy.</div>
         </div>
-        <textarea id="jdCurrentText" rows="12" placeholder="Paste JD text here...">${escapeHtml(jdText)}</textarea>
-        <div class="row" style="justify-content:flex-start; margin-top:10px;">
-          <button class="btn" onclick="autoPilotJob('${escapeHtml(j.job_key)}', { force: false })">Generate Pitch</button>
-          <button class="btn btn-secondary" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save JD & Rescore</button>
-          <button class="btn btn-ghost" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
-        </div>
-      </div>
-
-      <div class="workspace-pane" data-wizard-pane="matches">
         <div id="appMatchSummary" class="muted tiny">Loading match summary...</div>
         <div id="appMatchChips" class="meta"></div>
-        <div class="kv">
+        <div class="kv wizard-kv-compact">
           <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
-          <div class="k">Evidence map</div><div class="v"><div id="evidence-container" class="evidence-container"><div class="muted tiny">Loading evidence...</div></div></div>
-          <div class="k">Evidence actions</div><div class="v"><button class="btn btn-ghost" type="button" onclick="rebuildEvidence('${escapeHtml(j.job_key)}')">Rebuild Evidence</button></div>
           <div class="k">Target rubric score</div><div class="v" id="appTargetRubricScore">-</div>
-          <div class="k">Target evidence gaps</div><div class="v" id="appTargetRubricGaps">-</div>
           <div class="k">RR import</div><div class="v" id="appRrImportStatus">-</div>
-          <div class="k">RR import issues</div><div class="v" id="appRrImportErrors">-</div>
-          <div class="k">RR resume id</div><div class="v" id="appRrResumeId">-</div>
-          <div class="k">RR push status</div><div class="v" id="appRrPushStatus">-</div>
-          <div class="k">RR last pushed</div><div class="v" id="appRrLastPushed">-</div>
-          <div class="k">RR dashboard</div><div class="v"><a class="muted" id="appRrDashboardLink" href="#" target="_blank" rel="noopener">-</a></div>
-          <div class="k">RR PDF status</div><div class="v" id="appRrPdfStatus">-</div>
-          <div class="k">RR PDF exported</div><div class="v" id="appRrPdfExported">-</div>
           <div class="k">PDF readiness</div><div class="v" id="appPdfReadyStatus">-</div>
-          <div class="k">PDF blockers</div><div class="v" id="appPdfReadyIssues">-</div>
           <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
-          <div class="k">Keyword selection</div><div class="v">
+        </div>
+      </div>
+
+      <div class="workspace-pane hidden" data-wizard-pane="pitch">
+        <div class="workspace-pane-head">
+          <div class="h3">Pitch</div>
+          <div class="muted tiny">Edit quickly, then approve from the sticky action bar.</div>
+        </div>
+        <label class="muted tiny">Summary</label>
+        <textarea id="wizardSummary" rows="4" placeholder="Tailored summary"></textarea>
+        <label class="muted tiny" style="margin-top:8px;">Cover letter</label>
+        <div class="pitch-hero-wrap">
+          <textarea id="wizardCoverLetter" class="pitch-hero" rows="14" placeholder="Tailored cover letter"></textarea>
+        </div>
+      </div>
+
+      <div class="workspace-pane hidden" data-wizard-pane="finish">
+        <div class="h3">Finish</div>
+        <div class="muted tiny" style="margin-top:4px;">Copy and apply. Use PDF-ready when you want print output.</div>
+        <div class="kv" style="margin-top:10px;">
+          <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="10" readonly placeholder="Final letter appears here"></textarea></div>
+          <div class="k">Pack status</div><div class="v" id="wizardFinishStatus">-</div>
+        </div>
+        <div class="actions-grid wizard-finish-actions" style="margin-top:10px;">
+          <button class="btn btn-ghost" id="btnPdfReadyToggle" onclick="togglePdfReadyMode()">PDF-ready view</button>
+          <button class="btn btn-ghost" onclick="printPdfReadyView()">Print / Save PDF</button>
+        </div>
+      </div>
+
+      <details id="wizardAdvancedDrawer" class="advanced-drawer">
+        <summary>Advanced diagnostics, profile/template controls, and exports</summary>
+        <div class="advanced-drawer-body">
+          <div class="resume-step">
+            <div class="h3">Manual JD and recovery</div>
+            <div class="muted tiny">${escapeHtml(jdHint)}</div>
+            <textarea id="jdCurrentText" rows="10" placeholder="Paste JD text here...">${escapeHtml(jdText)}</textarea>
+            <div class="row" style="justify-content:flex-start; margin-top:10px;">
+              <button class="btn btn-secondary" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save JD & Rescore</button>
+              <button class="btn btn-ghost" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
+              <button class="btn btn-ghost" type="button" onclick="rebuildEvidence('${escapeHtml(j.job_key)}')">Rebuild Evidence</button>
+            </div>
+          </div>
+
+          <div class="resume-step">
+            <div class="h3">Keyword selection</div>
             <div class="row" style="justify-content:flex-start; margin-top:0;">
               <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('all')">Select all</button>
               <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('must')">Must</button>
@@ -1138,41 +1221,34 @@ function renderDetail(j) {
             </div>
             <div id="appKeywordPicker" class="kw-grid"></div>
           </div>
-        </div>
-      </div>
 
-      <div class="workspace-pane hidden" data-wizard-pane="pitch">
-        <div class="workspace-pane-head">
-          <div class="h3">Pitch</div>
-          <div class="muted tiny">Review and edit before approving.</div>
-        </div>
-        <label class="muted tiny">Summary</label>
-        <textarea id="wizardSummary" rows="4" placeholder="Tailored summary"></textarea>
-        <label class="muted tiny" style="margin-top:8px;">Cover letter</label>
-        <textarea id="wizardCoverLetter" rows="10" placeholder="Tailored cover letter"></textarea>
-        <div class="row" style="justify-content:flex-start; margin-top:8px;">
-          <button class="btn btn-secondary" onclick="saveWizardDraft()">Save Draft</button>
-          <button class="btn" onclick="approveWizardPack()">Approve</button>
-        </div>
-        <details class="advanced-panel" style="margin-top:10px;">
-          <summary>Advanced options</summary>
-          <div class="advanced-body">
-        <div class="resume-flow">
           <div class="resume-step">
-            <div class="h3">1) Choose template</div>
-            <div class="muted tiny">Pick your base format and save variants when needed.</div>
-            <select id="appTemplateSelect"></select>
+            <div class="h3">Diagnostics</div>
+            <div class="kv">
+              <div class="k">Evidence map</div><div class="v"><div id="evidence-container" class="evidence-container"><div class="muted tiny">Loading evidence...</div></div></div>
+              <div class="k">Target evidence gaps</div><div class="v" id="appTargetRubricGaps">-</div>
+              <div class="k">RR import issues</div><div class="v" id="appRrImportErrors">-</div>
+              <div class="k">RR resume id</div><div class="v" id="appRrResumeId">-</div>
+              <div class="k">RR push status</div><div class="v" id="appRrPushStatus">-</div>
+              <div class="k">RR last pushed</div><div class="v" id="appRrLastPushed">-</div>
+              <div class="k">RR dashboard</div><div class="v"><a class="muted" id="appRrDashboardLink" href="#" target="_blank" rel="noopener">-</a></div>
+              <div class="k">RR PDF status</div><div class="v" id="appRrPdfStatus">-</div>
+              <div class="k">RR PDF exported</div><div class="v" id="appRrPdfExported">-</div>
+              <div class="k">PDF blockers</div><div class="v" id="appPdfReadyIssues">-</div>
+            </div>
+          </div>
+
+          <div class="resume-step">
+            <div class="h3">Template and profile controls</div>
+            <div class="muted tiny">Use defaults unless you are tuning output behavior.</div>
+            <label class="muted tiny">Template</label>
+            <select id="appTemplateSelect" style="margin-top:6px;"></select>
             <input id="appTemplateName" placeholder="Template name" style="margin-top:8px;" />
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn btn-ghost" type="button" onclick="saveResumeTemplateFromUi()">Save Template</button>
               <button class="btn btn-ghost" type="button" onclick="deleteResumeTemplateFromUi()">Delete Template</button>
             </div>
-          </div>
-
-          <div class="resume-step">
-            <div class="h3">2) Configure output</div>
-            <div class="muted tiny">Choose renderer, keyword mode, and resume blocks.</div>
-            <label class="muted tiny">Renderer</label>
+            <label class="muted tiny" style="margin-top:8px;">Renderer</label>
             <select id="appRenderer" style="margin-top:6px;">
               <option value="reactive_resume">reactive_resume</option>
               <option value="html_simple">html_simple</option>
@@ -1195,11 +1271,21 @@ function renderDetail(j) {
               <label><input type="checkbox" id="blkHighlights" checked /> Highlights</label>
               <label><input type="checkbox" id="blkBullets" checked /> Tailored bullets</label>
             </div>
+            <label class="muted tiny" style="margin-top:8px;">Profile</label>
+            <select id="appProfileSelect" style="margin-top:6px;"></select>
+            <label class="muted tiny" style="margin-top:8px;">Profile ID</label>
+            <input id="appProfileId" placeholder="primary" style="margin-top:6px;" />
+            <label class="muted tiny" style="margin-top:8px;">Profile name</label>
+            <input id="appProfileName" placeholder="Primary" style="margin-top:6px;" />
+            <label class="muted tiny" style="margin-top:8px;">Profile JSON</label>
+            <textarea id="appProfileJson" rows="6" style="margin-top:6px;" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea>
+            <div class="row" style="justify-content:flex-start; margin-top:8px;">
+              <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
+            </div>
           </div>
 
           <div class="resume-step">
-            <div class="h3">3) Generate and export</div>
-            <div class="muted tiny">Generate tailored content and export to Reactive Resume JSON.</div>
+            <div class="h3">Generation, export, and status shortcuts</div>
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
               <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
@@ -1212,51 +1298,18 @@ function renderDetail(j) {
             <div class="row" style="justify-content:flex-start; margin-top:8px;">
               <button class="btn btn-ghost" onclick="copyPackSummary()">Copy tailored summary</button>
               <button class="btn btn-ghost" onclick="copyPackBullets()">Copy tailored bullets</button>
+              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','APPLIED')">Mark APPLIED</button>
+              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','SHORTLISTED')">Mark SHORTLISTED</button>
+              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','REJECTED')">Mark REJECTED</button>
+              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','ARCHIVED')">Mark ARCHIVED</button>
             </div>
           </div>
+        </div>
+      </details>
 
-          <div class="resume-step">
-            <div class="h3">Profile</div>
-            <div class="muted tiny">Select the profile used for generation. Open advanced editor only when needed.</div>
-            <label class="muted tiny">Profile</label>
-            <select id="appProfileSelect" style="margin-top:6px;"></select>
-            <details id="appProfileAdvanced" class="advanced-panel">
-              <summary>Advanced profile editor</summary>
-              <div class="advanced-body">
-                <label class="muted tiny" style="margin-top:8px;">Profile ID</label>
-                <input id="appProfileId" placeholder="primary" style="margin-top:6px;" />
-                <label class="muted tiny" style="margin-top:8px;">Profile name</label>
-                <input id="appProfileName" placeholder="Primary" style="margin-top:6px;" />
-                <label class="muted tiny" style="margin-top:8px;">Profile JSON</label>
-                <textarea id="appProfileJson" rows="6" style="margin-top:6px;" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea>
-                <div class="row" style="justify-content:flex-start; margin-top:8px;">
-                  <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
-                </div>
-              </div>
-            </details>
-          </div>
-        </div>
-          </div>
-        </details>
-      </div>
-
-      <div class="workspace-pane hidden" data-wizard-pane="finish">
-        <div class="h3">Finish</div>
-        <div class="muted tiny" style="margin-top:4px;">Copy final letter and apply.</div>
-        <div class="kv" style="margin-top:10px;">
-          <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="8" readonly placeholder="Final letter appears here"></textarea></div>
-          <div class="k">Pack status</div><div class="v" id="wizardFinishStatus">-</div>
-        </div>
-        <div class="actions-grid" style="margin-top:10px;">
-          <button class="btn" onclick="copyWizardCoverLetter()">Copy Cover Letter</button>
-          <button class="btn btn-ghost" id="btnPdfReadyToggle" onclick="togglePdfReadyMode()">PDF-ready view</button>
-          <button class="btn btn-ghost" onclick="printPdfReadyView()">Print / Save PDF</button>
-          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','APPLIED')">Mark APPLIED</button>
-          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','SHORTLISTED')">Mark SHORTLISTED</button>
-          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','REJECTED')">Mark REJECTED</button>
-          <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','ARCHIVED')">Mark ARCHIVED</button>
-          <button class="btn" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
-        </div>
+      <div id="wizardStickyBar" class="wizard-sticky-bar hidden">
+        <button id="wizardStickySecondary" class="btn btn-ghost" type="button">Save Draft</button>
+        <button id="wizardStickyPrimary" class="btn" type="button">Generate Pitch</button>
       </div>
   `;
   if (window.location.hostname.includes("workers.dev")) {
@@ -2475,12 +2528,27 @@ async function approveWizardPack() {
   }
 }
 
-async function copyWizardCoverLetter() {
+function flashCopiedState_(btn) {
+  if (!(btn instanceof HTMLElement)) return;
+  const originalText = btn.textContent;
+  btn.textContent = "Copied!";
+  btn.classList.add("btn-success");
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.classList.remove("btn-success");
+    btn.disabled = false;
+    syncWizardStickyCta_();
+    if (btn.textContent === "Copied!") btn.textContent = originalText;
+  }, 1200);
+}
+
+async function copyWizardCoverLetter(sourceBtn = null) {
   const letter = String($("wizardFinalLetter")?.value || $("wizardCoverLetter")?.value || $("appPackSection")?.dataset?.packCoverLetter || "").trim();
   if (!letter) return toast("No cover letter available", { kind: "error" });
   try {
     await navigator.clipboard.writeText(letter);
     toast("Cover letter copied");
+    flashCopiedState_(sourceBtn || $("wizardStickyPrimary"));
   } catch {
     toast("Copy failed", { kind: "error" });
   }
