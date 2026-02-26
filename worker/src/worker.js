@@ -116,6 +116,7 @@ export default {
         path === "/ingest" ||
         path === "/jobs" ||
         path === "/metrics" ||
+        path === "/dashboard/triage" ||
         path.startsWith("/jobs/") ||
         path === "/targets" ||
         path.startsWith("/targets/") ||
@@ -373,6 +374,19 @@ export default {
       // ============================
       if (path === "/metrics" && request.method === "GET") {
         const data = await loadUiMetrics_(env);
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      if (path === "/dashboard/triage" && request.method === "GET") {
+        const staleDays = clampInt_(url.searchParams.get("stale_days") || 3, 1, 21);
+        const limit = clampInt_(url.searchParams.get("limit") || 80, 5, 200);
+        const goldLimit = clampInt_(url.searchParams.get("gold_limit") || 3, 1, 10);
+
+        const data = await buildDashboardTriageReport_(env, {
+          stale_days: staleDays,
+          limit,
+          gold_limit: goldLimit,
+        });
         return json_({ ok: true, data }, env, 200);
       }
 
@@ -5960,6 +5974,148 @@ async function buildScoringRunsEfficiencyReport_(env, input = {}) {
   const heuristicPassedRuns = Math.max(0, Math.round(numOr_(summary?.heuristic_passed_runs, 0)));
   const heuristicRejectedRuns = Math.max(0, Math.round(numOr_(summary?.heuristic_rejected_runs, 0)));
 
+  const sourceRows = await env.DB.prepare(`
+    SELECT
+      source,
+      COUNT(*) AS run_count,
+      SUM(CASE WHEN heuristic_passed = 0 THEN 1 ELSE 0 END) AS heuristic_rejected_runs,
+      AVG(final_score) AS avg_final_score,
+      AVG(total_latency_ms) AS avg_total_latency_ms,
+      SUM(ai_tokens_total) AS ai_tokens_total
+    FROM scoring_runs
+    WHERE ${whereSql}
+    GROUP BY source
+    ORDER BY run_count DESC, source ASC;
+  `.trim()).bind(...binds).all();
+
+  const sourceBreakdown = (sourceRows?.results || []).map((row) => {
+    const runCount = Math.max(0, Math.round(numOr_(row?.run_count, 0)));
+    const rejected = Math.max(0, Math.round(numOr_(row?.heuristic_rejected_runs, 0)));
+    return {
+      source: String(row?.source || "unknown").trim().toLowerCase() || "unknown",
+      run_count: runCount,
+      heuristic_rejected_runs: rejected,
+      heuristic_reject_rate_percent: runCount > 0
+        ? Number(((rejected / runCount) * 100).toFixed(2))
+        : 0,
+      avg_final_score: Number(numOr_(row?.avg_final_score, 0).toFixed(2)),
+      avg_total_latency_ms: Number(numOr_(row?.avg_total_latency_ms, 0).toFixed(2)),
+      ai_tokens_total: Math.max(0, Math.round(numOr_(row?.ai_tokens_total, 0))),
+    };
+  });
+
+  const profilePrefEnabled = await hasJobProfilePreferencesTable_(env);
+  let profileBreakdown = [];
+  let sourceProfileBreakdown = [];
+  if (profilePrefEnabled) {
+    const profileRows = await env.DB.prepare(`
+      SELECT
+        COALESCE(jpp.profile_id, 'primary') AS profile_id,
+        COUNT(*) AS jobs_count,
+        AVG(j.final_score) AS avg_final_score,
+        SUM(CASE WHEN upper(COALESCE(j.status, '')) = 'APPLIED' THEN 1 ELSE 0 END) AS applied_jobs
+      FROM jobs j
+      LEFT JOIN job_profile_preferences jpp ON jpp.job_key = j.job_key
+      WHERE COALESCE(j.last_scored_at, j.updated_at, j.created_at) >= ?
+        AND j.final_score IS NOT NULL
+      GROUP BY COALESCE(jpp.profile_id, 'primary')
+      ORDER BY avg_final_score DESC, jobs_count DESC, profile_id ASC;
+    `.trim()).bind(windowStart).all();
+    profileBreakdown = (profileRows?.results || []).map((row) => ({
+      profile_id: String(row?.profile_id || "primary").trim() || "primary",
+      jobs_count: Math.max(0, Math.round(numOr_(row?.jobs_count, 0))),
+      avg_final_score: Number(numOr_(row?.avg_final_score, 0).toFixed(2)),
+      applied_jobs: Math.max(0, Math.round(numOr_(row?.applied_jobs, 0))),
+    }));
+
+    const sourceProfileRows = await env.DB.prepare(`
+      SELECT
+        sr.source AS source,
+        COALESCE(jpp.profile_id, 'primary') AS profile_id,
+        COUNT(*) AS run_count,
+        AVG(sr.final_score) AS avg_final_score,
+        SUM(CASE WHEN sr.heuristic_passed = 0 THEN 1 ELSE 0 END) AS heuristic_rejected_runs
+      FROM scoring_runs sr
+      LEFT JOIN job_profile_preferences jpp ON jpp.job_key = sr.job_key
+      WHERE sr.created_at >= ?
+        ${source ? "AND sr.source = ?" : ""}
+      GROUP BY sr.source, COALESCE(jpp.profile_id, 'primary')
+      ORDER BY avg_final_score DESC, run_count DESC;
+    `.trim()).bind(...(source ? [windowStart, source] : [windowStart])).all();
+    sourceProfileBreakdown = (sourceProfileRows?.results || []).map((row) => {
+      const runCount = Math.max(0, Math.round(numOr_(row?.run_count, 0)));
+      const rejected = Math.max(0, Math.round(numOr_(row?.heuristic_rejected_runs, 0)));
+      return {
+        source: String(row?.source || "unknown").trim().toLowerCase() || "unknown",
+        profile_id: String(row?.profile_id || "primary").trim() || "primary",
+        run_count: runCount,
+        avg_final_score: Number(numOr_(row?.avg_final_score, 0).toFixed(2)),
+        heuristic_rejected_runs: rejected,
+        heuristic_reject_rate_percent: runCount > 0
+          ? Number(((rejected / runCount) * 100).toFixed(2))
+          : 0,
+      };
+    });
+  }
+
+  const contactsStorage = await hasContactsStorage_(env);
+  const touchpointEnabled = Boolean(contactsStorage?.enabled);
+  let touchpointOverall = {
+    sent: 0,
+    replied: 0,
+    sent_or_replied: 0,
+    reply_rate_percent: 0,
+  };
+  let touchpointByChannel = [];
+  if (touchpointEnabled) {
+    const tpUpdatedAtExpr = "CASE WHEN updated_at < 100000000000 THEN updated_at * 1000 ELSE updated_at END";
+    const tpOverallRow = await env.DB.prepare(`
+      SELECT
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'SENT' THEN 1 ELSE 0 END) AS sent,
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'REPLIED' THEN 1 ELSE 0 END) AS replied,
+        SUM(CASE WHEN upper(COALESCE(status, '')) IN ('SENT', 'REPLIED') THEN 1 ELSE 0 END) AS sent_or_replied
+      FROM contact_touchpoints
+      WHERE ${tpUpdatedAtExpr} >= ?;
+    `.trim()).bind(windowStart).first();
+    const sent = Math.max(0, Math.round(numOr_(tpOverallRow?.sent, 0)));
+    const replied = Math.max(0, Math.round(numOr_(tpOverallRow?.replied, 0)));
+    const sentOrReplied = Math.max(0, Math.round(numOr_(tpOverallRow?.sent_or_replied, 0)));
+    touchpointOverall = {
+      sent,
+      replied,
+      sent_or_replied: sentOrReplied,
+      reply_rate_percent: sentOrReplied > 0
+        ? Number(((replied / sentOrReplied) * 100).toFixed(2))
+        : 0,
+    };
+
+    const tpChannelRows = await env.DB.prepare(`
+      SELECT
+        upper(COALESCE(channel, 'OTHER')) AS channel,
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'SENT' THEN 1 ELSE 0 END) AS sent,
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'REPLIED' THEN 1 ELSE 0 END) AS replied,
+        SUM(CASE WHEN upper(COALESCE(status, '')) IN ('SENT', 'REPLIED') THEN 1 ELSE 0 END) AS sent_or_replied
+      FROM contact_touchpoints
+      WHERE ${tpUpdatedAtExpr} >= ?
+      GROUP BY upper(COALESCE(channel, 'OTHER'))
+      ORDER BY channel ASC;
+    `.trim()).bind(windowStart).all();
+    touchpointByChannel = (tpChannelRows?.results || []).map((row) => {
+      const chSent = Math.max(0, Math.round(numOr_(row?.sent, 0)));
+      const chReplied = Math.max(0, Math.round(numOr_(row?.replied, 0)));
+      const chSentOrReplied = Math.max(0, Math.round(numOr_(row?.sent_or_replied, 0)));
+      return {
+        channel: String(row?.channel || "OTHER").trim().toUpperCase() || "OTHER",
+        sent: chSent,
+        replied: chReplied,
+        sent_or_replied: chSentOrReplied,
+        reply_rate_percent: chSentOrReplied > 0
+          ? Number(((chReplied / chSentOrReplied) * 100).toFixed(2))
+          : 0,
+      };
+    });
+  }
+
   return {
     enabled: true,
     source: source || null,
@@ -5986,6 +6142,298 @@ async function buildScoringRunsEfficiencyReport_(env, input = {}) {
       ai_tokens_total_sum: Math.max(0, Math.round(numOr_(summary?.sum_ai_tokens_total, 0))),
       ai_tokens_total_avg_per_run: Number(numOr_(summary?.avg_ai_tokens_total, 0).toFixed(2)),
       trend_by_day: trendByDay,
+    },
+    funnel: {
+      source_breakdown: sourceBreakdown,
+      profile_breakdown: profileBreakdown,
+      source_profile_breakdown: sourceProfileBreakdown,
+      touchpoint_conversion: {
+        enabled: touchpointEnabled,
+        window_days: windowDays,
+        overall: touchpointOverall,
+        by_channel: touchpointByChannel,
+      },
+    },
+  };
+}
+
+function normalizeEpochMs_(value) {
+  const n = numOrNull_(value);
+  if (n === null || n <= 0) return null;
+  return n < 100000000000 ? Math.round(n * 1000) : Math.round(n);
+}
+
+function buildTriagePriority_(status, daysInStage, staleDays) {
+  const s = String(status || "").trim().toUpperCase();
+  const d = Math.max(0, Math.round(numOr_(daysInStage, 0)));
+  const stale = Math.max(1, Math.round(numOr_(staleDays, 3)));
+
+  if (s === "REPLIED") {
+    return {
+      priority: d >= stale ? "RESPONSE_PENDING_HIGH" : "RESPONSE_PENDING",
+      priority_score: 300 + Math.min(d, 60),
+      action_label: "Respond",
+      queue: "reply_pending",
+    };
+  }
+
+  if (s === "SENT") {
+    if (d >= (stale * 2)) {
+      return {
+        priority: "FOLLOW_UP_URGENT",
+        priority_score: 220 + Math.min(d, 60),
+        action_label: "Follow Up",
+        queue: "follow_up_overdue",
+      };
+    }
+    return {
+      priority: "FOLLOW_UP_DUE",
+      priority_score: 150 + Math.min(d, 60),
+      action_label: "Follow Up",
+      queue: "follow_up_overdue",
+    };
+  }
+
+  return {
+    priority: "NORMAL",
+    priority_score: 100,
+    action_label: "Review",
+    queue: "general",
+  };
+}
+
+async function buildDashboardTriageReport_(env, input = {}) {
+  const now = Date.now();
+  const staleDays = clampInt_(input.stale_days ?? input.staleDays ?? 3, 1, 21);
+  const limit = clampInt_(input.limit ?? 80, 5, 200);
+  const goldLimit = clampInt_(input.gold_limit ?? input.goldLimit ?? 3, 1, 10);
+  const staleCutoffMs = now - (staleDays * 24 * 60 * 60 * 1000);
+  const repliesCutoffMs = now - (7 * 24 * 60 * 60 * 1000);
+
+  const contactsStorage = await hasContactsStorage_(env);
+  const enabled = Boolean(contactsStorage?.enabled);
+  const empty = {
+    enabled,
+    stale_days: staleDays,
+    generated_at: now,
+    pulse: {
+      gold_leads_count: 0,
+      replies_7d_count: 0,
+      stale_followups_count: 0,
+      reply_pending_count: 0,
+    },
+    queues: {
+      reply_pending: [],
+      follow_up_overdue: [],
+      all: [],
+    },
+    gold_leads: [],
+  };
+  if (!enabled) {
+    return {
+      ...empty,
+      error: contactsStorage?.error || "contacts_storage_unavailable",
+      touchpoint_conversion: {
+        enabled: false,
+        overall: { sent: 0, replied: 0, sent_or_replied: 0, reply_rate_percent: 0 },
+      },
+    };
+  }
+
+  const tpUpdatedAtExpr = "CASE WHEN ct.updated_at < 100000000000 THEN ct.updated_at * 1000 ELSE ct.updated_at END";
+  const tpCreatedAtExpr = "CASE WHEN ct.created_at < 100000000000 THEN ct.created_at * 1000 ELSE ct.created_at END";
+
+  const triageRows = await env.DB.prepare(`
+    SELECT
+      ct.id AS touchpoint_id,
+      ct.contact_id,
+      ct.job_key,
+      upper(COALESCE(ct.channel, 'OTHER')) AS channel,
+      upper(COALESCE(ct.status, 'DRAFT')) AS status,
+      ct.content AS touchpoint_content,
+      ${tpUpdatedAtExpr} AS touchpoint_updated_at,
+      ${tpCreatedAtExpr} AS touchpoint_created_at,
+      c.name AS contact_name,
+      c.title AS contact_title,
+      c.company_name AS contact_company,
+      c.linkedin_url,
+      c.email,
+      j.role_title,
+      j.company,
+      upper(COALESCE(j.status, 'NEW')) AS job_status,
+      j.final_score,
+      CASE
+        WHEN COALESCE(j.updated_at, 0) < 100000000000 THEN COALESCE(j.updated_at, 0) * 1000
+        ELSE COALESCE(j.updated_at, 0)
+      END AS job_updated_at
+    FROM contact_touchpoints ct
+    INNER JOIN contacts c ON c.id = ct.contact_id
+    INNER JOIN jobs j ON j.job_key = ct.job_key
+    WHERE upper(COALESCE(j.status, '')) NOT IN ('REJECTED', 'ARCHIVED')
+      AND (
+        upper(COALESCE(ct.status, '')) = 'REPLIED'
+        OR (
+          upper(COALESCE(ct.status, '')) = 'SENT'
+          AND (${tpUpdatedAtExpr}) <= ?
+        )
+      )
+    ORDER BY ${tpUpdatedAtExpr} ASC
+    LIMIT ?;
+  `.trim()).bind(staleCutoffMs, limit).all();
+
+  const triageItems = (triageRows?.results || []).map((row) => {
+    const updatedAt = normalizeEpochMs_(row?.touchpoint_updated_at);
+    const createdAt = normalizeEpochMs_(row?.touchpoint_created_at);
+    const stageAt = updatedAt || createdAt || now;
+    const ageMs = Math.max(0, now - stageAt);
+    const daysInStage = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+    const priority = buildTriagePriority_(row?.status, daysInStage, staleDays);
+    return {
+      touchpoint_id: String(row?.touchpoint_id || "").trim(),
+      contact_id: String(row?.contact_id || "").trim(),
+      job_key: String(row?.job_key || "").trim(),
+      channel: String(row?.channel || "OTHER").trim().toUpperCase() || "OTHER",
+      status: String(row?.status || "DRAFT").trim().toUpperCase() || "DRAFT",
+      touchpoint_content: String(row?.touchpoint_content || "").trim(),
+      touchpoint_updated_at: stageAt,
+      days_in_stage: daysInStage,
+      contact_name: String(row?.contact_name || "").trim() || "Unknown Contact",
+      contact_title: String(row?.contact_title || "").trim() || "",
+      contact_company: String(row?.contact_company || row?.company || "").trim() || "",
+      linkedin_url: String(row?.linkedin_url || "").trim() || "",
+      email: String(row?.email || "").trim() || "",
+      role_title: String(row?.role_title || "").trim() || "",
+      company: String(row?.company || row?.contact_company || "").trim() || "",
+      job_status: String(row?.job_status || "").trim().toUpperCase() || "NEW",
+      final_score: numOrNull_(row?.final_score),
+      job_updated_at: normalizeEpochMs_(row?.job_updated_at),
+      priority: priority.priority,
+      priority_score: priority.priority_score,
+      action_label: priority.action_label,
+      queue: priority.queue,
+    };
+  }).sort((a, b) => {
+    if (b.priority_score !== a.priority_score) return b.priority_score - a.priority_score;
+    if (b.days_in_stage !== a.days_in_stage) return b.days_in_stage - a.days_in_stage;
+    return String(a.contact_name || "").localeCompare(String(b.contact_name || ""));
+  });
+
+  const replyPending = triageItems.filter((x) => x.queue === "reply_pending");
+  const staleFollowups = triageItems.filter((x) => x.queue === "follow_up_overdue");
+
+  const replies7dRow = await env.DB.prepare(`
+    SELECT COUNT(*) AS replied_7d
+    FROM contact_touchpoints
+    WHERE upper(COALESCE(status, '')) = 'REPLIED'
+      AND (CASE WHEN updated_at < 100000000000 THEN updated_at * 1000 ELSE updated_at END) >= ?;
+  `.trim()).bind(repliesCutoffMs).first();
+  const replies7dCount = Math.max(0, Math.round(numOr_(replies7dRow?.replied_7d, 0)));
+
+  const touchpointConvRow = await env.DB.prepare(`
+    SELECT
+      SUM(CASE WHEN upper(COALESCE(status, '')) = 'SENT' THEN 1 ELSE 0 END) AS sent,
+      SUM(CASE WHEN upper(COALESCE(status, '')) = 'REPLIED' THEN 1 ELSE 0 END) AS replied,
+      SUM(CASE WHEN upper(COALESCE(status, '')) IN ('SENT', 'REPLIED') THEN 1 ELSE 0 END) AS sent_or_replied
+    FROM contact_touchpoints;
+  `.trim()).first();
+  const sentCount = Math.max(0, Math.round(numOr_(touchpointConvRow?.sent, 0)));
+  const repliedCount = Math.max(0, Math.round(numOr_(touchpointConvRow?.replied, 0)));
+  const sentOrRepliedCount = Math.max(0, Math.round(numOr_(touchpointConvRow?.sent_or_replied, 0)));
+
+  const prefEnabled = await hasJobProfilePreferencesTable_(env);
+  const goldRows = prefEnabled
+    ? await env.DB.prepare(`
+        SELECT
+          j.job_key,
+          j.role_title,
+          j.company,
+          upper(COALESCE(j.status, 'NEW')) AS status,
+          j.final_score,
+          COALESCE(jpp.profile_id, 'primary') AS profile_id,
+          CASE
+            WHEN COALESCE(j.updated_at, 0) < 100000000000 THEN COALESCE(j.updated_at, 0) * 1000
+            ELSE COALESCE(j.updated_at, 0)
+          END AS updated_at
+        FROM jobs j
+        LEFT JOIN job_profile_preferences jpp ON jpp.job_key = j.job_key
+        WHERE j.final_score IS NOT NULL
+          AND upper(COALESCE(j.status, '')) NOT IN ('APPLIED', 'REJECTED', 'ARCHIVED')
+          AND NOT EXISTS (
+            SELECT 1
+            FROM resume_drafts rd
+            WHERE rd.job_key = j.job_key
+              AND upper(COALESCE(rd.status, '')) = 'READY_TO_APPLY'
+          )
+        ORDER BY j.final_score DESC, updated_at DESC
+        LIMIT ?;
+      `.trim()).bind(goldLimit).all()
+    : await env.DB.prepare(`
+        SELECT
+          j.job_key,
+          j.role_title,
+          j.company,
+          upper(COALESCE(j.status, 'NEW')) AS status,
+          j.final_score,
+          'primary' AS profile_id,
+          CASE
+            WHEN COALESCE(j.updated_at, 0) < 100000000000 THEN COALESCE(j.updated_at, 0) * 1000
+            ELSE COALESCE(j.updated_at, 0)
+          END AS updated_at
+        FROM jobs j
+        WHERE j.final_score IS NOT NULL
+          AND upper(COALESCE(j.status, '')) NOT IN ('APPLIED', 'REJECTED', 'ARCHIVED')
+          AND NOT EXISTS (
+            SELECT 1
+            FROM resume_drafts rd
+            WHERE rd.job_key = j.job_key
+              AND upper(COALESCE(rd.status, '')) = 'READY_TO_APPLY'
+          )
+        ORDER BY j.final_score DESC, updated_at DESC
+        LIMIT ?;
+      `.trim()).bind(goldLimit).all();
+
+  const goldLeads = (goldRows?.results || []).map((row) => ({
+    job_key: String(row?.job_key || "").trim(),
+    role_title: String(row?.role_title || "").trim() || "",
+    company: String(row?.company || "").trim() || "",
+    status: String(row?.status || "").trim().toUpperCase() || "NEW",
+    final_score: numOrNull_(row?.final_score),
+    profile_id: String(row?.profile_id || "primary").trim() || "primary",
+    updated_at: normalizeEpochMs_(row?.updated_at),
+  }));
+
+  return {
+    enabled: true,
+    stale_days: staleDays,
+    generated_at: now,
+    pulse: {
+      gold_leads_count: goldLeads.length,
+      replies_7d_count: replies7dCount,
+      stale_followups_count: staleFollowups.length,
+      reply_pending_count: replyPending.length,
+    },
+    queues: {
+      reply_pending: replyPending,
+      follow_up_overdue: staleFollowups,
+      all: triageItems,
+    },
+    gold_leads: goldLeads,
+    touchpoint_conversion: {
+      enabled: true,
+      overall: {
+        sent: sentCount,
+        replied: repliedCount,
+        sent_or_replied: sentOrRepliedCount,
+        reply_rate_percent: sentOrRepliedCount > 0
+          ? Number(((repliedCount / sentOrRepliedCount) * 100).toFixed(2))
+          : 0,
+      },
+    },
+    meta: {
+      contacts_storage_error: contactsStorage?.error || null,
+      profile_preferences_enabled: prefEnabled,
+      limit,
+      gold_limit: goldLimit,
     },
   };
 }
@@ -9021,6 +9469,7 @@ function sleepMs_(ms) {
 function routeModeFor_(path) {
   if (path === "/health" || path === "/") return "public";
   if (path === "/ingest/whatsapp/vonage") return "public";
+  if (path === "/dashboard/triage") return "ui";
   if (path === "/jobs/evidence/rebuild-archived") return "api";
   if (path === "/jobs/evidence/gap-report") return "api";
   if (path === "/admin/scoring-runs/report") return "api";

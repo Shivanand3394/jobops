@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-26-profile-preference-v1";
+const UI_BUILD_ID = "2026-02-26-triage-pulse-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -133,6 +133,16 @@ const state = {
   workerVersion: "-",
   reviewContext: null,
   jobProfilePreferenceByKey: {},
+  triage: {
+    items: [],
+    by_touchpoint_id: {},
+    pulse: null,
+    stale_days: 3,
+    generated_at: 0,
+    loading: false,
+    error: "",
+    last_fetched_at: 0,
+  },
 };
 const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "READY_TO_APPLY", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
@@ -376,6 +386,7 @@ function showView(view) {
   if (view === "tracking") {
     if (!state.jobs.length) loadJobs({ ignoreStatus: true });
     else renderTracking();
+    loadTrackingTriage({ force: false });
   }
   if (view === "targets") loadTargets();
   if (view === "metrics") loadMetrics();
@@ -451,6 +462,26 @@ function fmtTsWithAbs(v) {
   const abs = fmtTsAbs(v);
   if (rel === "-" || abs === "-") return rel;
   return `${rel} (${abs})`;
+}
+
+function normalizeEpochMsUi_(value) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return n < 100000000000 ? Math.round(n * 1000) : Math.round(n);
+}
+
+function fmtDaysAgo_(days) {
+  const d = Math.max(0, Math.round(Number(days || 0)));
+  if (d === 0) return "today";
+  if (d === 1) return "1 day";
+  return `${d} days`;
+}
+
+function triagePriorityClass_(priority) {
+  const p = String(priority || "").trim().toUpperCase();
+  if (p.startsWith("RESPONSE_PENDING")) return "chip-priority-reply";
+  if (p.startsWith("FOLLOW_UP")) return "chip-priority-stale";
+  return "";
 }
 
 function metricCard(label, value, sub = "") {
@@ -697,6 +728,188 @@ function trackingCard(j) {
   `;
 }
 
+function triageCard(item) {
+  const it = item && typeof item === "object" ? item : {};
+  const touchpointId = String(it.touchpoint_id || "").trim();
+  const jobKey = String(it.job_key || "").trim();
+  const contactId = String(it.contact_id || "").trim();
+  const channel = String(it.channel || "OTHER").trim().toUpperCase() || "OTHER";
+  const status = String(it.status || "DRAFT").trim().toUpperCase() || "DRAFT";
+  const priority = String(it.priority || "NORMAL").trim().toUpperCase() || "NORMAL";
+  const priorityClass = triagePriorityClass_(priority);
+  const score = (it.final_score === null || it.final_score === undefined) ? "-" : String(it.final_score);
+  const title = String(it.contact_name || "Unknown Contact").trim();
+  const role = String(it.contact_title || "").trim();
+  const company = String(it.company || it.contact_company || "-").trim() || "-";
+  const jobRole = String(it.role_title || "").trim();
+  const hasDraft = Boolean(String(it.touchpoint_content || "").trim());
+  const updatedAt = normalizeEpochMsUi_(it.touchpoint_updated_at);
+  const daysLabel = fmtDaysAgo_(it.days_in_stage);
+  const queueLabel = String(it.queue || "").trim().replaceAll("_", " ").toUpperCase();
+
+  return `
+    <div class="track-card" data-triage-id="${escapeHtml(touchpointId)}">
+      <div class="track-row">
+        <div class="track-title">${escapeHtml(title)}${role ? ` - ${escapeHtml(role)}` : ""}</div>
+        <div class="track-score">${escapeHtml(score)}</div>
+      </div>
+      <div class="track-sub">${escapeHtml(jobRole || "(Role missing)")} - ${escapeHtml(company)}</div>
+      <div class="track-sub tiny">Touchpoint: <span title="${escapeHtml(fmtTsAbs(updatedAt))}">${escapeHtml(fmtTs(updatedAt))}</span> | In stage: ${escapeHtml(daysLabel)}</div>
+      <div class="track-card-priority">
+        <span class="chip ${escapeHtml(priorityClass)}">${escapeHtml(priority)}</span>
+        <span class="chip">${escapeHtml(status)} / ${escapeHtml(channel)}</span>
+        <span class="chip">${escapeHtml(queueLabel || "GENERAL")}</span>
+      </div>
+      <div class="track-actions">
+        <button class="btn btn-ghost btn-xs" data-triage-action="open" data-triage-id="${escapeHtml(touchpointId)}" data-triage-job="${escapeHtml(jobKey)}">Open</button>
+        <button class="btn btn-ghost btn-xs" data-triage-action="copy" data-triage-id="${escapeHtml(touchpointId)}" ${hasDraft ? "" : "disabled"}>Copy Draft</button>
+        <button class="btn btn-ghost btn-xs" data-triage-action="sent" data-triage-id="${escapeHtml(touchpointId)}" data-triage-job="${escapeHtml(jobKey)}" data-triage-contact="${escapeHtml(contactId)}" data-triage-channel="${escapeHtml(channel)}" ${status === "SENT" ? "disabled" : ""}>Mark Sent</button>
+        <button class="btn btn-ghost btn-xs" data-triage-action="replied" data-triage-id="${escapeHtml(touchpointId)}" data-triage-job="${escapeHtml(jobKey)}" data-triage-contact="${escapeHtml(contactId)}" data-triage-channel="${escapeHtml(channel)}" ${status === "REPLIED" ? "disabled" : ""}>Mark Replied</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTrackingTriage_() {
+  const triage = state.triage || {};
+  const pulse = (triage.pulse && typeof triage.pulse === "object") ? triage.pulse : {};
+  const items = Array.isArray(triage.items) ? triage.items : [];
+  const staleDays = Number(triage.stale_days || $("trackingTriageDays")?.value || 3);
+  const hintEl = $("trackingTriageHint");
+  const listEl = $("trackingTriageList");
+
+  $("pulseGoldLeads").textContent = String(pulse.gold_leads_count || 0);
+  $("pulseReplies").textContent = String(pulse.replies_7d_count || 0);
+  $("pulseStale").textContent = String(pulse.stale_followups_count || 0);
+
+  if (!listEl || !hintEl) return;
+
+  if (triage.loading) {
+    hintEl.textContent = `Loading triage (stale >= ${staleDays} days)...`;
+    return;
+  }
+
+  if (triage.error) {
+    hintEl.textContent = `Triage load failed: ${triage.error}`;
+    listEl.innerHTML = `<div class="muted tiny">No triage actions available.</div>`;
+    return;
+  }
+
+  hintEl.textContent = `${items.length} actions | Reply pending: ${pulse.reply_pending_count || 0} | Stale follow-ups (${staleDays}d): ${pulse.stale_followups_count || 0}`;
+  listEl.innerHTML = items.length
+    ? items.map(triageCard).join("")
+    : `<div class="muted tiny">No daily actions right now.</div>`;
+
+  document.querySelectorAll("[data-triage-action][data-triage-id]").forEach((el) => {
+    el.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const action = String(el.getAttribute("data-triage-action") || "").trim().toLowerCase();
+      const touchpointId = String(el.getAttribute("data-triage-id") || "").trim();
+      const jobKey = String(el.getAttribute("data-triage-job") || "").trim();
+      const contactId = String(el.getAttribute("data-triage-contact") || "").trim();
+      const channel = String(el.getAttribute("data-triage-channel") || "").trim().toUpperCase() || "OTHER";
+      await handleTrackingTriageAction_(action, { touchpointId, jobKey, contactId, channel });
+    });
+  });
+}
+
+async function loadTrackingTriage({ force = false } = {}) {
+  const triageDays = Math.max(1, Math.min(21, Number($("trackingTriageDays")?.value || state.triage?.stale_days || 3) || 3));
+  const now = Date.now();
+  const cacheFresh = (now - Number(state.triage?.last_fetched_at || 0)) < 15000;
+  const sameWindow = Number(state.triage?.stale_days || 3) === triageDays;
+  if (!force && cacheFresh && sameWindow) {
+    renderTrackingTriage_();
+    return;
+  }
+  if (state.triage.loading) return;
+
+  state.triage.loading = true;
+  state.triage.error = "";
+  state.triage.stale_days = triageDays;
+  renderTrackingTriage_();
+
+  try {
+    const res = await api(`/dashboard/triage?stale_days=${encodeURIComponent(String(triageDays))}&limit=80&gold_limit=3`);
+    const data = res?.data && typeof res.data === "object" ? res.data : {};
+    const allItems = Array.isArray(data?.queues?.all) ? data.queues.all : [];
+    const pulse = data?.pulse && typeof data.pulse === "object" ? data.pulse : {};
+    const byTouchpointId = {};
+    for (const row of allItems) {
+      const tid = String(row?.touchpoint_id || "").trim();
+      if (!tid) continue;
+      byTouchpointId[tid] = row;
+    }
+
+    state.triage.items = allItems;
+    state.triage.by_touchpoint_id = byTouchpointId;
+    state.triage.pulse = pulse;
+    state.triage.generated_at = normalizeEpochMsUi_(data.generated_at);
+    state.triage.stale_days = Number(data.stale_days || triageDays) || triageDays;
+    state.triage.last_fetched_at = Date.now();
+    state.triage.error = "";
+  } catch (e) {
+    state.triage.error = String(e?.message || "unknown error");
+  } finally {
+    state.triage.loading = false;
+    renderTrackingTriage_();
+  }
+}
+
+async function handleTrackingTriageAction_(action, ctx = {}) {
+  const act = String(action || "").trim().toLowerCase();
+  const touchpointId = String(ctx.touchpointId || "").trim();
+  const row = state.triage?.by_touchpoint_id?.[touchpointId] || null;
+  const jobKey = String(ctx.jobKey || row?.job_key || "").trim();
+  const contactId = String(ctx.contactId || row?.contact_id || "").trim();
+  const channel = String(ctx.channel || row?.channel || "OTHER").trim().toUpperCase() || "OTHER";
+
+  if (act === "open") {
+    if (!jobKey) return;
+    showView("jobs");
+    await setActive(jobKey);
+    return;
+  }
+
+  if (act === "copy") {
+    const draft = String(row?.touchpoint_content || "").trim();
+    if (!draft) return toast("No draft content available", { kind: "error" });
+    try {
+      await navigator.clipboard.writeText(draft);
+      toast("Outreach draft copied");
+    } catch {
+      toast("Copy failed", { kind: "error" });
+    }
+    return;
+  }
+
+  const statusMap = {
+    sent: "SENT",
+    replied: "REPLIED",
+    draft: "DRAFT",
+  };
+  const nextStatus = statusMap[act] || "";
+  if (!nextStatus || !jobKey || !contactId) return;
+
+  try {
+    spin(true);
+    await api(`/jobs/${encodeURIComponent(jobKey)}/contacts/${encodeURIComponent(contactId)}/touchpoint-status`, {
+      method: "POST",
+      body: {
+        channel,
+        status: nextStatus,
+      },
+    });
+    toast(`Touchpoint marked ${nextStatus}`);
+    await loadTrackingTriage({ force: true });
+  } catch (e) {
+    toast("Touchpoint update failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
 async function handleTrackingAction(action, jobKey) {
   const key = String(jobKey || "").trim();
   if (!key) return;
@@ -919,7 +1132,10 @@ async function loadJobs(opts = {}) {
     state.jobs = Array.isArray(res.data) ? res.data : [];
     renderJobs();
     renderListMeta();
-    if (state.view === "tracking") renderTracking();
+    if (state.view === "tracking") {
+      renderTracking();
+      loadTrackingTriage({ force: false });
+    }
     if (state.activeKey && !state.jobs.some((j) => j.job_key === state.activeKey)) {
       setActive(null);
     }
@@ -3483,6 +3699,8 @@ async function saveSettings() {
   $("trackingScope").onchange = () => renderTracking();
   $("trackingWindow").onchange = () => renderTracking();
   $("trackingLimit").onchange = () => renderTracking();
+  $("trackingTriageDays").onchange = () => loadTrackingTriage({ force: true });
+  $("btnTrackingTriageRefresh").onclick = () => loadTrackingTriage({ force: true });
   $("btnTrackingRecover").onclick = () => recoverMissingDetailsFromTracking(10);
   $("btnTrackingRecoverFields").onclick = () => recoverMissingFields(30);
   $("btnTrackingCanonicalizeTitles").onclick = () => canonicalizeTitles(200);

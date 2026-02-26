@@ -211,6 +211,21 @@ async function main() {
     validate: ({ json }) => (Array.isArray(json?.data) ? true : "Expected data[] array"),
   });
 
+  await runStep({
+    name: "dashboard.triage",
+    method: "GET",
+    path: "/dashboard/triage?stale_days=3&limit=20&gold_limit=3",
+    auth: "ui",
+    validate: ({ json }) => {
+      if (json?.ok !== true) return "Expected { ok: true }";
+      const all = Array.isArray(json?.data?.queues?.all) ? json.data.queues.all : null;
+      const pulse = (json?.data?.pulse && typeof json.data.pulse === "object") ? json.data.pulse : null;
+      if (!all) return "Expected queues.all array";
+      if (!pulse) return "Expected pulse object";
+      return true;
+    },
+  });
+
   const selectedJobKey = cfg.jobKey || asString(jobs?.json?.data?.[0]?.job_key, 200);
   if (!selectedJobKey) {
     throw new Error("No job_key available. Set JOB_KEY or ingest at least one job before running the wizard smoke path.");

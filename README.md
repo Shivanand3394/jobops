@@ -53,6 +53,7 @@ From current Worker routing:
 ## Endpoint Summary (from code)
 - `GET /health` (public)
 - `GET /jobs?status=&limit=&offset=` (UI key)
+- `GET /dashboard/triage?stale_days=&limit=&gold_limit=` (UI key)
 - `GET /jobs/:job_key` (UI key)
 - `GET /jobs/:job_key/profile-preference` (UI key)
 - `POST /jobs/:job_key/profile-preference` (UI key)
@@ -66,6 +67,7 @@ From current Worker routing:
 - `POST /jobs/:job_key/draft-outreach` (UI key)
 - `POST /jobs/:job_key/contacts/:contact_id/draft` (UI key)
 - `POST /jobs/:job_key/contacts/:contact_id/touchpoint-status` (UI key)
+- `GET /admin/scoring-runs/report` (API key; includes source/profile funnel breakdown + touchpoint conversion)
 - `POST /extract-jd` (API key)
 - `POST /score-jd` (API key)
 

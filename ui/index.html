@@ -173,6 +173,29 @@
         <div id="trackingHint" class="muted">Loading tracking board...</div>
       </div>
       <div id="trackingRecoverySummary" class="tracking-summary muted tiny">No recovery run yet.</div>
+      <div id="pulseDashboard" class="pulse-container">
+        <div class="pulse-stat">Gold Leads <span id="pulseGoldLeads">0</span></div>
+        <div class="pulse-stat">Replies (7d) <span id="pulseReplies">0</span></div>
+        <div class="pulse-stat">Stale Follow-ups <span id="pulseStale">0</span></div>
+      </div>
+
+      <div class="tracking-triage">
+        <div class="tracking-needs-head">
+          <div class="h3">Daily Action List</div>
+          <div class="row" style="justify-content:flex-end; gap:8px; margin:0;">
+            <label class="muted tiny" for="trackingTriageDays">Stale Days</label>
+            <select id="trackingTriageDays" style="width:auto;">
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="5">5</option>
+              <option value="7">7</option>
+            </select>
+            <button class="btn btn-ghost btn-xs" id="btnTrackingTriageRefresh" type="button">Refresh Triage</button>
+          </div>
+        </div>
+        <div id="trackingTriageHint" class="muted tiny">Loading triage...</div>
+        <div id="trackingTriageList" class="tracking-needs-list"></div>
+      </div>
 
       <div class="tracking-wrap">
         <div class="tracking-needs">
