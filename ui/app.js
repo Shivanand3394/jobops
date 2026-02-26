@@ -4,6 +4,8 @@ const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
 const ONE_PAGER_STRICT_KEY = "jobops_one_pager_strict_v1";
+const WIZARD_STEP_KEY = "jobops_resume_wizard_step_v1";
+const PDF_READY_MODE_KEY = "jobops_pdf_ready_mode_v1";
 
 function getCfg() {
   return {
@@ -27,6 +29,68 @@ function getOnePagerStrictPref_() {
 
 function setOnePagerStrictPref_(on) {
   localStorage.setItem(ONE_PAGER_STRICT_KEY, on ? "1" : "0");
+}
+
+function normalizeWizardStep_(step) {
+  const s = String(step || "").trim().toLowerCase();
+  if (s === "pitch" || s === "finish") return s;
+  return "matches";
+}
+
+function wizardStepOrder_(step) {
+  const s = normalizeWizardStep_(step);
+  if (s === "finish") return 3;
+  if (s === "pitch") return 2;
+  return 1;
+}
+
+function loadWizardStepMap_() {
+  try {
+    const raw = localStorage.getItem(WIZARD_STEP_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === "object") ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveWizardStepMap_(mapObj) {
+  try {
+    localStorage.setItem(WIZARD_STEP_KEY, JSON.stringify(mapObj || {}));
+  } catch {
+    // ignore local storage write failure
+  }
+}
+
+function loadWizardStepPref_(jobKey) {
+  const key = String(jobKey || "").trim();
+  if (!key) return "";
+  const map = loadWizardStepMap_();
+  return normalizeWizardStep_(map[key] || "matches");
+}
+
+function saveWizardStepPref_(jobKey, step) {
+  const key = String(jobKey || "").trim();
+  if (!key) return;
+  const map = loadWizardStepMap_();
+  map[key] = normalizeWizardStep_(step);
+  saveWizardStepMap_(map);
+}
+
+function isPdfReadyModeOn_() {
+  const raw = String(localStorage.getItem(PDF_READY_MODE_KEY) || "").trim().toLowerCase();
+  return ["1", "true", "yes", "on", "y"].includes(raw);
+}
+
+function setPdfReadyMode_(on) {
+  const enabled = Boolean(on);
+  document.body.classList.toggle("pdf-ready-mode", enabled);
+  localStorage.setItem(PDF_READY_MODE_KEY, enabled ? "1" : "0");
+  const section = $("appPackSection");
+  if (section) section.classList.toggle("pdf-ready", enabled);
+  const toggleBtn = $("btnPdfReadyToggle");
+  if (toggleBtn) toggleBtn.textContent = enabled ? "Exit PDF-ready view" : "PDF-ready view";
 }
 
 function loadLastRecoveryRun_() {
@@ -69,7 +133,7 @@ const state = {
   workerVersion: "-",
   reviewContext: null,
 };
-const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
+const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "READY_TO_APPLY", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
 const AI_NOTICE_SESSION_KEY = "jobops_ai_notice_seen_session";
 const AI_NOTICE_DETECTED_KEY = "jobops_ai_notice_detected";
@@ -233,6 +297,9 @@ function getIngestChannelLabel(j) {
 function showView(view) {
   state.view = view;
   document.body.dataset.view = view;
+  if (view !== "jobs" && document.body.classList.contains("pdf-ready-mode")) {
+    setPdfReadyMode_(false);
+  }
   const jobsView = $("jobsView");
   const trackingView = $("trackingView");
   const targetsView = $("targetsView");
@@ -466,6 +533,20 @@ function renderListMeta() {
   $("listHint").textContent = parts.join(" - ");
 }
 
+function getPrimaryActionForJob_(job) {
+  const status = String(job?.status || "").trim().toUpperCase();
+  if (status === "NEW" || status === "LINK_ONLY") {
+    return { id: "score", label: "Score Job" };
+  }
+  if (status === "SCORED" || status === "SHORTLISTED") {
+    return { id: "generate_pack", label: "Generate Pack" };
+  }
+  if (status === "READY_TO_APPLY" || status === "APPLIED") {
+    return { id: "copy_apply", label: "Copy & Apply" };
+  }
+  return { id: "open", label: "Open" };
+}
+
 function jobCard(j) {
   const score = (j.final_score === null || j.final_score === undefined) ? "-" : j.final_score;
   const loc = j.location || "-";
@@ -484,6 +565,7 @@ function jobCard(j) {
   const needsJdBadge = systemStatus === "NEEDS_MANUAL_JD"
     ? `<span class="chip">Needs JD</span>`
     : "";
+  const primaryAction = getPrimaryActionForJob_(j);
   const isActive = state.activeKey === j.job_key;
 
   return `
@@ -505,6 +587,13 @@ function jobCard(j) {
         ${ingestChannelChip}
         <span class="chip">${escapeHtml(j.source_domain || "-")}</span>
         <span class="chip">${escapeHtml(j.seniority || "-")}</span>
+      </div>
+      <div class="row" style="justify-content:flex-start; margin-top:10px;">
+        <button
+          class="btn"
+          type="button"
+          onclick="event.stopPropagation(); runJobPrimaryAction('${escapeHtml(j.job_key)}','${escapeHtml(primaryAction.id)}')"
+        >${escapeHtml(primaryAction.label)}</button>
       </div>
     </div>
   `;
@@ -666,7 +755,7 @@ function renderTracking() {
   const scope = String($("trackingScope")?.value || "active_only").trim().toLowerCase();
   const windowDays = Number($("trackingWindow")?.value || 14);
   const perColumn = Math.max(1, Number($("trackingLimit")?.value || 20));
-  const activeOnlyStatuses = new Set(["NEW", "SCORED", "SHORTLISTED", "APPLIED", "LINK_ONLY"]);
+  const activeOnlyStatuses = new Set(["NEW", "SCORED", "SHORTLISTED", "READY_TO_APPLY", "APPLIED", "LINK_ONLY"]);
   const boardStatuses = scope === "active_only"
     ? TRACKING_COLUMNS.filter((s) => activeOnlyStatuses.has(s))
     : TRACKING_COLUMNS;
@@ -799,6 +888,7 @@ async function setActive(jobKey) {
   renderListMeta();
 
   if (!jobKey) {
+    setPdfReadyMode_(false);
     $("dRole").textContent = "Select a job";
     $("dCompany").textContent = "";
     $("detailBody").classList.add("empty");
@@ -823,35 +913,44 @@ async function setActive(jobKey) {
   }
 }
 
-function activateWorkspaceTab_(tabName) {
+function setWizardStep_(stepName, opts = {}) {
   const section = $("appPackSection");
   if (!section) return;
-  const tab = String(tabName || "jd").toLowerCase();
-  section.querySelectorAll("[data-ws-tab]").forEach((btn) => {
-    const isActive = btn.dataset.wsTab === tab;
-    btn.classList.toggle("active-tab", isActive);
-  });
-  section.querySelectorAll("[data-ws-pane]").forEach((pane) => {
-    const isActive = pane.dataset.wsPane === tab;
+  const step = normalizeWizardStep_(stepName);
+  const persist = opts.persist === undefined ? true : Boolean(opts.persist);
+  const jobKey = String(opts.jobKey || state.activeJob?.job_key || "").trim();
+  section.dataset.wizardStep = step;
+  section.querySelectorAll("[data-wizard-pane]").forEach((pane) => {
+    const isActive = pane.dataset.wizardPane === step;
     pane.classList.toggle("hidden", !isActive);
   });
-}
-
-function bindWorkspaceTabs_(defaultTab = "jd") {
-  const section = $("appPackSection");
-  if (!section) return;
-  section.querySelectorAll("[data-ws-tab]").forEach((btn) => {
-    btn.onclick = () => activateWorkspaceTab_(btn.dataset.wsTab || "jd");
+  section.querySelectorAll("[data-wizard-node]").forEach((node) => {
+    const nodeStep = String(node.dataset.wizardNode || "").trim().toLowerCase();
+    const nodeOrder = Number(node.dataset.wizardOrder || 0);
+    const stepOrder = step === "matches" ? 1 : (step === "pitch" ? 2 : 3);
+    node.classList.toggle("active", nodeStep === step);
+    node.classList.toggle("done", nodeOrder > 0 && nodeOrder < stepOrder);
   });
-  activateWorkspaceTab_(defaultTab);
+  if (persist && jobKey) {
+    saveWizardStepPref_(jobKey, step);
+  }
 }
 
-function preferredWorkspaceTab_(job, { hasPack = false } = {}) {
-  const needsManual = String(job?.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD";
-  if (needsManual) return "jd";
-  if (hasPack) return "resume";
-  const hasJd = String(job?.jd_text_clean || "").trim().length >= 200 || String(job?.role_title || "").trim().length > 0;
-  return hasJd ? "ats" : "jd";
+function resolveWizardStep_(job, packStatus = "") {
+  const jobKey = String(job?.job_key || "").trim();
+  const jobStatus = String(job?.status || "").trim().toUpperCase();
+  const draftStatus = String(packStatus || "").trim().toUpperCase();
+  let serverStep = "matches";
+  if (jobStatus === "READY_TO_APPLY" || jobStatus === "APPLIED") serverStep = "finish";
+  else if (draftStatus === "CONTENT_REVIEW_REQUIRED") serverStep = "pitch";
+
+  const savedStep = loadWizardStepPref_(jobKey);
+  if (!savedStep) return serverStep;
+
+  const canUseSavedPitch = (serverStep === "pitch" || serverStep === "finish");
+  if (!canUseSavedPitch && savedStep !== "matches") return serverStep;
+
+  return wizardStepOrder_(savedStep) >= wizardStepOrder_(serverStep) ? savedStep : serverStep;
 }
 
 function updateNextActionCard_(job, { hasPack = false } = {}) {
@@ -863,10 +962,10 @@ function updateNextActionCard_(job, { hasPack = false } = {}) {
   if (!titleEl || !noteEl || !btnEl) return;
 
   const needsManual = String(job?.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD";
-  let title = "Generate application pack";
-  let note = "JD is ready. Build ATS + resume outputs for this role.";
-  let action = "generate_pack";
-  let btnLabel = "Generate pack";
+  let title = "Auto-tailor this job";
+  let note = "Score + generate ATS/resume outputs in one step.";
+  let action = "auto_pilot";
+  let btnLabel = "Auto Tailor";
 
   if (needsManual) {
     title = "Paste JD and rescore";
@@ -874,10 +973,10 @@ function updateNextActionCard_(job, { hasPack = false } = {}) {
     action = "go_jd";
     btnLabel = "Go to JD step";
   } else if (hasPack) {
-    title = "Finalize application decision";
-    note = "Review output and mark status: SHORTLISTED, APPLIED, REJECTED, or ARCHIVED.";
-    action = "go_action";
-    btnLabel = "Open Action step";
+    title = "Copy & Apply";
+    note = "Review the pitch, approve, and copy the final letter.";
+    action = "copy_apply";
+    btnLabel = "Copy & Apply";
   }
 
   section.dataset.nextAction = action;
@@ -892,12 +991,17 @@ async function runNextAction() {
   const jobKey = String(state.activeJob?.job_key || "").trim();
   if (!action) return;
   if (action === "go_jd") {
-    activateWorkspaceTab_("jd");
+    setWizardStep_("matches");
     $("jdCurrentText")?.focus();
     return;
   }
-  if (action === "go_action") {
-    activateWorkspaceTab_("action");
+  if (action === "go_action") return;
+  if (action === "copy_apply" && jobKey) {
+    setWizardStep_("finish");
+    return;
+  }
+  if (action === "auto_pilot" && jobKey) {
+    await autoPilotJob(jobKey, { force: false });
     return;
   }
   if (action === "generate_pack" && jobKey) {
@@ -984,26 +1088,28 @@ function renderDetail(j) {
         </div>
         <button id="wsNextActionBtn" class="btn" type="button" onclick="runNextAction()">Generate pack</button>
       </div>
-      <div class="workspace-tabbar">
-        <button class="btn btn-ghost active-tab" type="button" data-ws-tab="jd">1 JD</button>
-        <button class="btn btn-ghost" type="button" data-ws-tab="ats">2 ATS</button>
-        <button class="btn btn-ghost" type="button" data-ws-tab="resume">3 Resume</button>
-        <button class="btn btn-ghost" type="button" data-ws-tab="action">4 Action</button>
+      <div class="wizard-progress">
+        <div class="wizard-node active" data-wizard-node="matches" data-wizard-order="1">1 Matches</div>
+        <div class="wizard-node" data-wizard-node="pitch" data-wizard-order="2">2 Pitch</div>
+        <div class="wizard-node" data-wizard-node="finish" data-wizard-order="3">3 Finish</div>
       </div>
 
-      <div class="workspace-pane" data-ws-pane="jd">
+      <div class="workspace-pane" data-wizard-pane="matches">
         <div class="workspace-pane-head">
-          <div class="h3">Job Description</div>
-          <div class="muted tiny">${escapeHtml(jdHint)}</div>
+          <div class="h3">Matches</div>
+          <div class="muted tiny">Fix JD if needed, then generate the pitch.</div>
         </div>
         <textarea id="jdCurrentText" rows="12" placeholder="Paste JD text here...">${escapeHtml(jdText)}</textarea>
         <div class="row" style="justify-content:flex-start; margin-top:10px;">
-          <button class="btn" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save JD & Rescore</button>
-          <button class="btn btn-secondary" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
+          <button class="btn" onclick="autoPilotJob('${escapeHtml(j.job_key)}', { force: false })">Generate Pitch</button>
+          <button class="btn btn-secondary" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save JD & Rescore</button>
+          <button class="btn btn-ghost" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
         </div>
       </div>
 
-      <div class="workspace-pane hidden" data-ws-pane="ats">
+      <div class="workspace-pane" data-wizard-pane="matches">
+        <div id="appMatchSummary" class="muted tiny">Loading match summary...</div>
+        <div id="appMatchChips" class="meta"></div>
         <div class="kv">
           <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
@@ -1035,7 +1141,22 @@ function renderDetail(j) {
         </div>
       </div>
 
-      <div class="workspace-pane hidden" data-ws-pane="resume">
+      <div class="workspace-pane hidden" data-wizard-pane="pitch">
+        <div class="workspace-pane-head">
+          <div class="h3">Pitch</div>
+          <div class="muted tiny">Review and edit before approving.</div>
+        </div>
+        <label class="muted tiny">Summary</label>
+        <textarea id="wizardSummary" rows="4" placeholder="Tailored summary"></textarea>
+        <label class="muted tiny" style="margin-top:8px;">Cover letter</label>
+        <textarea id="wizardCoverLetter" rows="10" placeholder="Tailored cover letter"></textarea>
+        <div class="row" style="justify-content:flex-start; margin-top:8px;">
+          <button class="btn btn-secondary" onclick="saveWizardDraft()">Save Draft</button>
+          <button class="btn" onclick="approveWizardPack()">Approve</button>
+        </div>
+        <details class="advanced-panel" style="margin-top:10px;">
+          <summary>Advanced options</summary>
+          <div class="advanced-body">
         <div class="resume-flow">
           <div class="resume-step">
             <div class="h3">1) Choose template</div>
@@ -1115,12 +1236,21 @@ function renderDetail(j) {
             </details>
           </div>
         </div>
+          </div>
+        </details>
       </div>
 
-      <div class="workspace-pane hidden" data-ws-pane="action">
-        <div class="h3">Apply Workflow Actions</div>
-        <div class="muted tiny" style="margin-top:4px;">Use after JD/ATS/Resume review.</div>
+      <div class="workspace-pane hidden" data-wizard-pane="finish">
+        <div class="h3">Finish</div>
+        <div class="muted tiny" style="margin-top:4px;">Copy final letter and apply.</div>
+        <div class="kv" style="margin-top:10px;">
+          <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="8" readonly placeholder="Final letter appears here"></textarea></div>
+          <div class="k">Pack status</div><div class="v" id="wizardFinishStatus">-</div>
+        </div>
         <div class="actions-grid" style="margin-top:10px;">
+          <button class="btn" onclick="copyWizardCoverLetter()">Copy Cover Letter</button>
+          <button class="btn btn-ghost" id="btnPdfReadyToggle" onclick="togglePdfReadyMode()">PDF-ready view</button>
+          <button class="btn btn-ghost" onclick="printPdfReadyView()">Print / Save PDF</button>
           <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','APPLIED')">Mark APPLIED</button>
           <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','SHORTLISTED')">Mark SHORTLISTED</button>
           <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','REJECTED')">Mark REJECTED</button>
@@ -1133,7 +1263,8 @@ function renderDetail(j) {
     console.log("Rendering Application Pack", j.job_key);
   }
   updateNextActionCard_(j, { hasPack: false });
-  bindWorkspaceTabs_(preferredWorkspaceTab_(j, { hasPack: false }));
+  setPdfReadyMode_(false);
+  setWizardStep_(resolveWizardStep_(j, ""));
   hydrateApplicationPack(j);
   fetchAndRenderEvidence(j.job_key);
 }
@@ -1783,6 +1914,67 @@ async function generateApplicationPack(jobKey, force = false) {
   }
 }
 
+async function autoPilotJob(jobKey, { force = false } = {}) {
+  const key = String(jobKey || "").trim();
+  if (!key) return;
+  try {
+    spin(true);
+    const renderer = String($("appRenderer")?.value || "reactive_resume");
+    const profileId = String($("appProfileSelect")?.value || state.activeProfileId || "primary").trim() || "primary";
+    state.activeProfileId = profileId;
+    const templateId = String($("appTemplateSelect")?.value || state.activeTemplateId || DEFAULT_TEMPLATE_ID).trim() || DEFAULT_TEMPLATE_ID;
+    state.activeTemplateId = templateId;
+    const enabledBlocks = getEnabledBlocksFromUi_();
+    const selectedKeywords = readSelectedKeywordsFromUi_();
+    const atsTargetMode = String($("appAtsTargetMode")?.value || "all").trim().toLowerCase() || "all";
+    const onePagerStrict = Boolean($("appOnePagerStrict")?.checked ?? getOnePagerStrictPref_());
+    setOnePagerStrictPref_(onePagerStrict);
+
+    const res = await api(`/jobs/${encodeURIComponent(key)}/auto-pilot`, {
+      method: "POST",
+      body: {
+        profile_id: profileId,
+        force: Boolean(force),
+        renderer,
+        template_id: templateId,
+        enabled_blocks: enabledBlocks,
+        selected_keywords: selectedKeywords,
+        ats_target_mode: atsTargetMode,
+        one_pager_strict: onePagerStrict,
+      },
+    });
+    const score = res?.data?.score?.final_score;
+    const packStatus = res?.data?.pack?.status || "generated";
+    toast(`Auto-tailor done (${packStatus}, score ${score ?? "-"})`);
+    await loadJobs({ ignoreStatus: true });
+    await setActive(key);
+    await hydrateApplicationPack(key);
+  } catch (e) {
+    toast("Auto-tailor failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function runJobPrimaryAction(jobKey, action) {
+  const key = String(jobKey || "").trim();
+  const act = String(action || "").trim().toLowerCase();
+  if (!key || !act) return;
+  if (act === "score") {
+    await rescoreOne(key);
+    return;
+  }
+  if (act === "generate_pack") {
+    await generateApplicationPack(key, false);
+    return;
+  }
+  if (act === "copy_apply") {
+    await openReviewModal(key);
+    return;
+  }
+  await setActive(key);
+}
+
 async function hydrateApplicationPack(jobOrKey) {
   const section = $("appPackSection");
   if (!section) return;
@@ -1921,8 +2113,12 @@ async function hydrateApplicationPack(jobOrKey) {
     $("appPackEmpty").textContent = rrImportReady
       ? "Application Pack loaded"
       : "Application Pack loaded with RR import warnings";
-    section.dataset.packSummary = String(d?.pack_json?.tailoring?.summary || "");
-    section.dataset.packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
+    const packSummary = String(d?.pack_json?.tailoring?.summary || "");
+    const packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
+    const packCoverLetter = String(d?.pack_json?.tailoring?.cover_letter || "");
+    section.dataset.packSummary = packSummary;
+    section.dataset.packBullets = packBullets;
+    section.dataset.packCoverLetter = packCoverLetter;
     section.dataset.rrJson = JSON.stringify(d?.rr_export_json || {}, null, 2);
     section.dataset.rrImportReady = rrImportReady ? "1" : "0";
     section.dataset.rrImportErrors = rrImportErrors.join(", ");
@@ -1951,10 +2147,30 @@ async function hydrateApplicationPack(jobOrKey) {
     }
     setEnabledBlocksUi_(Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks : getTemplateById_(state.activeTemplateId)?.enabled_blocks || []);
     state.selectedAtsKeywords = Array.isArray(controls.selected_keywords) ? controls.selected_keywords : [];
+    if ($("wizardSummary")) $("wizardSummary").value = packSummary;
+    if ($("wizardCoverLetter")) $("wizardCoverLetter").value = packCoverLetter;
+    if ($("wizardFinalLetter")) $("wizardFinalLetter").value = packCoverLetter;
+    if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = status || "-";
+    const mustKeywords = Array.isArray(d?.pack_json?.tailoring?.must_keywords) ? d.pack_json.tailoring.must_keywords : [];
+    const missingSet = new Set(missing.map((x) => String(x || "").trim().toLowerCase()).filter(Boolean));
+    const matchedTop = mustKeywords
+      .map((x) => String(x || "").trim())
+      .filter(Boolean)
+      .filter((x) => !missingSet.has(x.toLowerCase()))
+      .slice(0, 3);
+    const missingTop = missing.slice(0, 2);
+    if ($("appMatchSummary")) {
+      $("appMatchSummary").textContent = `Matched ${matchedTop.length} strong signals, missing ${missingTop.length} must-have keywords.`;
+    }
+    if ($("appMatchChips")) {
+      const matchedHtml = matchedTop.map((kw) => `<span class="chip chip-match-pos">${escapeHtml(kw)}</span>`).join("");
+      const missingHtml = missingTop.map((kw) => `<span class="chip chip-match-neg">${escapeHtml(String(kw || ""))}</span>`).join("");
+      $("appMatchChips").innerHTML = matchedHtml + missingHtml || `<span class="muted tiny">No keyword chips available yet.</span>`;
+    }
     renderKeywordPicker_(currentJob, d);
     syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: true });
-    activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: true }));
+    setWizardStep_(resolveWizardStep_(currentJob, status));
   } catch (e) {
     $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
     $("appAtsScore").textContent = "-";
@@ -1977,6 +2193,7 @@ async function hydrateApplicationPack(jobOrKey) {
     $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
+    section.dataset.packCoverLetter = "";
     section.dataset.rrJson = "{}";
     section.dataset.rrImportReady = "0";
     section.dataset.rrImportErrors = "";
@@ -1984,11 +2201,17 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.pdfReady = "0";
     section.dataset.pdfReadyIssues = "";
     if ($("appOnePagerStrict")) $("appOnePagerStrict").checked = getOnePagerStrictPref_();
+    if ($("wizardSummary")) $("wizardSummary").value = "";
+    if ($("wizardCoverLetter")) $("wizardCoverLetter").value = "";
+    if ($("wizardFinalLetter")) $("wizardFinalLetter").value = "";
+    if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = "-";
+    if ($("appMatchSummary")) $("appMatchSummary").textContent = "No scored evidence yet. Generate pitch to continue.";
+    if ($("appMatchChips")) $("appMatchChips").innerHTML = `<span class="muted tiny">No keyword chips available yet.</span>`;
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
     syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: false });
-    activateWorkspaceTab_(preferredWorkspaceTab_(currentJob, { hasPack: false }));
+    setWizardStep_(resolveWizardStep_(currentJob, ""));
   }
 }
 
@@ -1997,23 +2220,20 @@ function renderEvidenceRowsHtml_(rows, { emptyMsg = "No evidence rows found." } 
   if (!list.length) return `<div class="muted tiny">${escapeHtml(emptyMsg)}</div>`;
   return list.map((row) => {
     const matched = Boolean(row?.matched);
-    const icon = matched ? "CHECK" : "X";
-    const color = matched ? "#23c16b" : "#e44f4f";
+    const icon = matched ? "OK" : "X";
+    const rowClass = matched ? "review-evidence-row evidence-item matched" : "review-evidence-row evidence-item missing";
     const requirementType = String(row?.requirement_type || "-").trim() || "-";
     const requirementText = String(row?.requirement_text || "-").trim() || "-";
     const source = String(row?.evidence_source || "none").trim() || "none";
     const confidence = Number.isFinite(Number(row?.confidence_score)) ? Number(row.confidence_score) : 0;
     const evidenceText = String(row?.evidence_text || "").trim();
     return `
-      <div class="review-evidence-row">
-        <div class="row" style="justify-content:space-between; gap:8px; margin-top:0;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-weight:700; color:${color};">${icon}</span>
-            <span><b>${escapeHtml(requirementType)}</b>: ${escapeHtml(requirementText)}</span>
-          </div>
-          <span class="muted tiny">confidence ${escapeHtml(String(confidence))}</span>
+      <div class="${rowClass}">
+        <span class="evidence-tag">${escapeHtml(requirementType)} - confidence ${escapeHtml(String(confidence))} - source ${escapeHtml(source)}</span>
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <span style="font-weight:700; color:${matched ? "#23c16b" : "#e44f4f"};">${icon}</span>
+          <span>${escapeHtml(requirementText)}</span>
         </div>
-        <div class="muted tiny" style="margin-top:4px;">source: ${escapeHtml(source)}</div>
         ${evidenceText ? `<blockquote>${escapeHtml(evidenceText)}</blockquote>` : ""}
       </div>
     `;
@@ -2034,36 +2254,6 @@ async function fetchAndRenderEvidence(jobKey) {
     const res = await api(`/jobs/${encodeURIComponent(key)}/evidence`);
     const rows = Array.isArray(res?.data) ? res.data : [];
     host.innerHTML = renderEvidenceRowsHtml_(rows);
-    return;
-    if (!rows.length) {
-      host.innerHTML = `<div class="muted tiny">No evidence rows found.</div>`;
-      return;
-    }
-
-    host.innerHTML = rows.map((row) => {
-      const matched = Boolean(row?.matched);
-      const icon = matched ? "✔" : "✖";
-      const color = matched ? "#23c16b" : "#e44f4f";
-      const requirementType = String(row?.requirement_type || "-").trim() || "-";
-      const requirementText = String(row?.requirement_text || "-").trim() || "-";
-      const source = String(row?.evidence_source || "none").trim() || "none";
-      const confidence = Number.isFinite(Number(row?.confidence_score)) ? Number(row.confidence_score) : 0;
-      const evidenceText = String(row?.evidence_text || "").trim();
-
-      return `
-        <div style="padding:8px 10px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px;">
-          <div class="row" style="justify-content:space-between; gap:8px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-weight:700; color:${color};">${icon}</span>
-              <span><b>${escapeHtml(requirementType)}</b>: ${escapeHtml(requirementText)}</span>
-            </div>
-            <span class="muted tiny">confidence ${escapeHtml(String(confidence))}</span>
-          </div>
-          <div class="muted tiny" style="margin-top:4px;">source: ${escapeHtml(source)}</div>
-          ${evidenceText ? `<blockquote style="margin:8px 0 0 0; padding:8px 10px; border-left:3px solid var(--line); background:rgba(255,255,255,0.02);">${escapeHtml(evidenceText)}</blockquote>` : ""}
-        </div>
-      `;
-    }).join("");
   } catch (e) {
     if (e?.httpStatus === 404) {
       host.innerHTML = `<div class="muted tiny">No evidence yet. Run rescore or manual JD save first.</div>`;
@@ -2179,6 +2369,10 @@ async function approvePack() {
 
   try {
     spin(true);
+    const approveBtn = $("btnReviewApprove");
+    const originalLabel = approveBtn ? approveBtn.textContent : "";
+    const originalBg = approveBtn ? approveBtn.style.background : "";
+
     const res = await api(`/jobs/${encodeURIComponent(jobKey)}/approve-pack`, {
       method: "POST",
       body: {
@@ -2190,9 +2384,19 @@ async function approvePack() {
     });
     try {
       await navigator.clipboard.writeText(coverLetter);
-      toast(`Approved (${res?.data?.status || "READY_FOR_SUBMISSION"}). Cover letter copied.`);
+      if (approveBtn) {
+        approveBtn.textContent = "OK Copied to Clipboard";
+        approveBtn.style.background = "#28a745";
+      }
+      toast(`Approved (${res?.data?.status || "READY_TO_APPLY"}). Cover letter copied.`);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
     } catch {
-      toast(`Approved (${res?.data?.status || "READY_FOR_SUBMISSION"}). Copy cover letter manually.`);
+      toast(`Approved (${res?.data?.status || "READY_TO_APPLY"}). Copy cover letter manually.`);
+    } finally {
+      if (approveBtn) {
+        approveBtn.textContent = originalLabel;
+        approveBtn.style.background = originalBg;
+      }
     }
     closeModal("modalReview");
     await loadJobs({ ignoreStatus: true });
@@ -2202,6 +2406,95 @@ async function approvePack() {
   } finally {
     spin(false);
   }
+}
+
+function getWizardDraftPayload_() {
+  const jobKey = String(state.activeJob?.job_key || "").trim();
+  const profileId = String(state.activeProfileId || "primary").trim() || "primary";
+  const summary = String($("wizardSummary")?.value || "").trim();
+  const coverLetter = String($("wizardCoverLetter")?.value || "").trim();
+  const bullets = String($("appPackSection")?.dataset?.packBullets || "")
+    .split(/\r?\n+/g)
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+  return { jobKey, profileId, summary, coverLetter, bullets };
+}
+
+async function saveWizardDraft() {
+  const { jobKey, profileId, summary, coverLetter, bullets } = getWizardDraftPayload_();
+  if (!jobKey) return toast("Select a job first", { kind: "error" });
+  if (!summary) return toast("Summary is required", { kind: "error" });
+  if (!bullets.length) return toast("Generate pitch first", { kind: "error" });
+  try {
+    spin(true);
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/application-pack/review`, {
+      method: "POST",
+      body: {
+        profile_id: profileId,
+        summary,
+        bullets,
+        cover_letter: coverLetter,
+      },
+    });
+    toast(`Draft saved (${res?.data?.status || "ok"})`);
+    await hydrateApplicationPack(jobKey);
+    setWizardStep_("pitch");
+  } catch (e) {
+    toast("Save failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function approveWizardPack() {
+  const { jobKey, profileId, summary, coverLetter, bullets } = getWizardDraftPayload_();
+  if (!jobKey) return toast("Select a job first", { kind: "error" });
+  if (!summary) return toast("Summary is required", { kind: "error" });
+  if (!coverLetter) return toast("Cover letter is required", { kind: "error" });
+  try {
+    spin(true);
+    const res = await api(`/jobs/${encodeURIComponent(jobKey)}/approve-pack`, {
+      method: "POST",
+      body: {
+        profile_id: profileId,
+        summary,
+        cover_letter: coverLetter,
+        bullets,
+      },
+    });
+    if ($("wizardFinalLetter")) $("wizardFinalLetter").value = coverLetter;
+    if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = String(res?.data?.status || "READY_TO_APPLY");
+    toast(`Approved (${res?.data?.status || "READY_TO_APPLY"})`);
+    await loadJobs({ ignoreStatus: true });
+    await setActive(jobKey);
+    setWizardStep_("finish");
+  } catch (e) {
+    toast("Approve failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function copyWizardCoverLetter() {
+  const letter = String($("wizardFinalLetter")?.value || $("wizardCoverLetter")?.value || $("appPackSection")?.dataset?.packCoverLetter || "").trim();
+  if (!letter) return toast("No cover letter available", { kind: "error" });
+  try {
+    await navigator.clipboard.writeText(letter);
+    toast("Cover letter copied");
+  } catch {
+    toast("Copy failed", { kind: "error" });
+  }
+}
+
+function togglePdfReadyMode() {
+  setPdfReadyMode_(!document.body.classList.contains("pdf-ready-mode"));
+}
+
+function printPdfReadyView() {
+  if (!document.body.classList.contains("pdf-ready-mode")) {
+    setPdfReadyMode_(true);
+  }
+  window.print();
 }
 
 async function rebuildEvidence(jobKey) {
@@ -2403,7 +2696,7 @@ async function saveAndRescoreManualJd(jobKey) {
   } catch (e) {
     toast("Manual JD failed: " + e.message);
   } finally {
-    activateWorkspaceTab_("ats");
+    setWizardStep_("matches");
     spin(false);
   }
 }
@@ -2725,6 +3018,7 @@ async function saveSettings() {
 }
 
 (function init() {
+  setPdfReadyMode_(false);
   $("toast").onclick = () => $("toast").classList.add("hidden");
   $("btnDismissAiNotice").onclick = hideAiNotice;
   $("btnShowAiNotice").onclick = () => showAiNotice(true);
@@ -2813,10 +3107,17 @@ window.saveResumeTemplateFromUi = saveResumeTemplateFromUi;
 window.deleteResumeTemplateFromUi = deleteResumeTemplateFromUi;
 window.selectAtsKeywords = selectAtsKeywords;
 window.runNextAction = runNextAction;
+window.runJobPrimaryAction = runJobPrimaryAction;
+window.autoPilotJob = autoPilotJob;
 window.generateApplicationPack = generateApplicationPack;
 window.openReviewModal = openReviewModal;
 window.saveDraft = saveDraft;
 window.approvePack = approvePack;
+window.saveWizardDraft = saveWizardDraft;
+window.approveWizardPack = approveWizardPack;
+window.copyWizardCoverLetter = copyWizardCoverLetter;
+window.togglePdfReadyMode = togglePdfReadyMode;
+window.printPdfReadyView = printPdfReadyView;
 window.copyPackSummary = copyPackSummary;
 window.copyPackBullets = copyPackBullets;
 window.downloadRrJson = downloadRrJson;
@@ -2824,3 +3125,4 @@ window.downloadLatestRrPdf = downloadLatestRrPdf;
 window.exportReactiveResumePdf = exportReactiveResumePdf;
 window.pushToReactiveResume = pushToReactiveResume;
 window.rebuildEvidence = rebuildEvidence;
+

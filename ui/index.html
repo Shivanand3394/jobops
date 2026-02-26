@@ -43,6 +43,7 @@
             <option value="NEW">NEW</option>
             <option value="SCORED">SCORED</option>
             <option value="SHORTLISTED">SHORTLISTED</option>
+            <option value="READY_TO_APPLY">READY_TO_APPLY</option>
             <option value="APPLIED">APPLIED</option>
             <option value="REJECTED">REJECTED</option>
             <option value="ARCHIVED">ARCHIVED</option>
@@ -349,11 +350,11 @@
         <button class="btn btn-ghost" id="btnCloseReview">Close</button>
       </div>
       <div class="modal-body modal-body-split">
-        <section class="review-panel review-evidence-panel">
+        <section class="review-panel review-evidence-panel evidence-audit-panel">
           <div class="h3">Verified Evidence</div>
           <div id="reviewEvidenceList" class="review-scroll muted tiny">Loading...</div>
         </section>
-        <section class="review-panel review-draft-panel">
+        <section class="review-panel review-draft-panel draft-edit-panel">
           <div class="h3">Tailored Content</div>
           <label class="muted tiny" for="reviewSummary">Summary (180-250 chars)</label>
           <textarea id="reviewSummary" maxlength="250" rows="4" placeholder="Summary..."></textarea>
@@ -365,7 +366,7 @@
       <div class="modal-body">
         <div class="row" style="justify-content:flex-start;">
           <button class="btn btn-secondary" id="btnReviewSave">Save Progress</button>
-          <button class="btn" id="btnReviewApprove">Approve & Copy</button>
+          <button class="btn btn-primary" id="btnReviewApprove">Approve & Copy</button>
         </div>
       </div>
     </div>
