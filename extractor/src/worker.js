@@ -64,10 +64,10 @@ export default {
     };
     const forwardedVonageAuth = String(request.headers.get("x-vonage-authorization") || "").trim();
     const staticVonageAuth = String(env.VONAGE_MEDIA_AUTH_BEARER || "").trim();
-    if (forwardedVonageAuth) {
-      mediaHeaders.Authorization = forwardedVonageAuth;
-    } else if (staticVonageAuth) {
+    if (staticVonageAuth) {
       mediaHeaders.Authorization = staticVonageAuth;
+    } else if (forwardedVonageAuth) {
+      mediaHeaders.Authorization = forwardedVonageAuth;
     }
 
     const mediaRes = await fetchWithTimeout_(mediaUrl, {
