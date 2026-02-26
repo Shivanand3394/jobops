@@ -4,6 +4,27 @@
 - Keep issues below as follow-up hardening/UX work unless marked complete in GitHub.
 - Current operational choice: `ALLOW_ORIGIN="*"` to avoid recurring UI fetch failures across domains. Track Issue `CORS tightening` below for staged hardening later.
 
+## Issue: WhatsApp media OCR lands as LINK_ONLY (deferred tuning)
+
+**Status:** Deferred (pipeline wiring complete, quality tuning pending)
+
+**Current state (verified):**
+- Inbound WhatsApp media now reaches extractor reliably (media id/url captured, queued, extracted).
+- Latest verified media run (`message_id=4ed61109-8a96-4f2a-9321-edd5f29235ac`) returned `WHATSAPP_VONAGE_MEDIA_EXTRACT_INGESTED` with `extracted_text_len=563`.
+- Result still downgraded to `status=LINK_ONLY` (`manual_needed=1`, `low_quality=1`) for the created record.
+
+**Goal:**
+Reduce false `LINK_ONLY` outcomes for media-only job screenshots/docs where OCR text is usable for scoring.
+
+**Acceptance Criteria:**
+- Media-only WhatsApp ingests with usable OCR text should progress to normal scored flow (not `LINK_ONLY` by default).
+- Keep deterministic safeguards against junk OCR/noise.
+- Maintain event observability for decisions (`ingest_decision`, `signal_hits`, extraction status).
+
+**Notes:**
+- Keep this separate from webhook/transport reliability (already fixed).
+- Tuning should target quality gates and/or OCR extraction prompt behavior only.
+
 ## Issue: Detect low-quality JD fetch and mark NEEDS_MANUAL_JD
 
 **Goal:**

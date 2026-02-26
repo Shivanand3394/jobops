@@ -3,6 +3,9 @@ const DEFAULT_PROMPT = [
   "Extract job information from the attached document.",
   "Return JSON only with keys:",
   "title, company, job_description, urls.",
+  "If the file is an image or screenshot, run OCR and capture visible job text verbatim.",
+  "Do not summarize job_description; keep original wording where possible.",
+  "If only partial job text is visible, still return the partial text in job_description.",
   "If this is not a job description, still return JSON with empty strings/arrays.",
 ].join(" ");
 

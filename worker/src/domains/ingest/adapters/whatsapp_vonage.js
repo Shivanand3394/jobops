@@ -74,11 +74,25 @@ function toMediaRecord_(candidate, fallbackType = "") {
     c.mediaUrl ||
     c.link ||
     c.href ||
+    c._links?.self?.href ||
+    c._links?.url?.href ||
+    c.links?.self?.href ||
     c.download_url ||
     c.downloadUrl ||
     c.file_url ||
     "",
     4000
+  );
+  const mediaId = safeText_(
+    c.media_id ||
+    c.mediaId ||
+    c.file_id ||
+    c.fileId ||
+    c.object_id ||
+    c.objectId ||
+    c.id ||
+    "",
+    240
   );
   const mimeType = safeText_(c.mime_type || c.mimetype || c.content_type || "", 120).toLowerCase();
   const fileName = safeText_(c.name || c.filename || c.file_name || "", 240);
@@ -87,11 +101,12 @@ function toMediaRecord_(candidate, fallbackType = "") {
   const sizeBytes = Number.isFinite(sizeRaw) ? Math.max(0, Math.floor(sizeRaw)) : null;
   const inferredType = normalizeMediaType_(c.type || c.message_type || c.kind || fallbackType);
 
-  if (!url && !mimeType && !fileName && !inferredType && !caption && sizeBytes === null) return null;
+  if (!url && !mediaId && !mimeType && !fileName && !inferredType && !caption && sizeBytes === null) return null;
   return {
     present: true,
     type: inferredType || normalizeMediaType_(fallbackType) || "unknown",
     url: url || "",
+    id: mediaId || "",
     mime_type: mimeType || "",
     file_name: fileName || "",
     caption: caption || "",
@@ -139,6 +154,7 @@ function pickMedia_(payload = {}) {
     present: false,
     type: typeHint || "",
     url: "",
+    id: "",
     mime_type: "",
     file_name: "",
     caption: "",
@@ -221,6 +237,7 @@ export function adaptWhatsappVonagePayload_(payload = {}) {
         present: Boolean(media.present),
         type: media.type || null,
         url: media.url || null,
+        id: media.id || null,
         mime_type: media.mime_type || null,
         file_name: media.file_name || null,
         caption: safeText_(media.caption, 500) || null,

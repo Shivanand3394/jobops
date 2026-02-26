@@ -3340,6 +3340,7 @@ export default {
         const body = (bodyParsed && typeof bodyParsed === "object" && !Array.isArray(bodyParsed))
           ? bodyParsed
           : {};
+        const rawBodyMediaRef = extractVonageMediaRefFromRawBody_(rawBody);
 
         const signatureCheck = await verifyVonageWebhookSignature_(request, rawBody, env);
         if (!signatureCheck.ok) {
@@ -3383,7 +3384,9 @@ export default {
           ? processed.metadata.media
           : {};
         const mediaDetected = toBool_(mediaMetaRaw?.present, false);
-        const mediaUrl = String(mediaMetaRaw?.url || "").trim();
+        const mediaUrlInput = String(mediaMetaRaw?.url || rawBodyMediaRef?.url || "").trim();
+        const mediaId = String(mediaMetaRaw?.id || rawBodyMediaRef?.id || "").trim();
+        const mediaUrl = mediaUrlInput || vonageMediaUrlFromId_(env, mediaId);
         const mediaType = String(mediaMetaRaw?.type || "").trim().toLowerCase();
         const mediaMimeType = String(mediaMetaRaw?.mime_type || "").trim().toLowerCase();
         const mediaFileName = String(mediaMetaRaw?.file_name || "").trim();
@@ -3395,6 +3398,7 @@ export default {
         const mediaSummary = mediaDetected
           ? {
             type: mediaType || null,
+            id: mediaId || null,
             mime_type: mediaMimeType || null,
             file_name: mediaFileName || null,
             size_bytes: mediaSizeBytes,
@@ -3402,13 +3406,29 @@ export default {
             url_host: sourceDomainFromUrl_(mediaUrl) || null,
           }
           : null;
-        const mediaNeedsExtraction = mediaDetected && rawUrls.length === 0;
+        // Run media extraction whenever we can resolve a Vonage media URL (direct URL or media id fallback).
+        const mediaNeedsExtraction = mediaDetected && Boolean(mediaUrl);
         const extractorConfigured = Boolean(String(env.WHATSAPP_MEDIA_EXTRACTOR_URL || "").trim());
         const baseExtractionStatus = mediaNeedsExtraction
           ? (extractorConfigured ? "queued" : "queued_unconfigured")
           : "not_applicable";
 
         const runWebhookIngest = async () => {
+          if (mediaDetected && !mediaUrl) {
+            await logEvent_(env, "WHATSAPP_VONAGE_MEDIA_MISSING_URL", null, {
+              message_id: messageId,
+              route: "/ingest/whatsapp/vonage",
+              sender: sender || null,
+              media_type: mediaType || null,
+              media_id: mediaId || null,
+              raw_media_ref_found: Boolean(rawBodyMediaRef?.url || rawBodyMediaRef?.id),
+              media_file_name: mediaFileName || null,
+              media_mime_type: mediaMimeType || null,
+              extraction_status: "missing_media_url",
+              ts: Date.now(),
+            });
+          }
+
           if (!mediaNeedsExtraction) {
             await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
               route: "/ingest/whatsapp/vonage",
@@ -3445,6 +3465,7 @@ export default {
               route: "/ingest/whatsapp/vonage",
               sender: sender || null,
               media_type: mediaType || null,
+              media_id: mediaId || null,
               media_mime_type: mediaMimeType || null,
               media_file_name: mediaFileName || null,
               media_size_bytes: mediaSizeBytes,
@@ -3462,6 +3483,7 @@ export default {
                 message_id: messageId,
                 sender,
                 media_url: mediaUrl,
+                media_id: mediaId || null,
                 media_type: mediaType,
                 media_mime_type: mediaMimeType,
                 media_file_name: mediaFileName,
@@ -3481,6 +3503,7 @@ export default {
                   route: "/ingest/whatsapp/vonage",
                   sender: sender || null,
                   media_type: mediaType || null,
+                  media_id: mediaId || null,
                   media_mime_type: mediaMimeType || null,
                   media_file_name: mediaFileName || null,
                   media_url_host: sourceDomainFromUrl_(mediaUrl) || null,
@@ -3493,7 +3516,13 @@ export default {
               } else {
                 const extractedText = String(extracted.text || "").trim();
                 const extractedUrls = Array.isArray(extracted.urls) ? extracted.urls : [];
-                const canIngestExtracted = extractedUrls.length > 0 || extractedText.length >= 80;
+                const ingestDecision = decideWhatsAppMediaExtractIngest_(
+                  extractedText,
+                  extractedUrls,
+                  mediaType,
+                  mediaMimeType
+                );
+                const canIngestExtracted = ingestDecision.accept === true;
 
                 if (!canIngestExtracted) {
                   extractionStatus = "extract_empty";
@@ -3502,8 +3531,12 @@ export default {
                     route: "/ingest/whatsapp/vonage",
                     sender: sender || null,
                     media_type: mediaType || null,
+                    media_id: mediaId || null,
                     extracted_text_len: extractedText.length,
                     extracted_url_count: extractedUrls.length,
+                    ingest_decision: String(ingestDecision.reason || "").trim() || "reject",
+                    signal_hits: numOr_(ingestDecision.keyword_hits, 0),
+                    extracted_text_preview: extractedText.slice(0, 220) || null,
                     source_health: sourceHealth,
                     ts: Date.now(),
                   });
@@ -3530,11 +3563,14 @@ export default {
                     route: "/ingest/whatsapp/vonage",
                     sender: sender || null,
                     media_type: mediaType || null,
+                    media_id: mediaId || null,
                     media_mime_type: mediaMimeType || null,
                     media_file_name: mediaFileName || null,
                     extracted_text_len: extractedText.length,
                     extracted_url_count: extractedUrls.length,
                     synthetic_url_used: extractedUrls.length === 0,
+                    ingest_decision: String(ingestDecision.reason || "").trim() || "accept",
+                    signal_hits: numOr_(ingestDecision.keyword_hits, 0),
                     extraction_status: extractionStatus,
                     ingest: {
                       count_in: numOr_(extractionIngest?.count_in, 0),
@@ -3582,6 +3618,7 @@ export default {
             media_detected: mediaDetected,
             media_queued_for_extraction: mediaNeedsExtraction,
             media_type: mediaType || null,
+            media_id: mediaId || null,
             media_mime_type: mediaMimeType || null,
             media_file_name: mediaFileName || null,
             extraction_status: extractionStatus,
@@ -10035,6 +10072,43 @@ function syntheticWhatsappMediaJobUrl_(messageId) {
   return `https://whatsapp.vonage.local/media/${id}`;
 }
 
+function extractVonageMediaRefFromRawBody_(rawBody) {
+  const s = String(rawBody || "").trim();
+  if (!s) return { url: "", id: "" };
+  const unescaped = s.replace(/\\\//g, "/");
+  const urlMatch = unescaped.match(/https?:\/\/[^\s"'<>]+\/v3\/media\/([a-zA-Z0-9._-]+)/i);
+  const mediaIdFromUrl = String(urlMatch?.[1] || "").trim();
+
+  const mediaIdDirect = (
+    unescaped.match(/"media[_-]?id"\s*:\s*"([a-zA-Z0-9._-]+)"/i)?.[1] ||
+    unescaped.match(/"mediaId"\s*:\s*"([a-zA-Z0-9._-]+)"/i)?.[1] ||
+    ""
+  );
+
+  const mediaUrl = String(urlMatch?.[0] || "").trim().slice(0, 4000);
+  const mediaId = String(mediaIdDirect || mediaIdFromUrl || "").trim().replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 240);
+  return { url: mediaUrl, id: mediaId };
+}
+
+function vonageMediaUrlFromId_(env, mediaId) {
+  const id = String(mediaId || "").trim();
+  if (!id) return "";
+  const safeId = id.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 240);
+  if (!safeId) return "";
+  const baseRaw = String(env?.VONAGE_MEDIA_BASE_URL || env?.VONAGE_API_BASE_URL || "").trim();
+  let base = baseRaw || "https://api-eu.nexmo.com";
+  if (!/^https?:\/\//i.test(base)) base = `https://${base}`;
+  try {
+    const u = new URL(base);
+    u.pathname = `/v3/media/${encodeURIComponent(safeId)}`;
+    u.search = "";
+    u.hash = "";
+    return u.toString();
+  } catch {
+    return `https://api-eu.nexmo.com/v3/media/${encodeURIComponent(safeId)}`;
+  }
+}
+
 function extractFirstHttpUrlFromText_(text = "") {
   const s = String(text || "").trim();
   if (!s) return "";
@@ -10066,6 +10140,44 @@ function normalizeExtractorUrls_(input) {
     pushUrl(input);
   }
   return unique_(out).slice(0, 10);
+}
+
+function decideWhatsAppMediaExtractIngest_(text, urls, mediaType = "", mediaMimeType = "") {
+  const cleanText = String(text || "").trim();
+  const urlCount = Array.isArray(urls) ? urls.filter((u) => String(u || "").trim()).length : 0;
+  if (urlCount > 0) {
+    return { accept: true, reason: "has_url", keyword_hits: 0 };
+  }
+  if (!cleanText) {
+    return { accept: false, reason: "empty_text", keyword_hits: 0 };
+  }
+
+  const low = cleanText.toLowerCase();
+  const signalPatterns = [
+    /\b(job|position|opening|vacancy|role)\b/i,
+    /\b(responsibilit(?:y|ies)|what you will do|day-to-day)\b/i,
+    /\b(requirements?|qualifications?|must[-\s]?have|preferred)\b/i,
+    /\b(skills?|experience|years?)\b/i,
+    /\b(company|team|department|organization)\b/i,
+    /\b(apply|application|candidate|hiring)\b/i,
+    /\b(full[-\s]?time|part[-\s]?time|contract|onsite|remote|hybrid)\b/i,
+  ];
+  let keywordHits = 0;
+  for (const re of signalPatterns) {
+    if (re.test(low)) keywordHits += 1;
+  }
+
+  const tLen = cleanText.length;
+  const mediaKind = String(mediaType || "").trim().toLowerCase();
+  const mime = String(mediaMimeType || "").trim().toLowerCase();
+  const isImage = mediaKind === "image" || mime.startsWith("image/");
+
+  if (tLen >= 80) return { accept: true, reason: "text_len>=80", keyword_hits: keywordHits };
+  if (tLen >= 60 && keywordHits >= 1) return { accept: true, reason: "text_len>=60_signal", keyword_hits: keywordHits };
+  if (tLen >= 35 && keywordHits >= 2) return { accept: true, reason: "text_len>=35_signal", keyword_hits: keywordHits };
+  if (isImage && tLen >= 20 && keywordHits >= 1) return { accept: true, reason: "image_text_signal", keyword_hits: keywordHits };
+
+  return { accept: false, reason: "text_too_short_or_low_signal", keyword_hits: keywordHits };
 }
 
 function parseJsonObjectFromText_(text = "") {
