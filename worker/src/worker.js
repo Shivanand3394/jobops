@@ -122,6 +122,7 @@ export default {
       const needsDB =
         isUiRoute ||
         path === "/score-pending" ||
+        path === "/admin/scoring-runs/report" ||
         path === "/resolve-jd" ||
         path.startsWith("/gmail/") ||
         path.startsWith("/rss/"); // gmail/rss bridge requires D1 state
@@ -580,6 +581,25 @@ export default {
         const profileId = String(url.searchParams.get("profile_id") || "primary").trim() || "primary";
 
         const report = await getEvidenceGapReport_(env, { status, top, minMissed, profileId });
+        return json_({ ok: true, data: report }, env, 200);
+      }
+
+      // ============================
+      // API: Scoring efficiency report (read-only)
+      // ============================
+      if (path === "/admin/scoring-runs/report" && request.method === "GET") {
+        const windowDays = clampInt_(url.searchParams.get("window_days") || 14, 1, 180);
+        const trendDays = clampInt_(url.searchParams.get("trend_days") || Math.min(windowDays, 30), 1, 180);
+        const stageSampleLimit = clampInt_(url.searchParams.get("stage_sample_limit") || 1500, 50, 5000);
+        const source = String(url.searchParams.get("source") || "").trim().toLowerCase();
+
+        const report = await buildScoringRunsEfficiencyReport_(env, {
+          window_days: windowDays,
+          trend_days: trendDays,
+          stage_sample_limit: stageSampleLimit,
+          source,
+        });
+
         return json_({ ok: true, data: report }, env, 200);
       }
 
@@ -4728,6 +4748,192 @@ async function persistScoringRun_(env, input = {}) {
   }
 }
 
+async function buildScoringRunsEfficiencyReport_(env, input = {}) {
+  if (!env?.DB) return { enabled: false, error: "Missing D1 binding env.DB" };
+
+  const enabled = await hasScoringRunsTable_(env);
+  const now = Date.now();
+  const windowDays = clampInt_(input.window_days ?? input.windowDays ?? 14, 1, 180);
+  const trendDays = clampInt_(input.trend_days ?? input.trendDays ?? Math.min(windowDays, 30), 1, 180);
+  const stageSampleLimit = clampInt_(input.stage_sample_limit ?? input.stageSampleLimit ?? 1500, 50, 5000);
+  const source = String(input.source || "").trim().toLowerCase();
+  const windowStart = now - (windowDays * 24 * 60 * 60 * 1000);
+  const trendStart = now - (trendDays * 24 * 60 * 60 * 1000);
+
+  if (!enabled) {
+    return {
+      enabled: false,
+      source: source || null,
+      window: { days: windowDays, start_at: windowStart, end_at: now },
+      trend: { days: trendDays, start_at: trendStart, end_at: now },
+      totals: {
+        total_runs: 0,
+        heuristic_passed_runs: 0,
+        heuristic_rejected_runs: 0,
+      },
+      heuristic_reject_rate: { ratio: 0, percent: 0 },
+      latency_ms: {
+        avg_total_latency_ms: 0,
+        avg_ai_latency_ms: 0,
+        stage_sample_limit: stageSampleLimit,
+        stage_rows_scanned: 0,
+        stage_avg_latency_ms: {},
+      },
+      token_spend: {
+        ai_tokens_total_sum: 0,
+        ai_tokens_total_avg_per_run: 0,
+        trend_by_day: [],
+      },
+    };
+  }
+
+  const where = ["created_at >= ?"];
+  const binds = [windowStart];
+  if (source) {
+    where.push("source = ?");
+    binds.push(source);
+  }
+  const whereSql = where.join(" AND ");
+
+  const summary = await env.DB.prepare(`
+    SELECT
+      COUNT(*) AS total_runs,
+      SUM(CASE WHEN heuristic_passed = 1 THEN 1 ELSE 0 END) AS heuristic_passed_runs,
+      SUM(CASE WHEN heuristic_passed = 0 THEN 1 ELSE 0 END) AS heuristic_rejected_runs,
+      AVG(total_latency_ms) AS avg_total_latency_ms,
+      AVG(ai_latency_ms) AS avg_ai_latency_ms,
+      AVG(ai_tokens_total) AS avg_ai_tokens_total,
+      SUM(ai_tokens_total) AS sum_ai_tokens_total
+    FROM scoring_runs
+    WHERE ${whereSql};
+  `.trim()).bind(...binds).first();
+
+  const stageRows = await env.DB.prepare(`
+    SELECT stage_metrics_json
+    FROM scoring_runs
+    WHERE ${whereSql}
+    ORDER BY created_at DESC
+    LIMIT ?;
+  `.trim()).bind(...binds, stageSampleLimit).all();
+
+  const stageAgg = {};
+  for (const row of (stageRows?.results || [])) {
+    const stageMetrics = safeJsonParse_(row?.stage_metrics_json) || {};
+    if (!stageMetrics || typeof stageMetrics !== "object") continue;
+    for (const [stageName, metricRaw] of Object.entries(stageMetrics)) {
+      const stage = String(stageName || "").trim();
+      if (!stage) continue;
+      const metric = metricRaw && typeof metricRaw === "object" ? metricRaw : {};
+      if (!stageAgg[stage]) {
+        stageAgg[stage] = {
+          stage,
+          runs_seen: 0,
+          latency_samples: 0,
+          latency_sum_ms: 0,
+          status_counts: {},
+        };
+      }
+      const slot = stageAgg[stage];
+      slot.runs_seen += 1;
+
+      const latencyMs = numOrNull_(metric.latency_ms);
+      if (latencyMs !== null && latencyMs >= 0) {
+        slot.latency_samples += 1;
+        slot.latency_sum_ms += latencyMs;
+      }
+
+      const status = String(metric.status || "unknown").trim().toLowerCase() || "unknown";
+      slot.status_counts[status] = (slot.status_counts[status] || 0) + 1;
+    }
+  }
+
+  const stageAvgLatency = {};
+  for (const stage of Object.keys(stageAgg).sort((a, b) => a.localeCompare(b))) {
+    const slot = stageAgg[stage];
+    const avgLatency = slot.latency_samples > 0
+      ? (slot.latency_sum_ms / slot.latency_samples)
+      : 0;
+    stageAvgLatency[stage] = {
+      runs_seen: slot.runs_seen,
+      latency_samples: slot.latency_samples,
+      avg_latency_ms: Number(avgLatency.toFixed(2)),
+      status_counts: slot.status_counts,
+    };
+  }
+
+  const trendWhere = ["created_at >= ?"];
+  const trendBinds = [trendStart];
+  if (source) {
+    trendWhere.push("source = ?");
+    trendBinds.push(source);
+  }
+  const trendSql = trendWhere.join(" AND ");
+
+  const trendRows = await env.DB.prepare(`
+    SELECT
+      strftime('%Y-%m-%d', (created_at / 1000), 'unixepoch') AS day,
+      COUNT(*) AS run_count,
+      SUM(CASE WHEN heuristic_passed = 0 THEN 1 ELSE 0 END) AS heuristic_rejected_runs,
+      SUM(ai_tokens_in) AS ai_tokens_in,
+      SUM(ai_tokens_out) AS ai_tokens_out,
+      SUM(ai_tokens_total) AS ai_tokens_total,
+      AVG(total_latency_ms) AS avg_total_latency_ms
+    FROM scoring_runs
+    WHERE ${trendSql}
+    GROUP BY day
+    ORDER BY day ASC;
+  `.trim()).bind(...trendBinds).all();
+
+  const trendByDay = (trendRows?.results || []).map((row) => {
+    const runCount = Math.max(0, Math.round(numOr_(row?.run_count, 0)));
+    const rejected = Math.max(0, Math.round(numOr_(row?.heuristic_rejected_runs, 0)));
+    return {
+      day: String(row?.day || "").trim(),
+      run_count: runCount,
+      heuristic_rejected_runs: rejected,
+      heuristic_reject_rate_percent: runCount > 0
+        ? Number(((rejected / runCount) * 100).toFixed(2))
+        : 0,
+      ai_tokens_in: Math.max(0, Math.round(numOr_(row?.ai_tokens_in, 0))),
+      ai_tokens_out: Math.max(0, Math.round(numOr_(row?.ai_tokens_out, 0))),
+      ai_tokens_total: Math.max(0, Math.round(numOr_(row?.ai_tokens_total, 0))),
+      avg_total_latency_ms: Number(numOr_(row?.avg_total_latency_ms, 0).toFixed(2)),
+    };
+  });
+
+  const totalRuns = Math.max(0, Math.round(numOr_(summary?.total_runs, 0)));
+  const heuristicPassedRuns = Math.max(0, Math.round(numOr_(summary?.heuristic_passed_runs, 0)));
+  const heuristicRejectedRuns = Math.max(0, Math.round(numOr_(summary?.heuristic_rejected_runs, 0)));
+
+  return {
+    enabled: true,
+    source: source || null,
+    window: { days: windowDays, start_at: windowStart, end_at: now },
+    trend: { days: trendDays, start_at: trendStart, end_at: now },
+    totals: {
+      total_runs: totalRuns,
+      heuristic_passed_runs: heuristicPassedRuns,
+      heuristic_rejected_runs: heuristicRejectedRuns,
+    },
+    heuristic_reject_rate: {
+      ratio: totalRuns > 0 ? Number((heuristicRejectedRuns / totalRuns).toFixed(4)) : 0,
+      percent: totalRuns > 0 ? Number(((heuristicRejectedRuns / totalRuns) * 100).toFixed(2)) : 0,
+    },
+    latency_ms: {
+      avg_total_latency_ms: Number(numOr_(summary?.avg_total_latency_ms, 0).toFixed(2)),
+      avg_ai_latency_ms: Number(numOr_(summary?.avg_ai_latency_ms, 0).toFixed(2)),
+      stage_sample_limit: stageSampleLimit,
+      stage_rows_scanned: Array.isArray(stageRows?.results) ? stageRows.results.length : 0,
+      stage_avg_latency_ms: stageAvgLatency,
+    },
+    token_spend: {
+      ai_tokens_total_sum: Math.max(0, Math.round(numOr_(summary?.sum_ai_tokens_total, 0))),
+      ai_tokens_total_avg_per_run: Number(numOr_(summary?.avg_ai_tokens_total, 0).toFixed(2)),
+      trend_by_day: trendByDay,
+    },
+  };
+}
+
 async function runScoringPipelineForJob_(env, input = {}) {
   const source = String(input.source || "unknown").trim().toLowerCase();
   const jobKey = String(input.job_key || "").trim();
@@ -7637,6 +7843,7 @@ function routeModeFor_(path) {
   if (path === "/health" || path === "/") return "public";
   if (path === "/jobs/evidence/rebuild-archived") return "api";
   if (path === "/jobs/evidence/gap-report") return "api";
+  if (path === "/admin/scoring-runs/report") return "api";
 
   if (
     path === "/gmail/auth" ||

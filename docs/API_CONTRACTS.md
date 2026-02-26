@@ -236,6 +236,19 @@ Auth headers:
 - Body: `{ "job":{...}, "targets":[...], "cfg":{...} }`
 - Response: `{primary_target_id,score_must,score_nice,final_score,reject_triggered,reason_top_matches}`.
 
+### GET /admin/scoring-runs/report
+- Auth: `x-api-key`
+- Query (optional):
+  - `window_days` (default `14`, range `1..180`)
+  - `trend_days` (default `min(window_days,30)`, range `1..180`)
+  - `stage_sample_limit` (default `1500`, range `50..5000`)
+  - `source` (example: `score_pending`, `rescore`, `manual_jd`)
+- Response:
+  - `totals.total_runs`
+  - `heuristic_reject_rate.percent`
+  - `latency_ms.stage_avg_latency_ms`
+  - `token_spend.trend_by_day[]`
+
 ## CORS contract
 - Preflight handled for all paths (`OPTIONS` -> `204`).
 - Response headers include:

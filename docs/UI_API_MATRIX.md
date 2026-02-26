@@ -88,6 +88,7 @@
 - `POST /resolve-jd`
 - `POST /extract-jd`
 - `POST /score-jd`
+- `GET /admin/scoring-runs/report`
 
 ### Either (`x-ui-key` OR `x-api-key`)
 - `POST /score-pending`

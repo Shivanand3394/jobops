@@ -790,3 +790,24 @@ wrangler d1 execute jobops-db --cwd worker --remote --command "SELECT event_type
 Expected:
 - No recent failures in healthy runs.
 - If failures exist, inspect `payload_json.error` and route (`manual-jd` or `rescore`).
+
+## 31) Scoring efficiency report (API key)
+Purpose: summarize heuristic reject rate, stage latency averages, and token trend from `scoring_runs`.
+
+### curl
+```bash
+curl -sS "$BASE_URL/admin/scoring-runs/report?window_days=14&trend_days=14&stage_sample_limit=1500" \
+  -H "x-api-key: $API_KEY"
+```
+
+### PowerShell
+```powershell
+Invoke-WebRequest -Uri "$BASE_URL/admin/scoring-runs/report?window_days=14&trend_days=14&stage_sample_limit=1500" -Method GET -Headers @{ "x-api-key" = $API_KEY } | Select-Object -ExpandProperty Content
+```
+
+Expected:
+- `ok:true`
+- `data.totals.total_runs >= 0`
+- `data.heuristic_reject_rate.percent >= 0`
+- `data.latency_ms.stage_avg_latency_ms` contains per-stage averages (when stage data exists)
+- `data.token_spend.trend_by_day[]` returns daily token totals
