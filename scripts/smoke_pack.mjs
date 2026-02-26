@@ -449,6 +449,51 @@ async function main() {
     validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
   });
 
+  const scoringReport = await runStep({
+    name: "admin.scoring_runs.report",
+    method: "GET",
+    path: "/admin/scoring-runs/report?window_days=14&trend_days=14&stage_sample_limit=500",
+    auth: "api",
+    validate: ({ json }) => {
+      if (json?.ok !== true) return "Expected { ok: true }";
+      const report = (json?.data && typeof json.data === "object") ? json.data : null;
+      if (!report) return "Missing report payload.";
+      const funnel = (report.funnel && typeof report.funnel === "object") ? report.funnel : null;
+      if (!funnel) return "Missing funnel block in scoring report.";
+      const media = (funnel.whatsapp_media_funnel && typeof funnel.whatsapp_media_funnel === "object")
+        ? funnel.whatsapp_media_funnel
+        : null;
+      if (!media) return "Missing funnel.whatsapp_media_funnel block.";
+      const events = (media.events && typeof media.events === "object") ? media.events : null;
+      const jobs = (media.jobs && typeof media.jobs === "object") ? media.jobs : null;
+      const conversion = (media.conversion && typeof media.conversion === "object") ? media.conversion : null;
+      if (!events) return "Missing whatsapp_media_funnel.events object.";
+      if (!jobs) return "Missing whatsapp_media_funnel.jobs object.";
+      if (!conversion) return "Missing whatsapp_media_funnel.conversion object.";
+      const expectedEventKeys = ["queued", "extract_ingested", "extract_empty", "extract_failed", "missing_url"];
+      for (const k of expectedEventKeys) {
+        if (!Number.isFinite(Number(events[k]))) return `whatsapp_media_funnel.events.${k} must be numeric`;
+      }
+      const expectedJobKeys = ["media_jobs_total", "link_only_jobs", "scored_jobs", "ready_to_apply_jobs"];
+      for (const k of expectedJobKeys) {
+        if (!Number.isFinite(Number(jobs[k]))) return `whatsapp_media_funnel.jobs.${k} must be numeric`;
+      }
+      const expectedConversionKeys = ["media_jobs_scored_percent", "media_jobs_ready_to_apply_percent"];
+      for (const k of expectedConversionKeys) {
+        if (!Number.isFinite(Number(conversion[k]))) return `whatsapp_media_funnel.conversion.${k} must be numeric`;
+      }
+      return true;
+    },
+  });
+  const mediaFunnel = scoringReport?.json?.data?.funnel?.whatsapp_media_funnel || {};
+  runLog.config.whatsapp_media_funnel_snapshot = {
+    source_filter: mediaFunnel?.source_filter || null,
+    filtered_out_by_source: Boolean(mediaFunnel?.filtered_out_by_source),
+    events: mediaFunnel?.events || {},
+    jobs: mediaFunnel?.jobs || {},
+    conversion: mediaFunnel?.conversion || {},
+  };
+
   await runStep({
     name: "wizard.profile.upsert",
     method: "POST",

@@ -69,7 +69,7 @@ From current Worker routing:
 - `POST /jobs/:job_key/draft-outreach` (UI key)
 - `POST /jobs/:job_key/contacts/:contact_id/draft` (UI key)
 - `POST /jobs/:job_key/contacts/:contact_id/touchpoint-status` (UI key)
-- `GET /admin/scoring-runs/report` (API key; includes source/profile funnel breakdown + touchpoint conversion)
+- `GET /admin/scoring-runs/report` (API key; includes source/profile funnel breakdown + touchpoint conversion + WhatsApp media funnel)
 - `POST /extract-jd` (API key)
 - `POST /score-jd` (API key)
 

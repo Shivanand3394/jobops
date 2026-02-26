@@ -6499,6 +6499,87 @@ async function buildScoringRunsEfficiencyReport_(env, input = {}) {
     });
   }
 
+  const sourceFilter = String(source || "").trim().toLowerCase();
+  const sourceMatchesWhatsApp = !sourceFilter || sourceFilter.includes("whatsapp");
+  const mediaEventCounts = {
+    queued: 0,
+    extract_ingested: 0,
+    extract_empty: 0,
+    extract_failed: 0,
+    missing_url: 0,
+  };
+  let mediaJobs = {
+    media_jobs_total: 0,
+    link_only_jobs: 0,
+    scored_jobs: 0,
+    shortlisted_jobs: 0,
+    ready_to_apply_jobs: 0,
+    applied_jobs: 0,
+  };
+
+  if (sourceMatchesWhatsApp) {
+    const mediaEventRows = await env.DB.prepare(`
+      SELECT event_type, COUNT(*) AS c
+      FROM events
+      WHERE ts >= ?
+        AND event_type IN (
+          'WHATSAPP_VONAGE_MEDIA_QUEUED',
+          'WHATSAPP_VONAGE_MEDIA_EXTRACT_INGESTED',
+          'WHATSAPP_VONAGE_MEDIA_EXTRACT_EMPTY',
+          'WHATSAPP_VONAGE_MEDIA_EXTRACT_FAILED',
+          'WHATSAPP_VONAGE_MEDIA_MISSING_URL'
+        )
+      GROUP BY event_type;
+    `.trim()).bind(windowStart).all();
+    const eventKeyMap = {
+      WHATSAPP_VONAGE_MEDIA_QUEUED: "queued",
+      WHATSAPP_VONAGE_MEDIA_EXTRACT_INGESTED: "extract_ingested",
+      WHATSAPP_VONAGE_MEDIA_EXTRACT_EMPTY: "extract_empty",
+      WHATSAPP_VONAGE_MEDIA_EXTRACT_FAILED: "extract_failed",
+      WHATSAPP_VONAGE_MEDIA_MISSING_URL: "missing_url",
+    };
+    for (const row of (mediaEventRows?.results || [])) {
+      const key = eventKeyMap[String(row?.event_type || "").trim().toUpperCase()];
+      if (!key) continue;
+      mediaEventCounts[key] = Math.max(0, Math.round(numOr_(row?.c, 0)));
+    }
+
+    const mediaJobsRow = await env.DB.prepare(`
+      SELECT
+        COUNT(*) AS media_jobs_total,
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'LINK_ONLY' THEN 1 ELSE 0 END) AS link_only_jobs,
+        SUM(CASE WHEN final_score IS NOT NULL THEN 1 ELSE 0 END) AS scored_jobs,
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'SHORTLISTED' THEN 1 ELSE 0 END) AS shortlisted_jobs,
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'READY_TO_APPLY' THEN 1 ELSE 0 END) AS ready_to_apply_jobs,
+        SUM(CASE WHEN upper(COALESCE(status, '')) = 'APPLIED' THEN 1 ELSE 0 END) AS applied_jobs
+      FROM jobs
+      WHERE COALESCE(last_scored_at, updated_at, created_at) >= ?
+        AND lower(COALESCE(json_extract(fetch_debug_json, '$.ingest_channel'), '')) = 'whatsapp_vonage_media';
+    `.trim()).bind(windowStart).first();
+
+    mediaJobs = {
+      media_jobs_total: Math.max(0, Math.round(numOr_(mediaJobsRow?.media_jobs_total, 0))),
+      link_only_jobs: Math.max(0, Math.round(numOr_(mediaJobsRow?.link_only_jobs, 0))),
+      scored_jobs: Math.max(0, Math.round(numOr_(mediaJobsRow?.scored_jobs, 0))),
+      shortlisted_jobs: Math.max(0, Math.round(numOr_(mediaJobsRow?.shortlisted_jobs, 0))),
+      ready_to_apply_jobs: Math.max(0, Math.round(numOr_(mediaJobsRow?.ready_to_apply_jobs, 0))),
+      applied_jobs: Math.max(0, Math.round(numOr_(mediaJobsRow?.applied_jobs, 0))),
+    };
+  }
+
+  const pct_ = (num, den) => {
+    const n = Math.max(0, numOr_(num, 0));
+    const d = Math.max(0, numOr_(den, 0));
+    return d > 0 ? Number(((n / d) * 100).toFixed(2)) : 0;
+  };
+  const mediaConversion = {
+    queued_to_extract_ingested_percent: pct_(mediaEventCounts.extract_ingested, mediaEventCounts.queued),
+    extract_ingested_to_scored_percent: pct_(mediaJobs.scored_jobs, mediaEventCounts.extract_ingested),
+    media_jobs_scored_percent: pct_(mediaJobs.scored_jobs, mediaJobs.media_jobs_total),
+    media_jobs_ready_to_apply_percent: pct_(mediaJobs.ready_to_apply_jobs, mediaJobs.media_jobs_total),
+    media_jobs_link_only_percent: pct_(mediaJobs.link_only_jobs, mediaJobs.media_jobs_total),
+  };
+
   return {
     enabled: true,
     source: source || null,
@@ -6535,6 +6616,15 @@ async function buildScoringRunsEfficiencyReport_(env, input = {}) {
         window_days: windowDays,
         overall: touchpointOverall,
         by_channel: touchpointByChannel,
+      },
+      whatsapp_media_funnel: {
+        enabled: true,
+        filtered_out_by_source: Boolean(sourceFilter) && !sourceMatchesWhatsApp,
+        source_filter: sourceFilter || null,
+        window_days: windowDays,
+        events: mediaEventCounts,
+        jobs: mediaJobs,
+        conversion: mediaConversion,
       },
     },
   };
