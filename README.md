@@ -25,13 +25,13 @@ DB schema baseline:
 
 ## Auth Model
 - Public: `GET /health`
-- Public: `POST /ingest/whatsapp/vonage` (requires webhook key in query/header)
+- Public: `POST /ingest/whatsapp/vonage` (requires webhook key; if `WHATSAPP_VONAGE_SIGNATURE_SECRET` is set, also requires valid `Authorization: Bearer <jwt>` from Vonage)
 - UI endpoints: require `x-ui-key == env.UI_KEY`
 - Admin/AI endpoints: require `x-api-key == env.API_KEY`
 
 From current Worker routing:
 - UI-auth group includes `/jobs*`, `/ingest`, `/score-pending`, `/targets*`
-- Public ingest webhook: `/ingest/whatsapp/vonage` (gated by `WHATSAPP_VONAGE_KEY`)
+- Public ingest webhook: `/ingest/whatsapp/vonage` (gated by `WHATSAPP_VONAGE_KEY`; optionally JWT-verified with `WHATSAPP_VONAGE_SIGNATURE_SECRET`)
 - Admin-auth group includes `/normalize-job`, `/resolve-jd`, `/extract-jd`, `/score-jd`
 - `/score-pending` is implemented to accept either valid UI key or API key
 
@@ -58,7 +58,7 @@ From current Worker routing:
 - `POST /jobs/:job_key/profile-preference` (UI key)
 - `POST /jobs/:job_key/status` (UI key)
 - `POST /ingest` (UI key)
-- `POST /ingest/whatsapp/vonage` (public route; requires `key` query param or `x-webhook-key`/`x-ingest-key` matching `WHATSAPP_VONAGE_KEY`)
+- `POST /ingest/whatsapp/vonage` (public route; requires `key` query/header matching `WHATSAPP_VONAGE_KEY`; if signature secret is set, requires valid Vonage bearer JWT signature)
 - `POST /score-pending` (UI key or API key)
 - `POST /jobs/:job_key/rescore` (UI key)
 - `POST /jobs/:job_key/manual-jd` (UI key)
@@ -122,6 +122,12 @@ Configure Vonage webhook key (one-time, secret):
 
 ```bash
 wrangler secret put WHATSAPP_VONAGE_KEY
+```
+
+Configure Vonage signature secret (recommended):
+
+```bash
+wrangler secret put WHATSAPP_VONAGE_SIGNATURE_SECRET
 ```
 
 ### UI

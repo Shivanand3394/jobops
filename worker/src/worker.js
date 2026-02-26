@@ -3276,7 +3276,17 @@ export default {
           return json_({ ok: false, error: "Unauthorized" }, env, 401);
         }
 
-        const body = await request.json().catch(() => ({}));
+        const rawBody = await request.text().catch(() => "");
+        const bodyParsed = safeJsonParseAny_(rawBody);
+        const body = (bodyParsed && typeof bodyParsed === "object" && !Array.isArray(bodyParsed))
+          ? bodyParsed
+          : {};
+
+        const signatureCheck = await verifyVonageWebhookSignature_(request, rawBody, env);
+        if (!signatureCheck.ok) {
+          return json_({ ok: false, error: signatureCheck.error || "Invalid Vonage signature" }, env, signatureCheck.status || 401);
+        }
+
         const messageId = String(
           body?.message_uuid ||
           body?.messageUuid ||
@@ -3315,6 +3325,9 @@ export default {
             inserted_or_updated: data?.inserted_or_updated || 0,
             ignored: data?.ignored || 0,
             link_only: data?.link_only || 0,
+            signature_verified: Boolean(signatureCheck.enabled),
+            signature_mode: signatureCheck.mode || "disabled",
+            signature_issuer: String(signatureCheck?.claims?.iss || "").trim() || null,
             source_summary: Array.isArray(data?.source_summary) ? data.source_summary : [],
             ts: Date.now(),
           });
@@ -3329,6 +3342,7 @@ export default {
             provider: "vonage",
             message_id: messageId,
             count_in: rawUrls.length,
+            signature_verified: Boolean(signatureCheck.enabled),
             source_health: sourceHealth,
           },
         };
@@ -3356,6 +3370,7 @@ export default {
             provider: "vonage",
             message_id: messageId,
             count_in: rawUrls.length,
+            signature_verified: Boolean(signatureCheck.enabled),
             source_health: sourceHealth,
             ingest: data,
           },
@@ -9134,6 +9149,176 @@ function safeJsonParse_(s) {
   } catch {
     return null;
   }
+}
+
+function safeJsonParseAny_(s) {
+  try {
+    const str = String(s || "").trim();
+    if (!str) return null;
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}
+
+function timingSafeEqualText_(a, b) {
+  const x = String(a || "");
+  const y = String(b || "");
+  if (x.length !== y.length) return false;
+  let diff = 0;
+  for (let i = 0; i < x.length; i += 1) {
+    diff |= (x.charCodeAt(i) ^ y.charCodeAt(i));
+  }
+  return diff === 0;
+}
+
+function decodeBase64UrlToBytes_(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return null;
+  const base64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  try {
+    const bin = atob(padded);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function decodeBase64UrlToText_(input) {
+  const bytes = decodeBase64UrlToBytes_(input);
+  if (!bytes) return "";
+  try {
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
+function bytesToHex_(bytes) {
+  const arr = (bytes instanceof Uint8Array) ? bytes : new Uint8Array(bytes || []);
+  let out = "";
+  for (let i = 0; i < arr.length; i += 1) {
+    out += arr[i].toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
+function bytesToBase64_(bytes) {
+  const arr = (bytes instanceof Uint8Array) ? bytes : new Uint8Array(bytes || []);
+  let bin = "";
+  for (let i = 0; i < arr.length; i += 1) {
+    bin += String.fromCharCode(arr[i]);
+  }
+  try {
+    return btoa(bin);
+  } catch {
+    return "";
+  }
+}
+
+function getBearerToken_(request) {
+  const auth = String(request?.headers?.get("authorization") || "").trim();
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return String(m?.[1] || "").trim();
+}
+
+async function verifyVonageJwtHs256_(token, secret) {
+  const compact = String(token || "").trim();
+  const keySecret = String(secret || "").trim();
+  if (!compact) return { ok: false, error: "missing_token" };
+  if (!keySecret) return { ok: false, error: "missing_signature_secret" };
+
+  const parts = compact.split(".");
+  if (parts.length !== 3) return { ok: false, error: "malformed_jwt" };
+
+  const headerText = decodeBase64UrlToText_(parts[0]);
+  const payloadText = decodeBase64UrlToText_(parts[1]);
+  const header = safeJsonParseAny_(headerText);
+  const payload = safeJsonParseAny_(payloadText);
+  if (!header || typeof header !== "object") return { ok: false, error: "invalid_jwt_header" };
+  if (!payload || typeof payload !== "object") return { ok: false, error: "invalid_jwt_payload" };
+
+  const alg = String(header.alg || "").trim().toUpperCase();
+  if (alg !== "HS256") return { ok: false, error: "unsupported_jwt_alg" };
+
+  const signatureBytes = decodeBase64UrlToBytes_(parts[2]);
+  if (!signatureBytes) return { ok: false, error: "invalid_jwt_signature_encoding" };
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(keySecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"]
+  );
+  const data = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+  const validSig = await crypto.subtle.verify("HMAC", key, signatureBytes, data);
+  if (!validSig) return { ok: false, error: "jwt_signature_mismatch" };
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const exp = Number(payload.exp);
+  const nbf = Number(payload.nbf);
+  if (Number.isFinite(exp) && nowSeconds > (Math.floor(exp) + 60)) {
+    return { ok: false, error: "jwt_expired" };
+  }
+  if (Number.isFinite(nbf) && nowSeconds + 60 < Math.floor(nbf)) {
+    return { ok: false, error: "jwt_not_yet_valid" };
+  }
+
+  return { ok: true, header, payload };
+}
+
+async function verifyVonageWebhookSignature_(request, rawBody, env) {
+  const signatureSecret = String(env?.WHATSAPP_VONAGE_SIGNATURE_SECRET || "").trim();
+  if (!signatureSecret) {
+    return { ok: true, enabled: false, mode: "disabled", claims: {} };
+  }
+
+  const bearer = getBearerToken_(request);
+  if (!bearer) {
+    return { ok: false, status: 401, error: "Missing Vonage Authorization bearer token" };
+  }
+
+  const jwt = await verifyVonageJwtHs256_(bearer, signatureSecret);
+  if (!jwt.ok) {
+    return { ok: false, status: 401, error: `Invalid Vonage signature token (${jwt.error})` };
+  }
+
+  const claims = (jwt.payload && typeof jwt.payload === "object") ? jwt.payload : {};
+  const payloadHashClaim = String(claims.payload_hash || claims.payloadHash || "").trim();
+  if (payloadHashClaim) {
+    const bodyText = String(rawBody || "");
+    const digestBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(bodyText));
+    const digestBytes = new Uint8Array(digestBuffer);
+    const digestHex = bytesToHex_(digestBytes).toLowerCase();
+    const digestBase64 = bytesToBase64_(digestBytes);
+    const digestBase64Url = digestBase64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+
+    const claim = payloadHashClaim;
+    const claimLower = claim.toLowerCase();
+    const matchesHex = claim.length === digestHex.length && timingSafeEqualText_(claimLower, digestHex);
+    const matchesB64 = claim.length === digestBase64.length && timingSafeEqualText_(claim, digestBase64);
+    const matchesB64Url = claim.length === digestBase64Url.length && timingSafeEqualText_(claim, digestBase64Url);
+    if (!matchesHex && !matchesB64 && !matchesB64Url) {
+      return { ok: false, status: 401, error: "Vonage payload hash mismatch" };
+    }
+  }
+
+  return {
+    ok: true,
+    enabled: true,
+    mode: "verified",
+    claims: {
+      iss: String(claims.iss || "").trim() || null,
+      sub: String(claims.sub || "").trim() || null,
+      jti: String(claims.jti || "").trim() || null,
+      iat: Number.isFinite(Number(claims.iat)) ? Math.floor(Number(claims.iat)) : null,
+      exp: Number.isFinite(Number(claims.exp)) ? Math.floor(Number(claims.exp)) : null,
+    },
+  };
 }
 
 function safeJsonParseArray_(s) {
