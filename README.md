@@ -25,11 +25,13 @@ DB schema baseline:
 
 ## Auth Model
 - Public: `GET /health`
+- Public: `POST /ingest/whatsapp/vonage` (requires webhook key in query/header)
 - UI endpoints: require `x-ui-key == env.UI_KEY`
 - Admin/AI endpoints: require `x-api-key == env.API_KEY`
 
 From current Worker routing:
 - UI-auth group includes `/jobs*`, `/ingest`, `/score-pending`, `/targets*`
+- Public ingest webhook: `/ingest/whatsapp/vonage` (gated by `WHATSAPP_VONAGE_KEY`)
 - Admin-auth group includes `/normalize-job`, `/resolve-jd`, `/extract-jd`, `/score-jd`
 - `/score-pending` is implemented to accept either valid UI key or API key
 
@@ -56,6 +58,7 @@ From current Worker routing:
 - `POST /jobs/:job_key/profile-preference` (UI key)
 - `POST /jobs/:job_key/status` (UI key)
 - `POST /ingest` (UI key)
+- `POST /ingest/whatsapp/vonage` (public route; requires `key` query param or `x-webhook-key`/`x-ingest-key` matching `WHATSAPP_VONAGE_KEY`)
 - `POST /score-pending` (UI key or API key)
 - `POST /jobs/:job_key/rescore` (UI key)
 - `POST /jobs/:job_key/manual-jd` (UI key)
@@ -113,6 +116,12 @@ Deploy worker:
 
 ```bash
 wrangler deploy
+```
+
+Configure Vonage webhook key (one-time, secret):
+
+```bash
+wrangler secret put WHATSAPP_VONAGE_KEY
 ```
 
 ### UI

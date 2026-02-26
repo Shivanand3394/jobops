@@ -86,7 +86,7 @@ const SYNONYM_MAP = Object.freeze({
 });
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     // Always handle CORS preflight first
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders_(env) });
@@ -130,6 +130,7 @@ export default {
         path === "/score-pending" ||
         path === "/admin/scoring-runs/report" ||
         path === "/resolve-jd" ||
+        path.startsWith("/ingest/whatsapp/") ||
         path.startsWith("/gmail/") ||
         path.startsWith("/rss/"); // gmail/rss bridge requires D1 state
 
@@ -3254,6 +3255,111 @@ export default {
           ts: Date.now(),
         });
         return json_({ ok: true, data: batch.data }, env, 200);
+      }
+
+      // ============================
+      // PUBLIC: WhatsApp (Vonage) ingest webhook
+      // ============================
+      if (path === "/ingest/whatsapp/vonage" && request.method === "POST") {
+        const configuredKey = String(env.WHATSAPP_VONAGE_KEY || env.WHATSAPP_INGEST_KEY || "").trim();
+        if (!configuredKey) {
+          return json_({ ok: false, error: "Missing WHATSAPP_VONAGE_KEY (or WHATSAPP_INGEST_KEY)" }, env, 500);
+        }
+
+        const providedKey = String(
+          url.searchParams.get("key") ||
+          request.headers.get("x-webhook-key") ||
+          request.headers.get("x-ingest-key") ||
+          ""
+        ).trim();
+        if (!providedKey || providedKey !== configuredKey) {
+          return json_({ ok: false, error: "Unauthorized" }, env, 401);
+        }
+
+        const body = await request.json().catch(() => ({}));
+        const messageId = String(
+          body?.message_uuid ||
+          body?.messageUuid ||
+          body?.message_id ||
+          body?.messageId ||
+          body?.uuid ||
+          body?.id ||
+          crypto.randomUUID()
+        ).trim().slice(0, 240) || crypto.randomUUID();
+
+        const processed = processDomainIngest_(body, "WHATSAPP");
+        const sourceHealth = checkIngestSourceHealth_(processed);
+        const rawUrls = Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [];
+        const emailText = typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "";
+        const emailHtml = typeof processed?.ingest_input?.email_html === "string" ? processed.ingest_input.email_html : "";
+        const emailSubject = typeof processed?.ingest_input?.email_subject === "string" ? processed.ingest_input.email_subject : "";
+        const emailFrom = typeof processed?.ingest_input?.email_from === "string" ? processed.ingest_input.email_from : "";
+
+        const runWebhookIngest = async () => {
+          await logIngestSourceHealthIfNeeded_(env, sourceHealth, {
+            route: "/ingest/whatsapp/vonage",
+            source: "WHATSAPP_VONAGE",
+          });
+          const data = await ingestRawUrls_(env, {
+            rawUrls,
+            emailText,
+            emailHtml,
+            emailSubject,
+            emailFrom,
+            ingestChannel: "whatsapp_vonage",
+          });
+          await logEvent_(env, "WHATSAPP_VONAGE_INGEST", null, {
+            message_id: messageId,
+            route: "/ingest/whatsapp/vonage",
+            count_in: data?.count_in || 0,
+            inserted_or_updated: data?.inserted_or_updated || 0,
+            ignored: data?.ignored || 0,
+            link_only: data?.link_only || 0,
+            source_summary: Array.isArray(data?.source_summary) ? data.source_summary : [],
+            ts: Date.now(),
+          });
+          return data;
+        };
+
+        const responseBase = {
+          ok: true,
+          data: {
+            accepted: true,
+            queued: true,
+            provider: "vonage",
+            message_id: messageId,
+            count_in: rawUrls.length,
+            source_health: sourceHealth,
+          },
+        };
+
+        if (ctx && typeof ctx.waitUntil === "function") {
+          ctx.waitUntil(
+            runWebhookIngest().catch(async (e) => {
+              await logEvent_(env, "WHATSAPP_VONAGE_INGEST_FAILED", null, {
+                message_id: messageId,
+                route: "/ingest/whatsapp/vonage",
+                error: String(e?.message || e || "unknown").slice(0, 400),
+                ts: Date.now(),
+              });
+            })
+          );
+          return json_(responseBase, env, 200);
+        }
+
+        const data = await runWebhookIngest();
+        return json_({
+          ok: true,
+          data: {
+            accepted: true,
+            queued: false,
+            provider: "vonage",
+            message_id: messageId,
+            count_in: rawUrls.length,
+            source_health: sourceHealth,
+            ingest: data,
+          },
+        }, env, 200);
       }
 
       // ============================
@@ -8899,6 +9005,7 @@ function sleepMs_(ms) {
 
 function routeModeFor_(path) {
   if (path === "/health" || path === "/") return "public";
+  if (path === "/ingest/whatsapp/vonage") return "public";
   if (path === "/jobs/evidence/rebuild-archived") return "api";
   if (path === "/jobs/evidence/gap-report") return "api";
   if (path === "/admin/scoring-runs/report") return "api";

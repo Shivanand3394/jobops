@@ -4,6 +4,7 @@ import {
   adaptGmailPayload_,
   adaptManualPayload_,
   adaptRssPayload_,
+  adaptWhatsappVonagePayload_,
 } from "./adapters/index.js";
 import {
   buildCandidateIngestEnvelope_,
@@ -27,6 +28,7 @@ function pickAdapter_(source) {
   const s = normalizeIngestSource_(source);
   if (s === "GMAIL") return adaptGmailPayload_;
   if (s === "RSS") return adaptRssPayload_;
+  if (s === "WHATSAPP") return adaptWhatsappVonagePayload_;
   return adaptManualPayload_;
 }
 
