@@ -227,6 +227,28 @@ $WHATSAPP_VONAGE_SIGNATURE_SECRET = "<optional-signature-secret>"
 $WHATSAPP_TEST_SENDER = "+14155550100"
 ```
 
+### Automated release verification
+Run a single post-deploy command that validates core routes and executes the smoke pack:
+
+```powershell
+$env:BASE_URL = "https://get-job.shivanand-shah94.workers.dev"
+$env:UI_KEY = "<your-ui-key>"
+$env:API_KEY = "<your-api-key>"
+$env:RELEASE_ID = "<worker-deploy-id>"
+$env:PAGES_URL = "<pages-url>"
+node scripts/release_verify.mjs
+```
+
+Outputs:
+- `docs/artifacts/release_verify_latest.json`
+- `docs/artifacts/release_verify_latest.md`
+- `docs/artifacts/smoke_pack_latest.json` (when smoke is enabled)
+
+Optional toggles:
+- `RELEASE_VERIFY_RUN_SMOKE=0`
+- `RELEASE_VERIFY_REQUIRE_SMOKE_PASS=0`
+- `RELEASE_VERIFY_ALLOW_CONNECTOR_SKIP=0`
+
 ### 1) /health
 curl:
 

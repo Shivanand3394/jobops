@@ -57,6 +57,23 @@ Optional envs:
 - `WHATSAPP_VONAGE_KEY` / `WHATSAPP_WEBHOOK_KEY` (optional; enables webhook simulation step)
 - `WHATSAPP_VONAGE_SIGNATURE_SECRET` or `WHATSAPP_VONAGE_JWT` (optional for signed webhook simulation)
 
+## Post-deploy release verify wrapper
+Use this when you want one command for release checks + smoke pack:
+
+```powershell
+$env:BASE_URL = "https://get-job.shivanand-shah94.workers.dev"
+$env:UI_KEY = "<your-ui-key>"
+$env:API_KEY = "<your-api-key>"
+$env:RELEASE_ID = "<worker-deploy-id>"
+$env:PAGES_URL = "<pages-url>"
+node scripts/release_verify.mjs
+```
+
+Artifacts:
+- `docs/artifacts/release_verify_latest.json`
+- `docs/artifacts/release_verify_latest.md`
+- `docs/artifacts/smoke_pack_latest.json` (smoke enabled by default)
+
 ### GitHub Actions smoke workflow
 Repo workflow: `.github/workflows/smoke-pack.yml`
 

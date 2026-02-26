@@ -64,3 +64,38 @@ Static files must exist:
 
 ## 6) Pages deploy triage
 If UI not deploying, follow [docs/PAGES_NOT_DEPLOYING_TRIAGE.md](/c:/Users/dell/Documents/GitHub/jobops/docs/PAGES_NOT_DEPLOYING_TRIAGE.md).
+
+## 7) Automated post-deploy verification
+Use the scripted verifier to run release checks and optionally run the full smoke pack.
+
+PowerShell:
+```powershell
+$env:BASE_URL = "https://get-job.shivanand-shah94.workers.dev"
+$env:UI_KEY = "<your-ui-key>"
+$env:API_KEY = "<your-api-key>"
+$env:RELEASE_ID = "<worker-deploy-id>"
+$env:PAGES_URL = "<pages-url>"
+$env:EXPECT_WORKER_VERSION = "<optional-worker-version>"
+node scripts/release_verify.mjs
+```
+
+Bash:
+```bash
+BASE_URL="https://get-job.shivanand-shah94.workers.dev" \
+UI_KEY="<your-ui-key>" \
+API_KEY="<your-api-key>" \
+RELEASE_ID="<worker-deploy-id>" \
+PAGES_URL="<pages-url>" \
+EXPECT_WORKER_VERSION="<optional-worker-version>" \
+node scripts/release_verify.mjs
+```
+
+Generated artifacts:
+- `docs/artifacts/release_verify_latest.json`
+- `docs/artifacts/release_verify_latest.md`
+- `docs/artifacts/smoke_pack_latest.json` (when smoke is enabled)
+
+Useful toggles:
+- `RELEASE_VERIFY_RUN_SMOKE=0` to skip smoke pack execution.
+- `RELEASE_VERIFY_REQUIRE_SMOKE_PASS=0` to continue even if smoke fails.
+- `RELEASE_VERIFY_ALLOW_CONNECTOR_SKIP=0` for strict connector validation (`/gmail/poll`, `/rss/diagnostics`).
