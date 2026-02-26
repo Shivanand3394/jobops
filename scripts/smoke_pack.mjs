@@ -64,6 +64,8 @@ const runLog = {
   error: null,
 };
 
+const secondaryProfileId = `${cfg.profileId}-alt`.slice(0, 80) || "primary-alt";
+
 function printStep(step) {
   const marker = step.ok ? "PASS" : "FAIL";
   const status = step.http_status === null ? "n/a" : String(step.http_status);
@@ -251,14 +253,66 @@ async function main() {
     validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
   });
 
+  await runStep({
+    name: "wizard.profile.upsert.alt",
+    method: "POST",
+    path: "/resume/profiles",
+    auth: "ui",
+    body: {
+      id: secondaryProfileId,
+      name: "Smoke Profile Alt",
+      profile_json: {
+        basics: { name: "Smoke User Alt" },
+        summary: "Alternate profile for per-job preference verification.",
+        experience: [],
+        skills: [],
+      },
+    },
+    validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
+  });
+
   const encodedJobKey = encodeURIComponent(selectedJobKey);
+  await runStep({
+    name: "wizard.profile.preference.set",
+    method: "POST",
+    path: `/jobs/${encodedJobKey}/profile-preference`,
+    auth: "ui",
+    body: {
+      profile_id: secondaryProfileId,
+    },
+    validate: ({ json }) => {
+      if (json?.ok !== true) return "Expected { ok: true }";
+      const saved = asString(json?.data?.profile_id, 120);
+      const effective = asString(json?.data?.effective_profile_id, 120);
+      if (saved !== secondaryProfileId) return `Expected saved profile_id "${secondaryProfileId}", got "${saved || "EMPTY"}"`;
+      return effective === secondaryProfileId
+        ? true
+        : `Expected effective profile "${secondaryProfileId}", got "${effective || "EMPTY"}"`;
+    },
+  });
+
+  const prefRead = await runStep({
+    name: "wizard.profile.preference.get",
+    method: "GET",
+    path: `/jobs/${encodedJobKey}/profile-preference`,
+    auth: "ui",
+    validate: ({ json }) => {
+      if (json?.ok !== true) return "Expected { ok: true }";
+      const effective = asString(json?.data?.effective_profile_id, 120);
+      return effective === secondaryProfileId
+        ? true
+        : `Expected effective profile "${secondaryProfileId}", got "${effective || "EMPTY"}"`;
+    },
+  });
+  const effectiveProfileId = asString(prefRead?.json?.data?.effective_profile_id || secondaryProfileId, 120);
+  runLog.config.profile_id_effective = effectiveProfileId;
+
   await runStep({
     name: "wizard.generate",
     method: "POST",
     path: `/jobs/${encodedJobKey}/generate-application-pack`,
     auth: "ui",
     body: {
-      profile_id: cfg.profileId,
       force: false,
       renderer: "reactive_resume",
       evidence_first: true,
@@ -273,9 +327,15 @@ async function main() {
   const packBefore = await runStep({
     name: "wizard.pack.fetch.before",
     method: "GET",
-    path: `/jobs/${encodedJobKey}/application-pack?profile_id=${encodeURIComponent(cfg.profileId)}`,
+    path: `/jobs/${encodedJobKey}/application-pack`,
     auth: "ui",
-    validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
+    validate: ({ json }) => {
+      if (json?.ok !== true) return "Expected { ok: true }";
+      const profileId = asString(json?.data?.profile_id, 120);
+      return profileId === effectiveProfileId
+        ? true
+        : `Expected pack profile_id "${effectiveProfileId}", got "${profileId || "EMPTY"}"`;
+    },
   });
 
   const reviewPayload = buildReviewPayload(packBefore?.json?.data || {});
@@ -286,7 +346,7 @@ async function main() {
     path: `/jobs/${encodedJobKey}/application-pack/review`,
     auth: "ui",
     body: {
-      profile_id: cfg.profileId,
+      profile_id: effectiveProfileId,
       summary: reviewPayload.summary,
       bullets: reviewPayload.bullets,
       cover_letter: reviewPayload.cover_letter,
@@ -300,7 +360,7 @@ async function main() {
     path: `/jobs/${encodedJobKey}/approve-pack`,
     auth: "ui",
     body: {
-      profile_id: cfg.profileId,
+      profile_id: effectiveProfileId,
       summary: reviewPayload.summary,
       bullets: reviewPayload.bullets,
       cover_letter: reviewPayload.cover_letter,
@@ -317,14 +377,18 @@ async function main() {
   await runStep({
     name: "wizard.pack.fetch.after",
     method: "GET",
-    path: `/jobs/${encodedJobKey}/application-pack?profile_id=${encodeURIComponent(cfg.profileId)}`,
+    path: `/jobs/${encodedJobKey}/application-pack`,
     auth: "ui",
     validate: ({ json }) => {
       if (json?.ok !== true) return "Expected { ok: true }";
       const status = asString(json?.data?.status, 100).toUpperCase();
-      return status === "READY_TO_APPLY"
+      if (status !== "READY_TO_APPLY") {
+        return `Expected READY_TO_APPLY in final pack, got "${status || "EMPTY"}"`;
+      }
+      const profileId = asString(json?.data?.profile_id, 120);
+      return profileId === effectiveProfileId
         ? true
-        : `Expected READY_TO_APPLY in final pack, got "${status || "EMPTY"}"`;
+        : `Expected final pack profile_id "${effectiveProfileId}", got "${profileId || "EMPTY"}"`;
     },
   });
 
@@ -354,7 +418,7 @@ async function main() {
     path: `/jobs/${encodedJobKey}/contacts/${encodeURIComponent(outreachContactId)}/draft`,
     auth: "ui",
     body: {
-      profile_id: cfg.profileId,
+      profile_id: effectiveProfileId,
       channel: "LINKEDIN",
       use_ai: true,
     },

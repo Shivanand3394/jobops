@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-26-outreach-lifecycle-v1";
+const UI_BUILD_ID = "2026-02-26-profile-preference-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -132,6 +132,7 @@ const state = {
   lastRecoveryRun: loadLastRecoveryRun_(),
   workerVersion: "-",
   reviewContext: null,
+  jobProfilePreferenceByKey: {},
 };
 const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "READY_TO_APPLY", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
@@ -209,6 +210,53 @@ async function api(path, { method = "GET", body = null, useUiKey = true } = {}) 
     throw err;
   }
   return data;
+}
+
+function cacheJobProfilePreference_(jobKey, pref = {}) {
+  const key = String(jobKey || "").trim();
+  if (!key) return;
+  state.jobProfilePreferenceByKey[key] = {
+    profile_id: String(pref.profile_id || "").trim(),
+    effective_profile_id: String(pref.effective_profile_id || "").trim(),
+    effective_source: String(pref.effective_source || "").trim(),
+    enabled: Boolean(pref.enabled),
+    updated_at: Number(pref.updated_at || 0) || null,
+  };
+}
+
+async function loadJobProfilePreference_(jobKey, { silent = true } = {}) {
+  const key = String(jobKey || "").trim();
+  if (!key) return null;
+  try {
+    const res = await api(`/jobs/${encodeURIComponent(key)}/profile-preference`);
+    const pref = res?.data && typeof res.data === "object" ? res.data : {};
+    cacheJobProfilePreference_(key, pref);
+    const effectiveId = String(pref.effective_profile_id || pref.profile_id || "").trim();
+    if (effectiveId) state.activeProfileId = effectiveId;
+    return pref;
+  } catch (e) {
+    if (!silent) toast("Profile preference load failed: " + e.message, { kind: "error" });
+    return null;
+  }
+}
+
+async function saveJobProfilePreference_(jobKey, profileId, { silent = true } = {}) {
+  const key = String(jobKey || "").trim();
+  if (!key) return null;
+  try {
+    const res = await api(`/jobs/${encodeURIComponent(key)}/profile-preference`, {
+      method: "POST",
+      body: { profile_id: String(profileId || "").trim() },
+    });
+    const pref = res?.data && typeof res.data === "object" ? res.data : {};
+    cacheJobProfilePreference_(key, pref);
+    const effectiveId = String(pref.effective_profile_id || pref.profile_id || "").trim();
+    if (effectiveId) state.activeProfileId = effectiveId;
+    return pref;
+  } catch (e) {
+    if (!silent) toast("Profile preference save failed: " + e.message, { kind: "error" });
+    return null;
+  }
 }
 
 function escapeHtml(s) {
@@ -905,6 +953,7 @@ async function setActive(jobKey) {
   try {
     spin(true);
     const res = await api("/jobs/" + encodeURIComponent(jobKey));
+    await loadJobProfilePreference_(jobKey, { silent: true });
     renderDetail(res.data);
   } catch (e) {
     toast("Open failed: " + e.message);
@@ -1956,6 +2005,7 @@ async function generateApplicationPack(jobKey, force = false) {
     const renderer = String($("appRenderer")?.value || "reactive_resume");
     const profileId = String($("appProfileSelect")?.value || state.activeProfileId || "").trim();
     if (profileId) state.activeProfileId = profileId;
+    await saveJobProfilePreference_(jobKey, state.activeProfileId, { silent: true });
     const templateId = String($("appTemplateSelect")?.value || state.activeTemplateId || DEFAULT_TEMPLATE_ID).trim() || DEFAULT_TEMPLATE_ID;
     state.activeTemplateId = templateId;
     const enabledBlocks = getEnabledBlocksFromUi_();
@@ -1993,6 +2043,7 @@ async function autoPilotJob(jobKey, { force = false } = {}) {
     const renderer = String($("appRenderer")?.value || "reactive_resume");
     const profileId = String($("appProfileSelect")?.value || state.activeProfileId || "primary").trim() || "primary";
     state.activeProfileId = profileId;
+    await saveJobProfilePreference_(key, state.activeProfileId, { silent: true });
     const templateId = String($("appTemplateSelect")?.value || state.activeTemplateId || DEFAULT_TEMPLATE_ID).trim() || DEFAULT_TEMPLATE_ID;
     state.activeTemplateId = templateId;
     const enabledBlocks = getEnabledBlocksFromUi_();
@@ -2061,6 +2112,7 @@ async function hydrateApplicationPack(jobOrKey) {
     profileSelect.value = state.activeProfileId || "primary";
     profileSelect.onchange = async () => {
       state.activeProfileId = profileSelect.value || "primary";
+      await saveJobProfilePreference_(jobKey, state.activeProfileId, { silent: true });
       await loadResumeProfileDetail(state.activeProfileId, { silent: true });
     };
   }

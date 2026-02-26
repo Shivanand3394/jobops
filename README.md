@@ -52,6 +52,8 @@ From current Worker routing:
 - `GET /health` (public)
 - `GET /jobs?status=&limit=&offset=` (UI key)
 - `GET /jobs/:job_key` (UI key)
+- `GET /jobs/:job_key/profile-preference` (UI key)
+- `POST /jobs/:job_key/profile-preference` (UI key)
 - `POST /jobs/:job_key/status` (UI key)
 - `POST /ingest` (UI key)
 - `POST /score-pending` (UI key or API key)

@@ -407,6 +407,91 @@ export default {
         }, env, 200);
       }
 
+      if (path.startsWith("/jobs/") && path.endsWith("/profile-preference") && request.method === "GET") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const job = await env.DB.prepare(`
+          SELECT job_key
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        if (!job?.job_key) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const pref = await getJobProfilePreference_(env, jobKey);
+        const resolved = await resolvePreferredProfileForJob_(env, { jobKey });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: jobKey,
+            profile_id: String(pref.profile_id || "").trim(),
+            updated_at: numOrNull_(pref.updated_at),
+            enabled: Boolean(pref.enabled),
+            effective_profile_id: String(resolved.profile_id || "").trim() || "primary",
+            effective_source: String(resolved.source || "").trim() || "primary_fallback",
+          },
+        }, env, 200);
+      }
+
+      if (path.startsWith("/jobs/") && path.endsWith("/profile-preference") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const job = await env.DB.prepare(`
+          SELECT job_key
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        if (!job?.job_key) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const body = await request.json().catch(() => ({}));
+        const profileIdIn = String(body.profile_id || body.profileId || "").trim();
+
+        if (profileIdIn) {
+          const profileExists = await env.DB.prepare(`
+            SELECT id
+            FROM resume_profiles
+            WHERE id = ?
+            LIMIT 1;
+          `.trim()).bind(profileIdIn).first();
+          if (!profileExists?.id) {
+            return json_({ ok: false, error: "profile_id_not_found" }, env, 400);
+          }
+        }
+
+        const write = await setJobProfilePreference_(env, {
+          jobKey,
+          profileId: profileIdIn,
+        });
+        if (!write.ok) {
+          return json_({ ok: false, error: write.error || "Failed to update profile preference" }, env, 400);
+        }
+
+        const resolved = await resolvePreferredProfileForJob_(env, { jobKey });
+        await logEvent_(env, write.cleared ? "JOB_PROFILE_PREFERENCE_CLEARED" : "JOB_PROFILE_PREFERENCE_SET", jobKey, {
+          profile_id: write.profile_id || null,
+          effective_profile_id: resolved.profile_id || "primary",
+          effective_source: resolved.source || "primary_fallback",
+          ts: Date.now(),
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: jobKey,
+            profile_id: String(write.profile_id || "").trim(),
+            updated_at: numOrNull_(write.updated_at),
+            cleared: Boolean(write.cleared),
+            enabled: Boolean(write.enabled),
+            effective_profile_id: String(resolved.profile_id || "").trim() || "primary",
+            effective_source: String(resolved.source || "").trim() || "primary_fallback",
+          },
+        }, env, 200);
+      }
+
       if (
         path.startsWith("/jobs/") &&
         request.method === "GET" &&
@@ -416,6 +501,7 @@ export default {
         !path.endsWith("/checklist") &&
         !path.endsWith("/evidence") &&
         !path.endsWith("/resume-payload") &&
+        !path.endsWith("/profile-preference") &&
         !path.endsWith("/application-pack") &&
         !path.includes("/application-pack/")
       ) {
@@ -1383,12 +1469,14 @@ export default {
           ? toBool_(body.one_pager_strict ?? body.onePagerStrict, true)
           : (resolvedOnePageMode === "hard");
 
-        let profile = null;
-        const profileIdIn = String(body.profile_id || "").trim();
-        if (profileIdIn) {
-          profile = await env.DB.prepare(`SELECT * FROM resume_profiles WHERE id = ? LIMIT 1;`).bind(profileIdIn).first();
+        const profileResolved = await resolvePreferredProfileForJob_(env, {
+          jobKey: scoredJob.job_key,
+          profileIdIn: String(body.profile_id || body.profileId || "").trim(),
+        });
+        const profile = profileResolved.profile;
+        if (!profile) {
+          return json_({ ok: false, error: "Unable to resolve profile" }, env, 500);
         }
-        if (!profile) profile = await ensurePrimaryProfile_(env);
 
         const target = targets.find((t) => t.id === String(scoredJob.primary_target_id || "")) || null;
         const evidenceFirst = body.evidence_first === undefined ? true : toBool_(body.evidence_first, true);
@@ -1451,6 +1539,7 @@ export default {
               job_key: scoredJob.job_key,
               draft_id: saved.draft_id,
               profile_id: profile.id,
+              profile_source: profileResolved.source,
               status: saved.locked_status || "READY_TO_APPLY",
               locked: true,
               message: "Draft is locked after approval. Use force=true to regenerate.",
@@ -1471,6 +1560,7 @@ export default {
           job_status: transition.status,
           pack_status: packData.status,
           profile_id: profile.id,
+          profile_source: profileResolved.source,
           draft_id: saved.draft_id,
           version_id: versionMeta?.id || null,
           version_no: versionMeta?.version_no || null,
@@ -1490,6 +1580,7 @@ export default {
             pack: {
               draft_id: saved.draft_id,
               profile_id: profile.id,
+              profile_source: profileResolved.source,
               status: packData.status,
               ats_score: packData.ats_score,
               one_page_mode: controls.one_page_mode,
@@ -1809,12 +1900,14 @@ export default {
           ? toBool_(body.one_pager_strict ?? body.onePagerStrict, true)
           : (resolvedOnePageMode === "hard");
 
-        let profile = null;
-        const profileIdIn = String(body.profile_id || "").trim();
-        if (profileIdIn) {
-          profile = await env.DB.prepare(`SELECT * FROM resume_profiles WHERE id = ? LIMIT 1;`).bind(profileIdIn).first();
+        const profileResolved = await resolvePreferredProfileForJob_(env, {
+          jobKey: job.job_key,
+          profileIdIn: String(body.profile_id || body.profileId || "").trim(),
+        });
+        const profile = profileResolved.profile;
+        if (!profile) {
+          return json_({ ok: false, error: "Unable to resolve profile" }, env, 500);
         }
-        if (!profile) profile = await ensurePrimaryProfile_(env);
 
         const targets = await loadTargets_(env);
         const target = targets.find((t) => t.id === String(job.primary_target_id || "")) || null;
@@ -1897,6 +1990,7 @@ export default {
               job_key: job.job_key,
               draft_id: saved.draft_id,
               profile_id: profile.id,
+              profile_source: profileResolved.source,
               status: saved.locked_status || "READY_TO_APPLY",
               locked: true,
               message: "Draft is locked after approval. Use force=true to regenerate.",
@@ -1913,6 +2007,7 @@ export default {
 
         await logEvent_(env, "APPLICATION_PACK_GENERATED", jobKey, {
           profile_id: profile.id,
+          profile_source: profileResolved.source,
           status: packData.status,
           ats_score: packData.ats_score,
           evidence_first: evidenceFirst,
@@ -1931,6 +2026,7 @@ export default {
             job_key: job.job_key,
             draft_id: saved.draft_id,
             profile_id: profile.id,
+            profile_source: profileResolved.source,
             status: packData.status,
             ats_score: packData.ats_score,
             template_id: controls.template_id || "",
@@ -1961,22 +2057,38 @@ export default {
       if (path.startsWith("/jobs/") && path.endsWith("/application-pack") && request.method === "GET") {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
-        const profileId = String(url.searchParams.get("profile_id") || "").trim();
+        const requestedProfileId = String(url.searchParams.get("profile_id") || "").trim();
         const draftSchema = await getResumeDraftSchema_(env);
 
-        const row = profileId
-          ? await env.DB.prepare(`
-              SELECT * FROM resume_drafts
-              WHERE job_key = ? AND profile_id = ?
-              ORDER BY updated_at DESC
-              LIMIT 1;
-            `.trim()).bind(jobKey, profileId).first()
-          : await env.DB.prepare(`
-              SELECT * FROM resume_drafts
-              WHERE job_key = ?
-              ORDER BY updated_at DESC
-              LIMIT 1;
-            `.trim()).bind(jobKey).first();
+        let preference = { enabled: false, profile_id: "", updated_at: null };
+        let lookupProfileId = requestedProfileId;
+        let lookupSource = requestedProfileId ? "request" : "latest";
+        if (!lookupProfileId) {
+          preference = await getJobProfilePreference_(env, jobKey);
+          if (preference.enabled && preference.profile_id) {
+            lookupProfileId = String(preference.profile_id || "").trim();
+            lookupSource = "job_preference";
+          }
+        }
+
+        let row = null;
+        if (lookupProfileId) {
+          row = await env.DB.prepare(`
+            SELECT * FROM resume_drafts
+            WHERE job_key = ? AND profile_id = ?
+            ORDER BY updated_at DESC
+            LIMIT 1;
+          `.trim()).bind(jobKey, lookupProfileId).first();
+        }
+        if (!row && !requestedProfileId) {
+          row = await env.DB.prepare(`
+            SELECT * FROM resume_drafts
+            WHERE job_key = ?
+            ORDER BY updated_at DESC
+            LIMIT 1;
+          `.trim()).bind(jobKey).first();
+          if (row) lookupSource = "latest";
+        }
 
         if (!row) return json_({ ok: false, error: "Not found" }, env, 404);
 
@@ -2044,6 +2156,9 @@ export default {
             id: row.id,
             job_key: row.job_key,
             profile_id: row.profile_id,
+            profile_lookup_source: lookupSource,
+            requested_profile_id: requestedProfileId || null,
+            preference_profile_id: String(preference.profile_id || "").trim() || null,
             status: row.status,
             error_text: row.error_text || "",
             pack_json: packJson,
@@ -3380,6 +3495,125 @@ async function hasJobEvidenceTable_(env) {
   } catch {
     return false;
   }
+}
+
+async function hasJobProfilePreferencesTable_(env) {
+  try {
+    const row = await env.DB.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name = 'job_profile_preferences'
+      LIMIT 1;
+    `.trim()).first();
+    return Boolean(row?.name);
+  } catch {
+    return false;
+  }
+}
+
+async function getJobProfilePreference_(env, jobKey) {
+  const key = String(jobKey || "").trim();
+  if (!key) return { enabled: false, profile_id: "", updated_at: null };
+  const enabled = await hasJobProfilePreferencesTable_(env);
+  if (!enabled) return { enabled: false, profile_id: "", updated_at: null };
+  const row = await env.DB.prepare(`
+    SELECT job_key, profile_id, updated_at
+    FROM job_profile_preferences
+    WHERE job_key = ?
+    LIMIT 1;
+  `.trim()).bind(key).first();
+  return {
+    enabled: true,
+    profile_id: String(row?.profile_id || "").trim(),
+    updated_at: numOrNull_(row?.updated_at),
+  };
+}
+
+async function setJobProfilePreference_(env, { jobKey, profileId } = {}) {
+  const key = String(jobKey || "").trim();
+  const pid = String(profileId || "").trim();
+  if (!key) return { ok: false, error: "missing_job_key" };
+
+  const enabled = await hasJobProfilePreferencesTable_(env);
+  if (!enabled) {
+    return {
+      ok: false,
+      enabled: false,
+      error: "job_profile_preferences_schema_not_enabled",
+    };
+  }
+
+  if (!pid) {
+    await env.DB.prepare(`
+      DELETE FROM job_profile_preferences
+      WHERE job_key = ?;
+    `.trim()).bind(key).run();
+    return {
+      ok: true,
+      enabled: true,
+      profile_id: "",
+      updated_at: Date.now(),
+      cleared: true,
+    };
+  }
+
+  const now = Date.now();
+  await env.DB.prepare(`
+    INSERT INTO job_profile_preferences (job_key, profile_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(job_key) DO UPDATE SET
+      profile_id = excluded.profile_id,
+      updated_at = excluded.updated_at;
+  `.trim()).bind(key, pid, now, now).run();
+
+  return {
+    ok: true,
+    enabled: true,
+    profile_id: pid,
+    updated_at: now,
+    cleared: false,
+  };
+}
+
+async function resolvePreferredProfileForJob_(env, { jobKey, profileIdIn = "" } = {}) {
+  const explicit = String(profileIdIn || "").trim();
+  const key = String(jobKey || "").trim();
+  let selectedProfileId = explicit;
+  let source = explicit ? "request" : "default";
+
+  let pref = { enabled: false, profile_id: "", updated_at: null };
+  if (!selectedProfileId && key) {
+    pref = await getJobProfilePreference_(env, key);
+    if (pref.enabled && pref.profile_id) {
+      selectedProfileId = pref.profile_id;
+      source = "job_preference";
+    }
+  }
+
+  let profile = null;
+  if (selectedProfileId) {
+    profile = await env.DB.prepare(`
+      SELECT * FROM resume_profiles
+      WHERE id = ?
+      LIMIT 1;
+    `.trim()).bind(selectedProfileId).first();
+  }
+
+  if (!profile) {
+    profile = await ensurePrimaryProfile_(env);
+    selectedProfileId = String(profile?.id || "primary").trim() || "primary";
+    if (explicit) source = "request_fallback_primary";
+    if (!explicit && source !== "job_preference") source = "primary_fallback";
+    if (!explicit && source === "job_preference") source = "job_preference_fallback_primary";
+  }
+
+  return {
+    profile,
+    profile_id: String(selectedProfileId || "").trim(),
+    source,
+    preference_enabled: Boolean(pref.enabled),
+    preference_profile_id: String(pref.profile_id || "").trim(),
+  };
 }
 
 function rankOutreachChannel_(channel) {

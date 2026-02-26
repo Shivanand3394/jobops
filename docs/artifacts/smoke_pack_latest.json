@@ -1,16 +1,17 @@
 {
-  "run_id": "63fbf554-06f3-4e10-b0df-f694cfff3a84",
-  "started_at": "2026-02-26T13:17:54.675Z",
+  "run_id": "f3d23010-57f8-448f-a5bb-4fa38df50a9f",
+  "started_at": "2026-02-26T14:15:23.166Z",
   "base_url": "https://get-job.shivanand-shah94.workers.dev",
   "script": "scripts/smoke_pack.mjs",
   "config": {
     "timeout_ms": 45000,
     "profile_id": "primary",
-    "job_key_input": "8df817e4000a3b196109dd373de8f068bfd411ff",
+    "job_key_input": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
     "output_file": "docs/artifacts/smoke_pack_latest.json",
-    "job_key_resolved": "8df817e4000a3b196109dd373de8f068bfd411ff",
-    "outreach_contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
-    "outreach_linkedin_draft_len": 461
+    "job_key_resolved": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+    "profile_id_effective": "primary-alt",
+    "outreach_contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+    "outreach_linkedin_draft_len": 377
   },
   "steps": [
     {
@@ -23,12 +24,12 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 131,
+      "duration_ms": 130,
       "ok": true,
       "error": null,
       "response_json": {
         "ok": true,
-        "ts": 1772111875216,
+        "ts": 1772115323733,
         "worker_version": "dev"
       },
       "response_text": null
@@ -43,31 +44,40 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 200,
+      "duration_ms": 202,
       "ok": true,
       "error": null,
       "response_json": {
         "ok": true,
         "data": [
           {
-            "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-            "company": "Acme Labs",
-            "role_title": "Senior Product Operations Manager",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "company": "",
+            "role_title": "senior role product analytics 3",
             "location": "",
-            "seniority": "Senior",
+            "seniority": "Mid",
             "final_score": 74,
             "status": "READY_TO_APPLY",
-            "job_url": "https://www.linkedin.com/jobs/view/1772104329/",
-            "source_domain": "linkedin",
+            "job_url": "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893",
+            "source_domain": "iimjobs",
             "system_status": "READY_TO_APPLY",
-            "fetch_debug_json": "{}",
-            "updated_at": 1772111823575,
-            "created_at": 1772104328636,
-            "fetch_debug": {},
-            "ingest_channel": null,
-            "jd_confidence": null,
-            "display_title": "Senior Product Operations Manager",
-            "display_company": "Acme Labs"
+            "fetch_debug_json": "{\"jd_confidence\":\"high\",\"jd_length\":1456,\"http_status\":200,\"ai_available\":true,\"ingest_channel\":\"recover\",\"fallback_reason\":\"none\",\"fallback_policy\":\"standard_iimjobs\",\"source_policy_domain\":\"iimjobs\"}",
+            "updated_at": 1772115238578,
+            "created_at": 1771894358293,
+            "fetch_debug": {
+              "jd_confidence": "high",
+              "jd_length": 1456,
+              "http_status": 200,
+              "ai_available": true,
+              "ingest_channel": "recover",
+              "fallback_reason": "none",
+              "fallback_policy": "standard_iimjobs",
+              "source_policy_domain": "iimjobs"
+            },
+            "ingest_channel": "recover",
+            "jd_confidence": "high",
+            "display_title": "senior role product analytics 3",
+            "display_company": ""
           }
         ]
       },
@@ -83,14 +93,14 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 5356,
+      "duration_ms": 5707,
       "ok": true,
       "error": null,
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "87d22ee9-c552-445c-974d-7d1861a252fa",
-          "ts": 1772111875445,
+          "run_id": "f722b918-8f11-4e93-952d-6f48198323b6",
+          "ts": 1772115323966,
           "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
           "max_results": 25,
           "max_jobs_per_email": 3,
@@ -140,14 +150,14 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 197,
+      "duration_ms": 199,
       "ok": true,
       "error": null,
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "b1b422ad-050d-46ab-98f0-460b75029e27",
-          "ts": 1772111880799,
+          "run_id": "86f91758-d37e-47a5-b8a9-69f7bd0142bf",
+          "ts": 1772115329672,
           "skipped": true,
           "reason": "no_feeds_configured",
           "feeds_total": 0,
@@ -211,7 +221,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 198,
+      "duration_ms": 202,
       "ok": true,
       "error": null,
       "response_json": {
@@ -219,7 +229,96 @@
         "data": {
           "id": "primary",
           "name": "Smoke Profile",
-          "updated_at": 1772111880996
+          "updated_at": 1772115329868
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.profile.upsert.alt",
+      "method": "POST",
+      "path": "/resume/profiles",
+      "auth": "ui",
+      "request_body": {
+        "id": "primary-alt",
+        "name": "Smoke Profile Alt",
+        "profile_json": {
+          "basics": {
+            "name": "Smoke User Alt"
+          },
+          "summary": "Alternate profile for per-job preference verification.",
+          "experience": [],
+          "skills": []
+        }
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 201,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "primary-alt",
+          "name": "Smoke Profile Alt",
+          "updated_at": 1772115330070
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.profile.preference.set",
+      "method": "POST",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/profile-preference",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1431,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "profile_id": "primary-alt",
+          "updated_at": 1772115330799,
+          "cleared": false,
+          "enabled": true,
+          "effective_profile_id": "primary-alt",
+          "effective_source": "job_preference"
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.profile.preference.get",
+      "method": "GET",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/profile-preference",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1090,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "profile_id": "primary-alt",
+          "updated_at": 1772115330799,
+          "enabled": true,
+          "effective_profile_id": "primary-alt",
+          "effective_source": "job_preference"
         }
       },
       "response_text": null
@@ -227,10 +326,9 @@
     {
       "name": "wizard.generate",
       "method": "POST",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/generate-application-pack",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/generate-application-pack",
       "auth": "ui",
       "request_body": {
-        "profile_id": "primary",
         "force": false,
         "renderer": "reactive_resume",
         "evidence_first": true,
@@ -240,18 +338,32 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 6581,
+      "duration_ms": 5264,
       "ok": true,
       "error": null,
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "draft_id": "5646c1f5-767a-45f0-b290-4fdaba45240b",
-          "profile_id": "primary",
-          "status": "READY_TO_APPLY",
-          "locked": true,
-          "message": "Draft is locked after approval. Use force=true to regenerate."
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "draft_id": "a0642a8c-170e-48b7-979b-1fa2bae85bff",
+          "profile_id": "primary-alt",
+          "profile_source": "job_preference",
+          "status": "CONTENT_REVIEW_REQUIRED",
+          "ats_score": 88,
+          "template_id": "",
+          "enabled_blocks_count": 0,
+          "selected_keywords_count": 0,
+          "one_page_mode": "soft",
+          "one_pager_strict": false,
+          "content_review_required": true,
+          "evidence_first": true,
+          "evidence_match_count": 0,
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": []
         }
       },
       "response_text": null
@@ -259,9 +371,1290 @@
     {
       "name": "wizard.pack.fetch.before",
       "method": "GET",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/application-pack?profile_id=primary",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/application-pack",
       "auth": "ui",
       "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1273,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "a0642a8c-170e-48b7-979b-1fa2bae85bff",
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "profile_id": "primary-alt",
+          "profile_lookup_source": "job_preference",
+          "requested_profile_id": null,
+          "preference_profile_id": "primary-alt",
+          "status": "CONTENT_REVIEW_REQUIRED",
+          "error_text": "",
+          "pack_json": {
+            "job": {
+              "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+              "job_url": "https://www.linkedin.com/jobs/view/4375685564/",
+              "source_domain": "linkedin",
+              "status": "SCORED"
+            },
+            "target": {
+              "id": "TGT-NEW-01",
+              "name": "Growth PM Target",
+              "primaryRole": "Product Manager",
+              "seniorityPref": "Mid",
+              "locationPref": "Bangalore",
+              "rubricProfile": "auto",
+              "rubric_profile": "auto",
+              "must": [
+                "product strategy",
+                "roadmap"
+              ],
+              "nice": [
+                "sql"
+              ],
+              "reject": []
+            },
+            "extracted": {
+              "role_title": "Business Program Management",
+              "company": "Microsoft",
+              "location": "Gurgaon",
+              "seniority": "",
+              "final_score": 72,
+              "reason_top_matches": ""
+            },
+            "tailoring": {
+              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi",
+              "bullets": [
+                "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
+                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+              ],
+              "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "must_keywords": [],
+              "nice_keywords": [],
+              "evidence_matches": []
+            },
+            "controls": {
+              "template_id": "balanced",
+              "enabled_blocks": [
+                "summary",
+                "experience",
+                "skills",
+                "highlights",
+                "bullets"
+              ],
+              "selected_keywords": [],
+              "ats_target_mode": "all",
+              "one_page_mode": "soft",
+              "one_pager_strict": false,
+              "content_review_required": true
+            },
+            "renderer": "reactive_resume"
+          },
+          "ats_json": {
+            "score": 88,
+            "missing_keywords": [],
+            "coverage": {
+              "must_total": 0,
+              "must_hit": 0,
+              "nice_total": 0,
+              "nice_hit": 0
+            },
+            "notes": "Good keyword coverage",
+            "target_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "requirements",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "backlog",
+                    "agile",
+                    "scrum"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "alignment"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "communication",
+                    "collaboration",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            },
+            "pm_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "requirements",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "backlog",
+                    "agile",
+                    "scrum"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "alignment"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "communication",
+                    "collaboration",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            }
+          },
+          "rr_export_json": {
+            "metadata": {
+              "source": "jobops",
+              "contract_id": "jobops.rr_export.v1",
+              "schema_version": 1,
+              "version": 1,
+              "exported_at": 1772115336607,
+              "template_id": "balanced",
+              "renderer": "reactive_resume",
+              "contract_valid": true,
+              "import_ready": true
+            },
+            "basics": {
+              "name": "Smoke User Alt",
+              "email": "",
+              "phone": "",
+              "location": "",
+              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi"
+            },
+            "sections": {
+              "experience": [],
+              "skills": [],
+              "highlights": [
+                {
+                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability."
+                },
+                {
+                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
+                },
+                {
+                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                }
+              ]
+            },
+            "job_context": {
+              "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+              "role_title": "Business Program Management",
+              "company": "Microsoft",
+              "job_url": "https://www.linkedin.com/jobs/view/4375685564/"
+            }
+          },
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": [],
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
+          "rr_last_push_error": "",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
+          "rr_pdf_last_export_error": "",
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Business Program Management",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Microsoft",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=7740, jd_confidence=low",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=88 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (0/0)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "one_page_mode": "soft",
+          "content_review_required": true,
+          "latest_version": {
+            "id": "6f68eae2-e931-4551-b2f0-bda7b038732f",
+            "version_no": 1,
+            "source_action": "generate",
+            "created_at": 1772115337323
+          },
+          "version_history_enabled": true,
+          "rr_base_url": "https://rxresu.me",
+          "updated_at": 1772115336607
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.review",
+      "method": "POST",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/application-pack/review",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt",
+        "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi",
+        "bullets": [
+          "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
+          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+        ],
+        "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1308,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "profile_id": "primary-alt",
+          "draft_id": "a0642a8c-170e-48b7-979b-1fa2bae85bff",
+          "status": "READY_FOR_EXPORT",
+          "ats_score": 88,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Business Program Management",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Microsoft",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=7740, jd_confidence=low",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=88 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (0/0)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "c16ef0e1-92db-44b1-a422-b7333a624226",
+          "version_no": 2
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.approve",
+      "method": "POST",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/approve-pack",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt",
+        "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi",
+        "bullets": [
+          "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
+          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+        ],
+        "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1643,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "profile_id": "primary-alt",
+          "draft_id": "a0642a8c-170e-48b7-979b-1fa2bae85bff",
+          "status": "READY_TO_APPLY",
+          "ats_score": 88,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Business Program Management",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Microsoft",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=7740, jd_confidence=low",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=88 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (0/0)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "61d37086-b933-4ecb-8add-2792f7d7007f",
+          "version_no": 3
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.pack.fetch.after",
+      "method": "GET",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/application-pack",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1260,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "a0642a8c-170e-48b7-979b-1fa2bae85bff",
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "profile_id": "primary-alt",
+          "profile_lookup_source": "job_preference",
+          "requested_profile_id": null,
+          "preference_profile_id": "primary-alt",
+          "status": "READY_TO_APPLY",
+          "error_text": "",
+          "pack_json": {
+            "job": {
+              "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+              "job_url": "https://www.linkedin.com/jobs/view/4375685564/",
+              "source_domain": "linkedin",
+              "status": "SCORED"
+            },
+            "target": {
+              "id": "TGT-NEW-01",
+              "name": "Growth PM Target",
+              "primaryRole": "Product Manager",
+              "seniorityPref": "Mid",
+              "locationPref": "Bangalore",
+              "rubricProfile": "auto",
+              "rubric_profile": "auto",
+              "must": [
+                "product strategy",
+                "roadmap"
+              ],
+              "nice": [
+                "sql"
+              ],
+              "reject": []
+            },
+            "extracted": {
+              "role_title": "Business Program Management",
+              "company": "Microsoft",
+              "location": "Gurgaon",
+              "seniority": "",
+              "final_score": 72,
+              "reason_top_matches": ""
+            },
+            "tailoring": {
+              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi",
+              "bullets": [
+                "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability.",
+                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
+                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+              ],
+              "cover_letter": "Dear Hiring Team, I am applying for the Business Program Management role at Microsoft in Gurgaon. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Business Program Management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "must_keywords": [],
+              "nice_keywords": [],
+              "evidence_matches": []
+            },
+            "controls": {
+              "template_id": "balanced",
+              "enabled_blocks": [
+                "summary",
+                "experience",
+                "skills",
+                "highlights",
+                "bullets"
+              ],
+              "selected_keywords": [],
+              "ats_target_mode": "all",
+              "one_page_mode": "soft",
+              "one_pager_strict": false,
+              "content_review_required": false,
+              "approved_at": 1772115340818
+            },
+            "renderer": "reactive_resume"
+          },
+          "ats_json": {
+            "score": 88,
+            "missing_keywords": [],
+            "coverage": {
+              "must_total": 0,
+              "must_hit": 0,
+              "nice_total": 0,
+              "nice_hit": 0
+            },
+            "notes": "Good keyword coverage",
+            "target_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "requirements",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "backlog",
+                    "agile",
+                    "scrum"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "alignment"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "communication",
+                    "collaboration",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            },
+            "pm_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "requirements",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "backlog",
+                    "agile",
+                    "scrum"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "alignment"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "communication",
+                    "collaboration",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            }
+          },
+          "rr_export_json": {
+            "metadata": {
+              "source": "jobops",
+              "contract_id": "jobops.rr_export.v1",
+              "schema_version": 1,
+              "version": 1,
+              "exported_at": 1772115336607,
+              "template_id": "balanced",
+              "renderer": "reactive_resume",
+              "contract_valid": true,
+              "import_ready": true
+            },
+            "basics": {
+              "name": "Smoke User Alt",
+              "email": "",
+              "phone": "",
+              "location": "",
+              "summary": "Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear ownershi"
+            },
+            "sections": {
+              "experience": [],
+              "skills": [],
+              "highlights": [
+                {
+                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Business Program Management expectations at Microsoft. using core capability."
+                },
+                {
+                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
+                },
+                {
+                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                }
+              ]
+            },
+            "job_context": {
+              "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+              "role_title": "Business Program Management",
+              "company": "Microsoft",
+              "job_url": "https://www.linkedin.com/jobs/view/4375685564/"
+            }
+          },
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": [],
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
+          "rr_last_push_error": "",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
+          "rr_pdf_last_export_error": "",
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Business Program Management",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Microsoft",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=7740, jd_confidence=low",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=88 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (0/0)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "one_page_mode": "soft",
+          "content_review_required": false,
+          "latest_version": {
+            "id": "61d37086-b933-4ecb-8add-2792f7d7007f",
+            "version_no": 3,
+            "source_action": "approve",
+            "created_at": 1772115340997
+          },
+          "version_history_enabled": true,
+          "rr_base_url": "https://rxresu.me",
+          "updated_at": 1772115340997
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "outreach.contacts.list",
+      "method": "GET",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/contacts",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 364,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": [
+          {
+            "id": "ace6d45a-110a-457f-b540-84db34128a4c",
+            "name": "Shivanand Shah",
+            "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+            "company_name": "Microsoft",
+            "linkedin_url": null,
+            "email": null,
+            "confidence": 100,
+            "source": "jd_mention",
+            "channel": "OTHER",
+            "status": "DRAFT",
+            "touchpoint_id": "e6944869-4d22-4794-a330-9260cc45ce3d",
+            "touchpoint_content": "This email was intended for Shivanand Shah (Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak)",
+            "touchpoint_updated_at": 1772114600465,
+            "linked_to_job": true,
+            "channels": [
+              "OTHER"
+            ],
+            "channel_statuses": {
+              "OTHER": "DRAFT"
+            },
+            "channel_touchpoints": {
+              "OTHER": "e6944869-4d22-4794-a330-9260cc45ce3d"
+            },
+            "channel_updated_at": {
+              "OTHER": 1772114600465
+            }
+          }
+        ],
+        "meta": {
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "count": 1,
+          "contacts_storage_enabled": true,
+          "contacts_storage_error": null
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "outreach.draft.linkedin",
+      "method": "POST",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/contacts/ace6d45a-110a-457f-b540-84db34128a4c/draft",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt",
+        "channel": "LINKEDIN",
+        "use_ai": true
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 3757,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "channel": "LINKEDIN",
+          "contacts_count": 1,
+          "contacts": [
+            {
+              "id": "ace6d45a-110a-457f-b540-84db34128a4c",
+              "name": "Shivanand Shah",
+              "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+              "company_name": "Microsoft",
+              "linkedin_url": null,
+              "email": null,
+              "confidence": 100,
+              "source": "jd_mention",
+              "channel": "OTHER",
+              "status": "DRAFT",
+              "touchpoint_id": "e6944869-4d22-4794-a330-9260cc45ce3d",
+              "touchpoint_content": "This email was intended for Shivanand Shah (Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak)",
+              "touchpoint_updated_at": 1772114600465,
+              "linked_to_job": true,
+              "channels": [
+                "OTHER"
+              ],
+              "channel_statuses": {
+                "OTHER": "DRAFT"
+              },
+              "channel_touchpoints": {
+                "OTHER": "e6944869-4d22-4794-a330-9260cc45ce3d"
+              },
+              "channel_updated_at": {
+                "OTHER": 1772114600465
+              },
+              "selected": true
+            }
+          ],
+          "selected_contact": {
+            "id": "ace6d45a-110a-457f-b540-84db34128a4c",
+            "name": "Shivanand Shah",
+            "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+            "company_name": "Microsoft",
+            "linkedin_url": null,
+            "email": null,
+            "confidence": 100,
+            "source": "jd_mention",
+            "channel": "LINKEDIN",
+            "status": "DRAFT",
+            "touchpoint_id": "e6944869-4d22-4794-a330-9260cc45ce3d",
+            "touchpoint_content": "This email was intended for Shivanand Shah (Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak)",
+            "touchpoint_updated_at": 1772114600465,
+            "linked_to_job": true,
+            "channels": [
+              "OTHER"
+            ],
+            "channel_statuses": {
+              "OTHER": "DRAFT"
+            },
+            "channel_touchpoints": {
+              "OTHER": "e6944869-4d22-4794-a330-9260cc45ce3d"
+            },
+            "channel_updated_at": {
+              "OTHER": 1772114600465
+            }
+          },
+          "evidence_matches": [],
+          "draft": "Hi Shivanand - saw the Business Program Management role at Microsoft.\nI noticed this role has a strong execution and cross-functional focus. Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+          "touchpoint": {
+            "id": "a30434d1-a7a3-4476-8534-eb39c6a23daa",
+            "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+            "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+            "channel": "LINKEDIN",
+            "status": "DRAFT",
+            "updated_at": 1772115347094
+          },
+          "used_ai": false,
+          "ai_model": null,
+          "usage": null
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "outreach.status.sent",
+      "method": "POST",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/contacts/ace6d45a-110a-457f-b540-84db34128a4c/touchpoint-status",
+      "auth": "ui",
+      "request_body": {
+        "channel": "LINKEDIN",
+        "status": "SENT"
+      },
       "expected_status": [
         200
       ],
@@ -272,1512 +1665,18 @@
       "response_json": {
         "ok": true,
         "data": {
-          "id": "5646c1f5-767a-45f0-b290-4fdaba45240b",
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "profile_id": "primary",
-          "status": "READY_TO_APPLY",
-          "error_text": "",
-          "pack_json": {
-            "job": {
-              "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-              "job_url": "https://www.linkedin.com/jobs/view/1772104329/",
-              "source_domain": "linkedin",
-              "status": "SCORED"
-            },
-            "target": {
-              "id": "TGT-NEW-01",
-              "name": "Growth PM Target",
-              "primaryRole": "Product Manager",
-              "seniorityPref": "Mid",
-              "locationPref": "Bangalore",
-              "rubricProfile": "auto",
-              "rubric_profile": "auto",
-              "must": [
-                "product strategy",
-                "roadmap"
-              ],
-              "nice": [
-                "sql"
-              ],
-              "reject": []
-            },
-            "extracted": {
-              "role_title": "Senior Product Operations Manager",
-              "company": "Acme Labs",
-              "location": "",
-              "seniority": "Senior",
-              "final_score": 74,
-              "reason_top_matches": ""
-            },
-            "tailoring": {
-              "summary": "JavaScript: Execution-focused operator with product and delivery ownership experience, targeting Senior Product Operations Manager at Acme Labs, leveraging JavaScript, SQL, analytics, workflow automation, and sprint planning.",
-              "bullets": [
-                "Delivered measurable impact using JavaScript, SQL, and analytics to drive process optimization and KPI tracking, while collaborating with Engineering Manager David Park.",
-                "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes, leveraging JavaScript and SQL.",
-                "Delivered measurable impact by aligned outcomes to Senior Product Operations Manager expectations at Acme Labs by executing structured planning, execution, and measurable KPI movement. using analytics."
-              ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Senior Product Operations Manager role at Acme Labs. My experience with structured execution, clear stakeholder communication, and a consistent focus on measurable impact aligns directly with your need for JavaScript. I am confident in my ability to drive process optimization and KPI tracking, leveraging my expertise in JavaScript, SQL, and analytics. Regards, [Your Name]",
-              "must_keywords": [
-                "JavaScript",
-                "SQL",
-                "analytics",
-                "workflow automation",
-                "sprint planning"
-              ],
-              "nice_keywords": [
-                "cloud infrastructure",
-                "docker",
-                "terraform"
-              ],
-              "evidence_matches": [
-                {
-                  "requirement_text": "JavaScript",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "SQL",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "analytics",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "workflow automation",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "sprint planning",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "cloud infrastructure",
-                  "requirement_type": "nice",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "docker",
-                  "requirement_type": "nice",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "terraform",
-                  "requirement_type": "nice",
-                  "confidence_score": 70
-                }
-              ]
-            },
-            "controls": {
-              "template_id": "balanced",
-              "enabled_blocks": [
-                "summary",
-                "experience",
-                "skills",
-                "highlights",
-                "bullets"
-              ],
-              "selected_keywords": [],
-              "ats_target_mode": "all",
-              "one_page_mode": "soft",
-              "one_pager_strict": false,
-              "content_review_required": false,
-              "approved_at": 1772111823401
-            },
-            "renderer": "reactive_resume"
-          },
-          "ats_json": {
-            "score": 70,
-            "missing_keywords": [],
-            "coverage": {
-              "must_total": 5,
-              "must_hit": 5,
-              "nice_total": 3,
-              "nice_hit": 0
-            },
-            "notes": "Good keyword coverage",
-            "target_rubric": {
-              "applicable": true,
-              "score": 40,
-              "dimensions": [
-                {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
-                },
-                {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
-                },
-                {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 100,
-                  "hit_count": 3,
-                  "target_hits": 3,
-                  "evidence": [
-                    "kpi",
-                    "sql",
-                    "analytics"
-                  ],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
-                },
-                {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "delivery",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "requirements",
-                    "backlog",
-                    "agile"
-                  ]
-                },
-                {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 33,
-                  "hit_count": 1,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "alignment",
-                    "communication",
-                    "collaboration"
-                  ]
-                }
-              ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            },
-            "pm_rubric": {
-              "applicable": true,
-              "score": 40,
-              "dimensions": [
-                {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
-                },
-                {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
-                },
-                {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 100,
-                  "hit_count": 3,
-                  "target_hits": 3,
-                  "evidence": [
-                    "kpi",
-                    "sql",
-                    "analytics"
-                  ],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
-                },
-                {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "delivery",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "requirements",
-                    "backlog",
-                    "agile"
-                  ]
-                },
-                {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 33,
-                  "hit_count": 1,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "alignment",
-                    "communication",
-                    "collaboration"
-                  ]
-                }
-              ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            }
-          },
-          "rr_export_json": {
-            "metadata": {
-              "source": "jobops",
-              "contract_id": "jobops.rr_export.v1",
-              "schema_version": 1,
-              "version": 1,
-              "exported_at": 1772111819456,
-              "template_id": "balanced",
-              "renderer": "reactive_resume",
-              "contract_valid": true,
-              "import_ready": true
-            },
-            "basics": {
-              "name": "Smoke User",
-              "email": "",
-              "phone": "",
-              "location": "",
-              "summary": "JavaScript: Execution-focused operator with product and delivery ownership experience, targeting Senior Product Operations Manager at Acme Labs, leveraging JavaScript, SQL, analytics, workflow automation, and sprint planning."
-            },
-            "sections": {
-              "experience": [],
-              "skills": [],
-              "highlights": [
-                {
-                  "text": "Delivered measurable impact using JavaScript, SQL, and analytics to drive process optimization and KPI tracking, while collaborating with Engineering Manager David Park."
-                },
-                {
-                  "text": "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes, leveraging JavaScript and SQL."
-                },
-                {
-                  "text": "Delivered measurable impact by aligned outcomes to Senior Product Operations Manager expectations at Acme Labs by executing structured planning, execution, and measurable KPI movement. using analytics."
-                }
-              ]
-            },
-            "job_context": {
-              "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-              "role_title": "Senior Product Operations Manager",
-              "company": "Acme Labs",
-              "job_url": "https://www.linkedin.com/jobs/view/1772104329/"
-            }
-          },
-          "rr_export_contract": {
-            "id": "jobops.rr_export.v1",
-            "schema_version": 1
-          },
-          "rr_export_import_ready": true,
-          "rr_export_import_errors": [],
-          "rr_resume_id": null,
-          "rr_last_pushed_at": 0,
-          "rr_last_push_status": null,
-          "rr_last_push_error": "",
-          "rr_pdf_url": null,
-          "rr_pdf_last_exported_at": 0,
-          "rr_pdf_last_export_status": null,
-          "rr_pdf_last_export_error": "",
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Senior Product Operations Manager",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": true,
-                "detail": "company: Acme Labs",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=534, jd_confidence=-",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=225/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=70 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (5/5)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 225,
-              "bullets_count": 3,
-              "experience_items": 0,
-              "skills_items": 0,
-              "estimated_density": "medium"
-            },
-            "hard_gate_applied": false
-          },
-          "one_page_mode": "soft",
-          "content_review_required": false,
-          "latest_version": {
-            "id": "3d46bdc6-62f0-423d-8036-344275d024f2",
-            "version_no": 3,
-            "source_action": "approve",
-            "created_at": 1772111823575
-          },
-          "version_history_enabled": true,
-          "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772111823575
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.review",
-      "method": "POST",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/application-pack/review",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary",
-        "summary": "JavaScript: Execution-focused operator with product and delivery ownership experience, targeting Senior Product Operations Manager at Acme Labs, leveraging JavaScript, SQL, analytics, workflow automation, and sprint planning.",
-        "bullets": [
-          "Delivered measurable impact using JavaScript, SQL, and analytics to drive process optimization and KPI tracking, while collaborating with Engineering Manager David Park.",
-          "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes, leveraging JavaScript and SQL.",
-          "Delivered measurable impact by aligned outcomes to Senior Product Operations Manager expectations at Acme Labs by executing structured planning, execution, and measurable KPI movement. using analytics."
-        ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Senior Product Operations Manager role at Acme Labs. My experience with structured execution, clear stakeholder communication, and a consistent focus on measurable impact aligns directly with your need for JavaScript. I am confident in my ability to drive process optimization and KPI tracking, leveraging my expertise in JavaScript, SQL, and analytics. Regards, [Your Name]"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1286,
-      "ok": true,
-      "error": null,
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "profile_id": "primary",
-          "draft_id": "5646c1f5-767a-45f0-b290-4fdaba45240b",
-          "status": "READY_FOR_EXPORT",
-          "ats_score": 70,
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Senior Product Operations Manager",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": true,
-                "detail": "company: Acme Labs",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=534, jd_confidence=-",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=225/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=70 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (5/5)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 225,
-              "bullets_count": 3,
-              "experience_items": 0,
-              "skills_items": 0,
-              "estimated_density": "medium"
-            },
-            "hard_gate_applied": false
-          },
-          "version_id": "8647842e-17e5-489f-9aad-3e48a6437e38",
-          "version_no": 4
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.approve",
-      "method": "POST",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/approve-pack",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary",
-        "summary": "JavaScript: Execution-focused operator with product and delivery ownership experience, targeting Senior Product Operations Manager at Acme Labs, leveraging JavaScript, SQL, analytics, workflow automation, and sprint planning.",
-        "bullets": [
-          "Delivered measurable impact using JavaScript, SQL, and analytics to drive process optimization and KPI tracking, while collaborating with Engineering Manager David Park.",
-          "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes, leveraging JavaScript and SQL.",
-          "Delivered measurable impact by aligned outcomes to Senior Product Operations Manager expectations at Acme Labs by executing structured planning, execution, and measurable KPI movement. using analytics."
-        ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Senior Product Operations Manager role at Acme Labs. My experience with structured execution, clear stakeholder communication, and a consistent focus on measurable impact aligns directly with your need for JavaScript. I am confident in my ability to drive process optimization and KPI tracking, leveraging my expertise in JavaScript, SQL, and analytics. Regards, [Your Name]"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1671,
-      "ok": true,
-      "error": null,
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "profile_id": "primary",
-          "draft_id": "5646c1f5-767a-45f0-b290-4fdaba45240b",
-          "status": "READY_TO_APPLY",
-          "ats_score": 70,
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Senior Product Operations Manager",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": true,
-                "detail": "company: Acme Labs",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=534, jd_confidence=-",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=225/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=70 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (5/5)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 225,
-              "bullets_count": 3,
-              "experience_items": 0,
-              "skills_items": 0,
-              "estimated_density": "medium"
-            },
-            "hard_gate_applied": false
-          },
-          "version_id": "ef019650-a453-4cca-8bd0-48df8df8eb51",
-          "version_no": 5
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.pack.fetch.after",
-      "method": "GET",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/application-pack?profile_id=primary",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 896,
-      "ok": true,
-      "error": null,
-      "response_json": {
-        "ok": true,
-        "data": {
-          "id": "5646c1f5-767a-45f0-b290-4fdaba45240b",
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "profile_id": "primary",
-          "status": "READY_TO_APPLY",
-          "error_text": "",
-          "pack_json": {
-            "job": {
-              "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-              "job_url": "https://www.linkedin.com/jobs/view/1772104329/",
-              "source_domain": "linkedin",
-              "status": "SCORED"
-            },
-            "target": {
-              "id": "TGT-NEW-01",
-              "name": "Growth PM Target",
-              "primaryRole": "Product Manager",
-              "seniorityPref": "Mid",
-              "locationPref": "Bangalore",
-              "rubricProfile": "auto",
-              "rubric_profile": "auto",
-              "must": [
-                "product strategy",
-                "roadmap"
-              ],
-              "nice": [
-                "sql"
-              ],
-              "reject": []
-            },
-            "extracted": {
-              "role_title": "Senior Product Operations Manager",
-              "company": "Acme Labs",
-              "location": "",
-              "seniority": "Senior",
-              "final_score": 74,
-              "reason_top_matches": ""
-            },
-            "tailoring": {
-              "summary": "JavaScript: Execution-focused operator with product and delivery ownership experience, targeting Senior Product Operations Manager at Acme Labs, leveraging JavaScript, SQL, analytics, workflow automation, and sprint planning.",
-              "bullets": [
-                "Delivered measurable impact using JavaScript, SQL, and analytics to drive process optimization and KPI tracking, while collaborating with Engineering Manager David Park.",
-                "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes, leveraging JavaScript and SQL.",
-                "Delivered measurable impact by aligned outcomes to Senior Product Operations Manager expectations at Acme Labs by executing structured planning, execution, and measurable KPI movement. using analytics."
-              ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Senior Product Operations Manager role at Acme Labs. My experience with structured execution, clear stakeholder communication, and a consistent focus on measurable impact aligns directly with your need for JavaScript. I am confident in my ability to drive process optimization and KPI tracking, leveraging my expertise in JavaScript, SQL, and analytics. Regards, [Your Name]",
-              "must_keywords": [
-                "JavaScript",
-                "SQL",
-                "analytics",
-                "workflow automation",
-                "sprint planning"
-              ],
-              "nice_keywords": [
-                "cloud infrastructure",
-                "docker",
-                "terraform"
-              ],
-              "evidence_matches": [
-                {
-                  "requirement_text": "JavaScript",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "SQL",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "analytics",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "workflow automation",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "sprint planning",
-                  "requirement_type": "must",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "cloud infrastructure",
-                  "requirement_type": "nice",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "docker",
-                  "requirement_type": "nice",
-                  "confidence_score": 70
-                },
-                {
-                  "requirement_text": "terraform",
-                  "requirement_type": "nice",
-                  "confidence_score": 70
-                }
-              ]
-            },
-            "controls": {
-              "template_id": "balanced",
-              "enabled_blocks": [
-                "summary",
-                "experience",
-                "skills",
-                "highlights",
-                "bullets"
-              ],
-              "selected_keywords": [],
-              "ats_target_mode": "all",
-              "one_page_mode": "soft",
-              "one_pager_strict": false,
-              "content_review_required": false,
-              "approved_at": 1772111890143
-            },
-            "renderer": "reactive_resume"
-          },
-          "ats_json": {
-            "score": 70,
-            "missing_keywords": [],
-            "coverage": {
-              "must_total": 5,
-              "must_hit": 5,
-              "nice_total": 3,
-              "nice_hit": 0
-            },
-            "notes": "Good keyword coverage",
-            "target_rubric": {
-              "applicable": true,
-              "score": 40,
-              "dimensions": [
-                {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
-                },
-                {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
-                },
-                {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 100,
-                  "hit_count": 3,
-                  "target_hits": 3,
-                  "evidence": [
-                    "kpi",
-                    "sql",
-                    "analytics"
-                  ],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
-                },
-                {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "delivery",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "requirements",
-                    "backlog",
-                    "agile"
-                  ]
-                },
-                {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 33,
-                  "hit_count": 1,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "alignment",
-                    "communication",
-                    "collaboration"
-                  ]
-                }
-              ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            },
-            "pm_rubric": {
-              "applicable": true,
-              "score": 40,
-              "dimensions": [
-                {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
-                },
-                {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
-                },
-                {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 100,
-                  "hit_count": 3,
-                  "target_hits": 3,
-                  "evidence": [
-                    "kpi",
-                    "sql",
-                    "analytics"
-                  ],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
-                },
-                {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "delivery",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "requirements",
-                    "backlog",
-                    "agile"
-                  ]
-                },
-                {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 33,
-                  "hit_count": 1,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "alignment",
-                    "communication",
-                    "collaboration"
-                  ]
-                }
-              ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            }
-          },
-          "rr_export_json": {
-            "metadata": {
-              "source": "jobops",
-              "contract_id": "jobops.rr_export.v1",
-              "schema_version": 1,
-              "version": 1,
-              "exported_at": 1772111819456,
-              "template_id": "balanced",
-              "renderer": "reactive_resume",
-              "contract_valid": true,
-              "import_ready": true
-            },
-            "basics": {
-              "name": "Smoke User",
-              "email": "",
-              "phone": "",
-              "location": "",
-              "summary": "JavaScript: Execution-focused operator with product and delivery ownership experience, targeting Senior Product Operations Manager at Acme Labs, leveraging JavaScript, SQL, analytics, workflow automation, and sprint planning."
-            },
-            "sections": {
-              "experience": [],
-              "skills": [],
-              "highlights": [
-                {
-                  "text": "Delivered measurable impact using JavaScript, SQL, and analytics to drive process optimization and KPI tracking, while collaborating with Engineering Manager David Park."
-                },
-                {
-                  "text": "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes, leveraging JavaScript and SQL."
-                },
-                {
-                  "text": "Delivered measurable impact by aligned outcomes to Senior Product Operations Manager expectations at Acme Labs by executing structured planning, execution, and measurable KPI movement. using analytics."
-                }
-              ]
-            },
-            "job_context": {
-              "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-              "role_title": "Senior Product Operations Manager",
-              "company": "Acme Labs",
-              "job_url": "https://www.linkedin.com/jobs/view/1772104329/"
-            }
-          },
-          "rr_export_contract": {
-            "id": "jobops.rr_export.v1",
-            "schema_version": 1
-          },
-          "rr_export_import_ready": true,
-          "rr_export_import_errors": [],
-          "rr_resume_id": null,
-          "rr_last_pushed_at": 0,
-          "rr_last_push_status": null,
-          "rr_last_push_error": "",
-          "rr_pdf_url": null,
-          "rr_pdf_last_exported_at": 0,
-          "rr_pdf_last_export_status": null,
-          "rr_pdf_last_export_error": "",
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Senior Product Operations Manager",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": true,
-                "detail": "company: Acme Labs",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=534, jd_confidence=-",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=225/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=70 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (5/5)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 225,
-              "bullets_count": 3,
-              "experience_items": 0,
-              "skills_items": 0,
-              "estimated_density": "medium"
-            },
-            "hard_gate_applied": false
-          },
-          "one_page_mode": "soft",
-          "content_review_required": false,
-          "latest_version": {
-            "id": "ef019650-a453-4cca-8bd0-48df8df8eb51",
-            "version_no": 5,
-            "source_action": "approve",
-            "created_at": 1772111890322
-          },
-          "version_history_enabled": true,
-          "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772111890322
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "outreach.contacts.list",
-      "method": "GET",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/contacts",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 541,
-      "ok": true,
-      "error": null,
-      "response_json": {
-        "ok": true,
-        "data": [
-          {
-            "id": "180d912a-b9f8-404d-9d81-287baae3449f",
-            "name": "Sarah Chen",
-            "title": "Head of Engineering",
-            "company_name": "Acme Labs",
-            "linkedin_url": null,
-            "email": null,
-            "confidence": 100,
-            "source": "jd_mention",
-            "channel": "LINKEDIN",
-            "status": "DRAFT",
-            "touchpoint_id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-            "touchpoint_content": "Hi Sarah Chen, Head of Engineering at Acme Labs, I came across Smoke User's profile and noticed their experience aligns with the Senior Product Operations Manager role. Their background in JavaScript and SQL, as well as their experience with KPI tracking and process optimization, suggests they could effectively support your team's needs.\n\nI'd love to discuss how Smoke User's skills and experience could contribute to Acme Labs' success. Would you be open to a brief call to explore this further?",
-            "touchpoint_updated_at": 1772111833921,
-            "linked_to_job": true,
-            "channels": [
-              "LINKEDIN",
-              "OTHER",
-              "EMAIL"
-            ],
-            "channel_statuses": {
-              "LINKEDIN": "DRAFT",
-              "OTHER": "DRAFT",
-              "EMAIL": "DRAFT"
-            },
-            "channel_touchpoints": {
-              "LINKEDIN": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-              "OTHER": "2b94dfb4-22b8-40aa-b912-17496cdc3cdd",
-              "EMAIL": "05348002-a16d-4f4d-9120-0295fd1c3dd3"
-            },
-            "channel_updated_at": {
-              "LINKEDIN": 1772111833921,
-              "OTHER": 1772110036729,
-              "EMAIL": 1772108537721
-            }
-          },
-          {
-            "id": "93bd504f-76ed-4fa3-95f2-c2885c47a8ff",
-            "name": "David Park",
-            "title": "Engineering Manager",
-            "company_name": "Acme Labs",
-            "linkedin_url": null,
-            "email": null,
-            "confidence": 100,
-            "source": "jd_mention",
-            "channel": "OTHER",
-            "status": "DRAFT",
-            "touchpoint_id": "5fc1631f-b307-4234-b0b6-d9a54989637d",
-            "touchpoint_content": "This role partners with Engineering Manager David Park",
-            "touchpoint_updated_at": 1772110036729,
-            "linked_to_job": true,
-            "channels": [
-              "OTHER"
-            ],
-            "channel_statuses": {
-              "OTHER": "DRAFT"
-            },
-            "channel_touchpoints": {
-              "OTHER": "5fc1631f-b307-4234-b0b6-d9a54989637d"
-            },
-            "channel_updated_at": {
-              "OTHER": 1772110036729
-            }
-          }
-        ],
-        "meta": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "count": 2,
-          "contacts_storage_enabled": true,
-          "contacts_storage_error": null
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "outreach.draft.linkedin",
-      "method": "POST",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/contacts/180d912a-b9f8-404d-9d81-287baae3449f/draft",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary",
-        "channel": "LINKEDIN",
-        "use_ai": true
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 11840,
-      "ok": true,
-      "error": null,
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "channel": "LINKEDIN",
-          "contacts_count": 2,
-          "contacts": [
-            {
-              "id": "180d912a-b9f8-404d-9d81-287baae3449f",
-              "name": "Sarah Chen",
-              "title": "Head of Engineering",
-              "company_name": "Acme Labs",
-              "linkedin_url": null,
-              "email": null,
-              "confidence": 100,
-              "source": "jd_mention",
-              "channel": "LINKEDIN",
-              "status": "DRAFT",
-              "touchpoint_id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-              "touchpoint_content": "Hi Sarah Chen, Head of Engineering at Acme Labs, I came across Smoke User's profile and noticed their experience aligns with the Senior Product Operations Manager role. Their background in JavaScript and SQL, as well as their experience with KPI tracking and process optimization, suggests they could effectively support your team's needs.\n\nI'd love to discuss how Smoke User's skills and experience could contribute to Acme Labs' success. Would you be open to a brief call to explore this further?",
-              "touchpoint_updated_at": 1772111833921,
-              "linked_to_job": true,
-              "channels": [
-                "LINKEDIN",
-                "OTHER",
-                "EMAIL"
-              ],
-              "channel_statuses": {
-                "LINKEDIN": "DRAFT",
-                "OTHER": "DRAFT",
-                "EMAIL": "DRAFT"
-              },
-              "channel_touchpoints": {
-                "LINKEDIN": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-                "OTHER": "2b94dfb4-22b8-40aa-b912-17496cdc3cdd",
-                "EMAIL": "05348002-a16d-4f4d-9120-0295fd1c3dd3"
-              },
-              "channel_updated_at": {
-                "LINKEDIN": 1772111833921,
-                "OTHER": 1772110036729,
-                "EMAIL": 1772108537721
-              },
-              "selected": true
-            },
-            {
-              "id": "93bd504f-76ed-4fa3-95f2-c2885c47a8ff",
-              "name": "David Park",
-              "title": "Engineering Manager",
-              "company_name": "Acme Labs",
-              "linkedin_url": null,
-              "email": null,
-              "confidence": 100,
-              "source": "jd_mention",
-              "channel": "OTHER",
-              "status": "DRAFT",
-              "touchpoint_id": "5fc1631f-b307-4234-b0b6-d9a54989637d",
-              "touchpoint_content": "This role partners with Engineering Manager David Park",
-              "touchpoint_updated_at": 1772110036729,
-              "linked_to_job": true,
-              "channels": [
-                "OTHER"
-              ],
-              "channel_statuses": {
-                "OTHER": "DRAFT"
-              },
-              "channel_touchpoints": {
-                "OTHER": "5fc1631f-b307-4234-b0b6-d9a54989637d"
-              },
-              "channel_updated_at": {
-                "OTHER": 1772110036729
-              },
-              "selected": false
-            }
-          ],
-          "selected_contact": {
-            "id": "180d912a-b9f8-404d-9d81-287baae3449f",
-            "name": "Sarah Chen",
-            "title": "Head of Engineering",
-            "company_name": "Acme Labs",
-            "linkedin_url": null,
-            "email": null,
-            "confidence": 100,
-            "source": "jd_mention",
-            "channel": "LINKEDIN",
-            "status": "DRAFT",
-            "touchpoint_id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-            "touchpoint_content": "Hi Sarah Chen, Head of Engineering at Acme Labs, I came across Smoke User's profile and noticed their experience aligns with the Senior Product Operations Manager role. Their background in JavaScript and SQL, as well as their experience with KPI tracking and process optimization, suggests they could effectively support your team's needs.\n\nI'd love to discuss how Smoke User's skills and experience could contribute to Acme Labs' success. Would you be open to a brief call to explore this further?",
-            "touchpoint_updated_at": 1772111833921,
-            "linked_to_job": true,
-            "channels": [
-              "LINKEDIN",
-              "OTHER",
-              "EMAIL"
-            ],
-            "channel_statuses": {
-              "LINKEDIN": "DRAFT",
-              "OTHER": "DRAFT",
-              "EMAIL": "DRAFT"
-            },
-            "channel_touchpoints": {
-              "LINKEDIN": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-              "OTHER": "2b94dfb4-22b8-40aa-b912-17496cdc3cdd",
-              "EMAIL": "05348002-a16d-4f4d-9120-0295fd1c3dd3"
-            },
-            "channel_updated_at": {
-              "LINKEDIN": 1772111833921,
-              "OTHER": 1772110036729,
-              "EMAIL": 1772108537721
-            }
-          },
-          "evidence_matches": [
-            {
-              "requirement": "JavaScript",
-              "evidence": "...ead of Engineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder...",
-              "confidence": 70,
-              "source": "jd_text"
-            },
-            {
-              "requirement": "SQL",
-              "evidence": "...gineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder management, and...",
-              "confidence": 70,
-              "source": "jd_text"
-            },
-            {
-              "requirement": "analytics",
-              "evidence": "...ss optimization, stakeholder management, and cross-functional collaboration. Must have: JavaScript, SQL, analytics, workflow automation, sprint planning. Nice to have: cloud...",
-              "confidence": 70,
-              "source": "jd_text"
-            }
-          ],
-          "draft": "Hi Sarah Chen, Head of Engineering at Acme Labs, I came across Smoke User's profile and noticed their experience aligns with our Senior Product Operations Manager role. Their background in JavaScript and SQL, as well as their experience with KPI tracking and process optimization, make them a strong fit for this position.\n\nI'd love to discuss how their skills can support our team's goals. Would you be open to a brief call to explore this opportunity further?",
-          "touchpoint": {
-            "id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-            "contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
-            "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-            "channel": "LINKEDIN",
-            "status": "DRAFT",
-            "updated_at": 1772111904166
-          },
-          "used_ai": true,
-          "ai_model": "@cf/meta/llama-3.1-8b-instruct",
-          "usage": {
-            "input_tokens": 343,
-            "output_tokens": 91,
-            "total_tokens": 434
-          }
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "outreach.status.sent",
-      "method": "POST",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/contacts/180d912a-b9f8-404d-9d81-287baae3449f/touchpoint-status",
-      "auth": "ui",
-      "request_body": {
-        "channel": "LINKEDIN",
-        "status": "SENT"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 902,
-      "ok": true,
-      "error": null,
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
           "channel": "LINKEDIN",
           "status": "SENT",
           "touchpoint": {
-            "id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-            "contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
-            "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
+            "id": "a30434d1-a7a3-4476-8534-eb39c6a23daa",
+            "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+            "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
             "channel": "LINKEDIN",
             "status": "SENT",
-            "content": "Hi Sarah Chen, Head of Engineering at Acme Labs, I came across Smoke User's profile and noticed their experience aligns with our Senior Product Operations Manager role. Their background in JavaScript and SQL, as well as their experience with KPI tracking and process optimization, make them a strong fit for this position.\n\nI'd love to discuss how their skills can support our team's goals. Would you be open to a brief call to explore this opportunity further?",
-            "updated_at": 1772111905260
+            "content": "Hi Shivanand - saw the Business Program Management role at Microsoft.\nI noticed this role has a strong execution and cross-functional focus. Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+            "updated_at": 1772115348015
           }
         }
       },
@@ -1786,7 +1685,7 @@
     {
       "name": "outreach.status.replied",
       "method": "POST",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/contacts/180d912a-b9f8-404d-9d81-287baae3449f/touchpoint-status",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/contacts/ace6d45a-110a-457f-b540-84db34128a4c/touchpoint-status",
       "auth": "ui",
       "request_body": {
         "channel": "LINKEDIN",
@@ -1796,24 +1695,24 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 909,
+      "duration_ms": 904,
       "ok": true,
       "error": null,
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
           "channel": "LINKEDIN",
           "status": "REPLIED",
           "touchpoint": {
-            "id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-            "contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
-            "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
+            "id": "a30434d1-a7a3-4476-8534-eb39c6a23daa",
+            "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+            "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
             "channel": "LINKEDIN",
             "status": "REPLIED",
-            "content": "Hi Sarah Chen, Head of Engineering at Acme Labs, I came across Smoke User's profile and noticed their experience aligns with our Senior Product Operations Manager role. Their background in JavaScript and SQL, as well as their experience with KPI tracking and process optimization, make them a strong fit for this position.\n\nI'd love to discuss how their skills can support our team's goals. Would you be open to a brief call to explore this opportunity further?",
-            "updated_at": 1772111906170
+            "content": "Hi Shivanand - saw the Business Program Management role at Microsoft.\nI noticed this role has a strong execution and cross-functional focus. Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+            "updated_at": 1772115348918
           }
         }
       },
@@ -1822,87 +1721,55 @@
     {
       "name": "outreach.contacts.verify.replied",
       "method": "GET",
-      "path": "/jobs/8df817e4000a3b196109dd373de8f068bfd411ff/contacts",
+      "path": "/jobs/fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623/contacts",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 370,
+      "duration_ms": 366,
       "ok": true,
       "error": null,
       "response_json": {
         "ok": true,
         "data": [
           {
-            "id": "180d912a-b9f8-404d-9d81-287baae3449f",
-            "name": "Sarah Chen",
-            "title": "Head of Engineering",
-            "company_name": "Acme Labs",
+            "id": "ace6d45a-110a-457f-b540-84db34128a4c",
+            "name": "Shivanand Shah",
+            "title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+            "company_name": "Microsoft",
             "linkedin_url": null,
             "email": null,
             "confidence": 100,
             "source": "jd_mention",
             "channel": "LINKEDIN",
             "status": "REPLIED",
-            "touchpoint_id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-            "touchpoint_content": "Hi Sarah Chen, Head of Engineering at Acme Labs, I came across Smoke User's profile and noticed their experience aligns with our Senior Product Operations Manager role. Their background in JavaScript and SQL, as well as their experience with KPI tracking and process optimization, make them a strong fit for this position.\n\nI'd love to discuss how their skills can support our team's goals. Would you be open to a brief call to explore this opportunity further?",
-            "touchpoint_updated_at": 1772111906170,
+            "touchpoint_id": "a30434d1-a7a3-4476-8534-eb39c6a23daa",
+            "touchpoint_content": "Hi Shivanand - saw the Business Program Management role at Microsoft.\nI noticed this role has a strong execution and cross-functional focus. Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+            "touchpoint_updated_at": 1772115348918,
             "linked_to_job": true,
             "channels": [
               "LINKEDIN",
-              "OTHER",
-              "EMAIL"
-            ],
-            "channel_statuses": {
-              "LINKEDIN": "REPLIED",
-              "OTHER": "DRAFT",
-              "EMAIL": "DRAFT"
-            },
-            "channel_touchpoints": {
-              "LINKEDIN": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
-              "OTHER": "2b94dfb4-22b8-40aa-b912-17496cdc3cdd",
-              "EMAIL": "05348002-a16d-4f4d-9120-0295fd1c3dd3"
-            },
-            "channel_updated_at": {
-              "LINKEDIN": 1772111906170,
-              "OTHER": 1772110036729,
-              "EMAIL": 1772108537721
-            }
-          },
-          {
-            "id": "93bd504f-76ed-4fa3-95f2-c2885c47a8ff",
-            "name": "David Park",
-            "title": "Engineering Manager",
-            "company_name": "Acme Labs",
-            "linkedin_url": null,
-            "email": null,
-            "confidence": 100,
-            "source": "jd_mention",
-            "channel": "OTHER",
-            "status": "DRAFT",
-            "touchpoint_id": "5fc1631f-b307-4234-b0b6-d9a54989637d",
-            "touchpoint_content": "This role partners with Engineering Manager David Park",
-            "touchpoint_updated_at": 1772110036729,
-            "linked_to_job": true,
-            "channels": [
               "OTHER"
             ],
             "channel_statuses": {
+              "LINKEDIN": "REPLIED",
               "OTHER": "DRAFT"
             },
             "channel_touchpoints": {
-              "OTHER": "5fc1631f-b307-4234-b0b6-d9a54989637d"
+              "LINKEDIN": "a30434d1-a7a3-4476-8534-eb39c6a23daa",
+              "OTHER": "e6944869-4d22-4794-a330-9260cc45ce3d"
             },
             "channel_updated_at": {
-              "OTHER": 1772110036729
+              "LINKEDIN": 1772115348918,
+              "OTHER": 1772114600465
             }
           }
         ],
         "meta": {
-          "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
-          "count": 2,
+          "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+          "count": 1,
           "contacts_storage_enabled": true,
           "contacts_storage_error": null
         }
@@ -1912,11 +1779,11 @@
   ],
   "result": "PASS",
   "summary": {
-    "total_steps": 15,
-    "passed_steps": 15,
+    "total_steps": 18,
+    "passed_steps": 18,
     "failed_steps": 0,
     "success": true
   },
   "error": null,
-  "ended_at": "2026-02-26T13:18:26.659Z"
+  "ended_at": "2026-02-26T14:15:49.376Z"
 }
