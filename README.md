@@ -155,6 +155,35 @@ wrangler secret put WHATSAPP_MEDIA_FORWARD_VONAGE_AUTH
 wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_TIMEOUT_MS
 ```
 
+### WhatsApp Media Extractor Contract
+When `WHATSAPP_MEDIA_EXTRACTOR_URL` is set, Worker sends:
+
+```json
+{
+  "provider": "vonage",
+  "message_id": "string|null",
+  "sender": "string|null",
+  "media": {
+    "url": "https://...",
+    "type": "document|image|video|audio|null",
+    "mime_type": "string|null",
+    "file_name": "string|null",
+    "size_bytes": 12345,
+    "caption": "string|null"
+  },
+  "signature": {
+    "verified": true,
+    "mode": "verified|disabled|null",
+    "issuer": "string|null"
+  }
+}
+```
+
+Accepted extractor responses:
+- Canonical JSON: `{ "text": "...", "title": "...", "urls": ["https://..."] }`
+- Gemini-style pass-through: `{ "candidates": [{ "content": { "parts": [{ "text": "..." }] } }] }`
+- Gemini text can be plain text or JSON-in-text/fenced-json; Worker extracts `job_description/description`, `title/job_title`, and URLs.
+
 ### UI
 Static UI files live in [`ui/`](/c:/Users/dell/Documents/GitHub/jobops/ui).
 Local preview options:

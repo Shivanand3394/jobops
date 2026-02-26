@@ -10056,6 +10056,128 @@ function normalizeExtractorUrls_(input) {
   return unique_(out).slice(0, 10);
 }
 
+function parseJsonObjectFromText_(text = "") {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  const direct = safeJsonParseAny_(raw);
+  if (direct && typeof direct === "object" && !Array.isArray(direct)) return direct;
+
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced && fenced[1]) {
+    const parsed = safeJsonParseAny_(fenced[1]);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  }
+
+  return null;
+}
+
+function collectGeminiCandidateText_(obj) {
+  const src = (obj && typeof obj === "object") ? obj : {};
+  const allCandidates = [
+    ...(Array.isArray(src.candidates) ? src.candidates : []),
+    ...(Array.isArray(src?.data?.candidates) ? src.data.candidates : []),
+    ...(Array.isArray(src?.response?.candidates) ? src.response.candidates : []),
+  ];
+  const chunks = [];
+
+  for (const cand of allCandidates) {
+    const parts = Array.isArray(cand?.content?.parts) ? cand.content.parts : [];
+    for (const part of parts) {
+      if (typeof part === "string") {
+        const s = part.trim();
+        if (s) chunks.push(s);
+        continue;
+      }
+      const s = String(part?.text || "").trim();
+      if (s) chunks.push(s);
+    }
+  }
+
+  return chunks.join("\n").trim().slice(0, 120000);
+}
+
+function resolveExtractorResponse_(obj) {
+  const src = (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
+
+  const directText = String(
+    src.text ??
+    src.extracted_text ??
+    src.extractedText ??
+    src.content_text ??
+    src.contentText ??
+    src.content ??
+    src.markdown ??
+    src.body ??
+    src?.data?.text ??
+    src?.data?.content ??
+    src?.data?.markdown ??
+    ""
+  ).trim().slice(0, 120000);
+
+  const geminiText = collectGeminiCandidateText_(src);
+  const candidateText = directText || geminiText;
+  const structured = parseJsonObjectFromText_(candidateText);
+
+  const structuredText = String(
+    structured?.job_description ??
+    structured?.jobDescription ??
+    structured?.description ??
+    structured?.jd_text ??
+    structured?.jdText ??
+    structured?.content ??
+    ""
+  ).trim().slice(0, 120000);
+
+  const text = (structuredText || directText || geminiText).trim().slice(0, 120000);
+
+  const title = String(
+    src.title ??
+    src.job_title ??
+    src.jobTitle ??
+    src.subject ??
+    src?.data?.title ??
+    structured?.job_title ??
+    structured?.jobTitle ??
+    structured?.title ??
+    structured?.role_title ??
+    structured?.roleTitle ??
+    ""
+  ).trim().slice(0, 300);
+
+  const company = String(
+    src.company ??
+    src.company_name ??
+    src.companyName ??
+    src?.data?.company ??
+    structured?.company ??
+    structured?.company_name ??
+    structured?.companyName ??
+    ""
+  ).trim().slice(0, 300);
+
+  const urls = normalizeExtractorUrls_([
+    ...(Array.isArray(src.urls) ? src.urls : []),
+    src.url,
+    src.job_url,
+    src.jobUrl,
+    src?.data?.url,
+    src?.data?.job_url,
+    structured?.url,
+    structured?.job_url,
+    structured?.jobUrl,
+    extractFirstHttpUrlFromText_(text),
+  ]);
+
+  return {
+    text,
+    title,
+    company,
+    urls,
+    structured,
+  };
+}
+
 async function extractWhatsAppMediaText_(env, input = {}) {
   const extractorUrl = String(env?.WHATSAPP_MEDIA_EXTRACTOR_URL || "").trim();
   if (!extractorUrl) return { ok: false, error: "extractor_not_configured" };
@@ -10153,43 +10275,14 @@ async function extractWhatsAppMediaText_(env, input = {}) {
   }
 
   const obj = (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ? parsed : {};
-  const extractedText = String(
-    obj.text ??
-    obj.extracted_text ??
-    obj.extractedText ??
-    obj.content_text ??
-    obj.contentText ??
-    obj.content ??
-    obj.markdown ??
-    obj.body ??
-    obj?.data?.text ??
-    obj?.data?.content ??
-    ""
-  ).trim().slice(0, 120000);
-  const title = String(
-    obj.title ??
-    obj.job_title ??
-    obj.jobTitle ??
-    obj.subject ??
-    obj?.data?.title ??
-    ""
-  ).trim().slice(0, 300);
-
-  const urls = normalizeExtractorUrls_([
-    ...(Array.isArray(obj.urls) ? obj.urls : []),
-    obj.url,
-    obj.job_url,
-    obj.jobUrl,
-    obj?.data?.url,
-    obj?.data?.job_url,
-    extractFirstHttpUrlFromText_(extractedText),
-  ]);
+  const resolved = resolveExtractorResponse_(obj);
 
   return {
     ok: true,
-    text: extractedText,
-    title,
-    urls,
+    text: resolved.text,
+    title: resolved.title,
+    company: resolved.company,
+    urls: resolved.urls,
     response: obj,
   };
 }
