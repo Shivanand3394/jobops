@@ -17,6 +17,9 @@ import {
   runScoringPipeline_ as runDomainScoringPipeline_,
 } from "./domains/scoring/index.js";
 import {
+  draftOutreachMessage_,
+  hasContactsStorage_,
+  normalizeOutreachChannel_,
   upsertPotentialContactsForJob_,
 } from "./domains/contacts/index.js";
 
@@ -375,6 +378,35 @@ export default {
       // ============================
       // UI: JOB detail
       // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/contacts") && request.method === "GET") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const job = await env.DB.prepare(`
+          SELECT job_key, company
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const contactsView = await listContactsForJobOutreach_(env, {
+          job_key: jobKey,
+          company: String(job.company || "").trim(),
+        });
+
+        return json_({
+          ok: true,
+          data: contactsView.contacts,
+          meta: {
+            job_key: jobKey,
+            count: contactsView.contacts.length,
+            contacts_storage_enabled: contactsView.enabled,
+            contacts_storage_error: contactsView.error || null,
+          },
+        }, env, 200);
+      }
+
       if (
         path.startsWith("/jobs/") &&
         request.method === "GET" &&
@@ -1545,6 +1577,56 @@ export default {
         };
 
         return json_({ ok: true, data: payload }, env, 200);
+      }
+
+      // ============================
+      // UI: Outreach drafting
+      // ============================
+      if (
+        path.startsWith("/jobs/") &&
+        path.includes("/contacts/") &&
+        path.endsWith("/draft") &&
+        request.method === "POST"
+      ) {
+        const parts = path.split("/");
+        const jobKey = decodeURIComponent(parts[2] || "").trim();
+        const contactId = decodeURIComponent(parts[4] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        if (!contactId) return json_({ ok: false, error: "Missing contact_id" }, env, 400);
+
+        const body = await request.json().catch(() => ({}));
+        const draftData = await draftOutreachForJob_(env, {
+          job_key: jobKey,
+          contact_id: contactId,
+          profile_id: String(body.profile_id || body.profileId || "").trim(),
+          channel: normalizeOutreachChannel_(body.channel || "LINKEDIN"),
+          tone: String(body.tone || "professional").trim(),
+          use_ai: toBool_(body.use_ai ?? body.useAi, true),
+        });
+        if (!draftData.ok) {
+          return json_({ ok: false, error: draftData.error || "Failed to draft outreach." }, env, draftData.status || 400);
+        }
+        return json_({ ok: true, data: draftData.data }, env, 200);
+      }
+
+      if (path.startsWith("/jobs/") && path.endsWith("/draft-outreach") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const body = await request.json().catch(() => ({}));
+        const contactId = String(body.contact_id || body.contactId || "").trim();
+        const draftData = await draftOutreachForJob_(env, {
+          job_key: jobKey,
+          contact_id: contactId || null,
+          profile_id: String(body.profile_id || body.profileId || "").trim(),
+          channel: normalizeOutreachChannel_(body.channel || "LINKEDIN"),
+          tone: String(body.tone || "professional").trim(),
+          use_ai: toBool_(body.use_ai ?? body.useAi, true),
+        });
+        if (!draftData.ok) {
+          return json_({ ok: false, error: draftData.error || "Failed to draft outreach." }, env, draftData.status || 400);
+        }
+        return json_({ ok: true, data: draftData.data }, env, 200);
       }
 
       // ============================
@@ -3226,6 +3308,419 @@ async function hasJobEvidenceTable_(env) {
   } catch {
     return false;
   }
+}
+
+function rankOutreachChannel_(channel) {
+  const ch = normalizeOutreachChannel_(channel || "OTHER");
+  if (ch === "LINKEDIN") return 3;
+  if (ch === "EMAIL") return 2;
+  return 1;
+}
+
+function normalizeOutreachContactRow_(row) {
+  const src = row && typeof row === "object" ? row : {};
+  const id = String(src.id || "").trim();
+  if (!id) return null;
+  const channel = normalizeOutreachChannel_(
+    src.touchpoint_channel ||
+    src.channel ||
+    (String(src.linkedin_url || "").trim() ? "LINKEDIN" : (String(src.email || "").trim() ? "EMAIL" : "OTHER"))
+  );
+  return {
+    id,
+    name: String(src.name || "").trim(),
+    title: String(src.title || "").trim() || null,
+    company_name: String(src.company_name || "").trim() || null,
+    linkedin_url: String(src.linkedin_url || "").trim() || null,
+    email: String(src.email || "").trim() || null,
+    confidence: clampInt_(src.confidence ?? 0, 0, 100),
+    source: String(src.source || "").trim() || null,
+    channel,
+    status: String(src.touchpoint_status || src.status || "DRAFT").trim().toUpperCase() || "DRAFT",
+    touchpoint_content: String(src.touchpoint_content || src.content || "").trim() || null,
+    touchpoint_updated_at: numOrNull_(src.touchpoint_updated_at ?? src.updated_at),
+    linked_to_job: Boolean(src.touchpoint_channel || src.touchpoint_updated_at),
+  };
+}
+
+function dedupeOutreachContacts_(rows = []) {
+  const map = new Map();
+  for (const row of (Array.isArray(rows) ? rows : [])) {
+    const normalized = normalizeOutreachContactRow_(row);
+    if (!normalized) continue;
+    const existing = map.get(normalized.id);
+    if (!existing) {
+      map.set(normalized.id, { ...normalized, channels: [normalized.channel] });
+      continue;
+    }
+    if (!existing.channels.includes(normalized.channel)) {
+      existing.channels.push(normalized.channel);
+    }
+    const existingScore =
+      (existing.confidence || 0) +
+      rankOutreachChannel_(existing.channel) +
+      (existing.linked_to_job ? 2 : 0);
+    const nextScore =
+      (normalized.confidence || 0) +
+      rankOutreachChannel_(normalized.channel) +
+      (normalized.linked_to_job ? 2 : 0);
+    if (nextScore > existingScore) {
+      map.set(normalized.id, { ...normalized, channels: existing.channels });
+      continue;
+    }
+    if (
+      existing.touchpoint_updated_at === null &&
+      normalized.touchpoint_updated_at !== null
+    ) {
+      map.set(normalized.id, {
+        ...existing,
+        status: normalized.status,
+        touchpoint_content: normalized.touchpoint_content,
+        touchpoint_updated_at: normalized.touchpoint_updated_at,
+        linked_to_job: normalized.linked_to_job,
+      });
+    }
+  }
+  const out = Array.from(map.values());
+  out.sort((a, b) => {
+    const confidenceDiff = (b.confidence || 0) - (a.confidence || 0);
+    if (confidenceDiff !== 0) return confidenceDiff;
+    const channelDiff = rankOutreachChannel_(b.channel) - rankOutreachChannel_(a.channel);
+    if (channelDiff !== 0) return channelDiff;
+    const aTs = numOr_(a.touchpoint_updated_at, 0);
+    const bTs = numOr_(b.touchpoint_updated_at, 0);
+    return bTs - aTs;
+  });
+  return out;
+}
+
+async function listContactsForJobOutreach_(env, input = {}) {
+  const jobKey = String(input.job_key || "").trim();
+  const company = String(input.company || "").trim();
+  const storage = await hasContactsStorage_(env);
+  if (!storage?.enabled) {
+    return {
+      enabled: false,
+      error: String(storage?.error || "contacts_storage_unavailable"),
+      contacts: [],
+    };
+  }
+
+  const linked = await env.DB.prepare(`
+    SELECT
+      c.id,
+      c.name,
+      c.title,
+      c.company_name,
+      c.linkedin_url,
+      c.email,
+      c.confidence,
+      c.source,
+      ct.channel AS touchpoint_channel,
+      ct.status AS touchpoint_status,
+      ct.content AS touchpoint_content,
+      ct.updated_at AS touchpoint_updated_at
+    FROM contact_touchpoints ct
+    INNER JOIN contacts c ON c.id = ct.contact_id
+    WHERE ct.job_key = ?
+    ORDER BY COALESCE(c.confidence, 0) DESC, ct.updated_at DESC;
+  `.trim()).bind(jobKey).all();
+
+  let rows = Array.isArray(linked?.results) ? linked.results : [];
+  if (!rows.length && company) {
+    const sameCompany = await env.DB.prepare(`
+      SELECT
+        id,
+        name,
+        title,
+        company_name,
+        linkedin_url,
+        email,
+        confidence,
+        source,
+        NULL AS touchpoint_channel,
+        NULL AS touchpoint_status,
+        NULL AS touchpoint_content,
+        updated_at AS touchpoint_updated_at
+      FROM contacts
+      WHERE lower(COALESCE(company_name, '')) = lower(?)
+      ORDER BY COALESCE(confidence, 0) DESC, updated_at DESC
+      LIMIT 25;
+    `.trim()).bind(company).all();
+    rows = Array.isArray(sameCompany?.results) ? sameCompany.results : [];
+  }
+
+  return {
+    enabled: true,
+    error: null,
+    contacts: dedupeOutreachContacts_(rows),
+  };
+}
+
+async function loadOutreachEvidenceRows_(env, input = {}) {
+  const jobKey = String(input.job_key || "").trim();
+  const limit = clampInt_(input.limit || 12, 1, 30);
+  if (!jobKey) return [];
+  const hasEvidence = await hasJobEvidenceTable_(env);
+  if (!hasEvidence) return [];
+  const rows = await env.DB.prepare(`
+    SELECT
+      requirement_text,
+      requirement_type,
+      evidence_text,
+      evidence_source,
+      confidence_score,
+      updated_at
+    FROM job_evidence
+    WHERE job_key = ? AND matched = 1
+    ORDER BY
+      CASE requirement_type
+        WHEN 'must' THEN 1
+        WHEN 'nice' THEN 2
+        ELSE 3
+      END ASC,
+      confidence_score DESC,
+      updated_at DESC
+    LIMIT ?;
+  `.trim()).bind(jobKey, limit).all();
+  return Array.isArray(rows?.results) ? rows.results : [];
+}
+
+async function loadOutreachProfileContext_(env, input = {}) {
+  const jobKey = String(input.job_key || "").trim();
+  const profileIdIn = String(input.profile_id || "").trim();
+  let draftRow = null;
+  if (profileIdIn) {
+    draftRow = await env.DB.prepare(`
+      SELECT profile_id, pack_json
+      FROM resume_drafts
+      WHERE job_key = ? AND profile_id = ?
+      ORDER BY updated_at DESC
+      LIMIT 1;
+    `.trim()).bind(jobKey, profileIdIn).first();
+  }
+  if (!draftRow) {
+    draftRow = await env.DB.prepare(`
+      SELECT profile_id, pack_json
+      FROM resume_drafts
+      WHERE job_key = ?
+      ORDER BY updated_at DESC
+      LIMIT 1;
+    `.trim()).bind(jobKey).first();
+  }
+
+  const packJson = safeJsonParse_(draftRow?.pack_json) || {};
+  const tailoring = packJson?.tailoring && typeof packJson.tailoring === "object"
+    ? packJson.tailoring
+    : {};
+  const summaryFromPack = String(tailoring.summary || "").trim();
+  const bulletsFromPack = Array.isArray(tailoring.bullets)
+    ? tailoring.bullets.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+
+  const resolvedProfileId = String(
+    profileIdIn ||
+    draftRow?.profile_id ||
+    "primary"
+  ).trim() || "primary";
+
+  const profileRow = await env.DB.prepare(`
+    SELECT id, name, profile_json
+    FROM resume_profiles
+    WHERE id = ?
+    LIMIT 1;
+  `.trim()).bind(resolvedProfileId).first();
+  const profileJson = safeJsonParse_(profileRow?.profile_json) || {};
+  const basics = profileJson?.basics && typeof profileJson.basics === "object"
+    ? profileJson.basics
+    : {};
+
+  const senderName = String(
+    basics.name ||
+    profileJson.name ||
+    profileRow?.name ||
+    ""
+  ).trim();
+
+  const summaryFromProfile = String(
+    profileJson.summary ||
+    basics.summary ||
+    ""
+  ).trim();
+
+  return {
+    profile_id: resolvedProfileId,
+    sender_name: senderName || "Candidate",
+    summary: summaryFromPack || summaryFromProfile || bulletsFromPack[0] || "",
+    bullets: bulletsFromPack.slice(0, 5),
+  };
+}
+
+async function upsertOutreachTouchpointDraft_(env, input = {}) {
+  const contactId = String(input.contact_id || "").trim();
+  const jobKey = String(input.job_key || "").trim();
+  const draft = String(input.draft || "").trim();
+  const channel = normalizeOutreachChannel_(input.channel || "LINKEDIN");
+  if (!contactId || !jobKey || !draft) return null;
+  const now = Date.now();
+  await env.DB.prepare(`
+    INSERT INTO contact_touchpoints (
+      id, contact_id, job_key, channel, status, content, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(contact_id, job_key, channel) DO UPDATE SET
+      status = excluded.status,
+      content = excluded.content,
+      updated_at = excluded.updated_at;
+  `.trim()).bind(
+    crypto.randomUUID(),
+    contactId,
+    jobKey,
+    channel,
+    "DRAFT",
+    draft,
+    now,
+    now
+  ).run();
+
+  const row = await env.DB.prepare(`
+    SELECT
+      id,
+      contact_id,
+      job_key,
+      channel,
+      status,
+      updated_at
+    FROM contact_touchpoints
+    WHERE contact_id = ? AND job_key = ? AND channel = ?
+    LIMIT 1;
+  `.trim()).bind(contactId, jobKey, channel).first();
+
+  return row
+    ? {
+      id: row.id,
+      contact_id: row.contact_id,
+      job_key: row.job_key,
+      channel: row.channel,
+      status: row.status,
+      updated_at: numOrNull_(row.updated_at),
+    }
+    : null;
+}
+
+async function draftOutreachForJob_(env, input = {}) {
+  const jobKey = String(input.job_key || "").trim();
+  if (!jobKey) return { ok: false, status: 400, error: "Missing job_key" };
+
+  const jobRow = await env.DB.prepare(`
+    SELECT
+      job_key,
+      role_title,
+      company,
+      status,
+      reason_top_matches,
+      must_have_keywords_json,
+      nice_to_have_keywords_json
+    FROM jobs
+    WHERE job_key = ?
+    LIMIT 1;
+  `.trim()).bind(jobKey).first();
+  if (!jobRow) return { ok: false, status: 404, error: "Not found" };
+
+  const job = {
+    job_key: jobRow.job_key,
+    role_title: String(jobRow.role_title || "").trim(),
+    company: String(jobRow.company || "").trim(),
+    status: String(jobRow.status || "").trim().toUpperCase(),
+    reason_top_matches: String(jobRow.reason_top_matches || "").trim(),
+    must_have_keywords: safeJsonParseArray_(jobRow.must_have_keywords_json).slice(0, 20),
+    nice_to_have_keywords: safeJsonParseArray_(jobRow.nice_to_have_keywords_json).slice(0, 20),
+  };
+
+  const contactsView = await listContactsForJobOutreach_(env, {
+    job_key: jobKey,
+    company: job.company,
+  });
+  if (!contactsView.enabled) {
+    return { ok: false, status: 400, error: "Contacts schema not enabled in DB." };
+  }
+
+  const contacts = Array.isArray(contactsView.contacts) ? contactsView.contacts : [];
+  if (!contacts.length) {
+    return {
+      ok: false,
+      status: 404,
+      error: "No contacts found for this job. Run scoring to identify contacts first.",
+    };
+  }
+
+  const requestedContactId = String(input.contact_id || "").trim();
+  let selected = requestedContactId
+    ? contacts.find((x) => String(x?.id || "").trim() === requestedContactId)
+    : contacts[0];
+  if (!selected) {
+    return { ok: false, status: 404, error: "Contact not found for this job." };
+  }
+
+  const requestedChannel = normalizeOutreachChannel_(input.channel || selected.channel || "LINKEDIN");
+  const profile = await loadOutreachProfileContext_(env, {
+    job_key: jobKey,
+    profile_id: String(input.profile_id || "").trim(),
+  });
+  const evidenceRows = await loadOutreachEvidenceRows_(env, { job_key: jobKey, limit: 12 });
+
+  const ai = toBool_(input.use_ai, true) ? getAi_(env) : null;
+  const drafted = await draftOutreachMessage_({
+    ai,
+    channel: requestedChannel,
+    job,
+    contact: selected,
+    profile,
+    evidence_rows: evidenceRows,
+  });
+  const draft = String(drafted?.draft || "").trim();
+  if (!draft) return { ok: false, status: 500, error: "Draft generation failed." };
+
+  const touchpoint = await upsertOutreachTouchpointDraft_(env, {
+    contact_id: selected.id,
+    job_key: jobKey,
+    channel: requestedChannel,
+    draft,
+  });
+
+  await logEvent_(env, "OUTREACH_DRAFTED", jobKey, {
+    contact_id: selected.id,
+    channel: requestedChannel,
+    used_ai: Boolean(drafted?.used_ai),
+    ai_model: drafted?.model || null,
+    contacts_count: contacts.length,
+    evidence_count: Array.isArray(drafted?.evidence) ? drafted.evidence.length : 0,
+    profile_id: profile.profile_id,
+    ts: Date.now(),
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    data: {
+      job_key: jobKey,
+      channel: requestedChannel,
+      contacts_count: contacts.length,
+      contacts: contacts.map((c) => ({
+        ...c,
+        selected: c.id === selected.id,
+      })),
+      selected_contact: {
+        ...selected,
+        channel: requestedChannel,
+      },
+      evidence_matches: Array.isArray(drafted?.evidence) ? drafted.evidence : [],
+      draft,
+      touchpoint,
+      used_ai: Boolean(drafted?.used_ai),
+      ai_model: drafted?.model || null,
+      usage: drafted?.usage || null,
+    },
+  };
 }
 
 async function getResumeDraftSchema_(env) {

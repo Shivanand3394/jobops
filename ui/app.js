@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-26-resume-wizard-v3";
+const UI_BUILD_ID = "2026-02-26-outreach-wizard-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -1191,6 +1191,17 @@ function renderDetail(j) {
           <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="10" readonly placeholder="Final letter appears here"></textarea></div>
           <div class="k">Pack status</div><div class="v" id="wizardFinishStatus">-</div>
         </div>
+        <div id="wizardNetworkingCard" class="hidden" style="margin-top:10px;">
+          <div class="h3">Networking</div>
+          <div id="wizardOutreachHint" class="muted tiny" style="margin-top:4px;">Draft targeted outreach for a recruiter or hiring manager.</div>
+          <div class="row" style="justify-content:flex-start; margin-top:8px; gap:8px; flex-wrap:wrap;">
+            <select id="wizardOutreachContact" class="hidden" style="min-width:220px;"></select>
+            <button class="btn btn-secondary" id="btnDraftOutreachLinkedin" onclick="draftWizardOutreach('LINKEDIN')" disabled>Draft LinkedIn DM</button>
+            <button class="btn btn-ghost" id="btnDraftOutreachEmail" onclick="draftWizardOutreach('EMAIL')" disabled>Draft Email</button>
+            <button class="btn btn-ghost" id="btnCopyOutreach" onclick="copyWizardOutreach(this)" disabled>Copy Draft</button>
+          </div>
+          <textarea id="wizardOutreachDraft" rows="7" style="margin-top:8px;" placeholder="Outreach draft appears here"></textarea>
+        </div>
         <div class="actions-grid wizard-finish-actions" style="margin-top:10px;">
           <button class="btn btn-ghost" id="btnPdfReadyToggle" onclick="togglePdfReadyMode()">PDF-ready view</button>
           <button class="btn btn-ghost" onclick="printPdfReadyView()">Print / Save PDF</button>
@@ -1318,6 +1329,7 @@ function renderDetail(j) {
   updateNextActionCard_(j, { hasPack: false });
   setPdfReadyMode_(false);
   setWizardStep_(resolveWizardStep_(j, ""));
+  resetWizardOutreachUi_({ hideCard: true });
   hydrateApplicationPack(j);
   fetchAndRenderEvidence(j.job_key);
 }
@@ -2204,6 +2216,8 @@ async function hydrateApplicationPack(jobOrKey) {
     if ($("wizardCoverLetter")) $("wizardCoverLetter").value = packCoverLetter;
     if ($("wizardFinalLetter")) $("wizardFinalLetter").value = packCoverLetter;
     if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = status || "-";
+    const outreachVisible = status === "READY_TO_APPLY" || status === "APPLIED";
+    await hydrateWizardOutreachContacts_(jobKey, { showCard: outreachVisible });
     const mustKeywords = Array.isArray(d?.pack_json?.tailoring?.must_keywords) ? d.pack_json.tailoring.must_keywords : [];
     const missingSet = new Set(missing.map((x) => String(x || "").trim().toLowerCase()).filter(Boolean));
     const matchedTop = mustKeywords
@@ -2258,6 +2272,7 @@ async function hydrateApplicationPack(jobOrKey) {
     if ($("wizardCoverLetter")) $("wizardCoverLetter").value = "";
     if ($("wizardFinalLetter")) $("wizardFinalLetter").value = "";
     if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = "-";
+    resetWizardOutreachUi_({ hideCard: true });
     if ($("appMatchSummary")) $("appMatchSummary").textContent = "No scored evidence yet. Generate pitch to continue.";
     if ($("appMatchChips")) $("appMatchChips").innerHTML = `<span class="muted tiny">No keyword chips available yet.</span>`;
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
@@ -2549,6 +2564,135 @@ async function copyWizardCoverLetter(sourceBtn = null) {
     await navigator.clipboard.writeText(letter);
     toast("Cover letter copied");
     flashCopiedState_(sourceBtn || $("wizardStickyPrimary"));
+  } catch {
+    toast("Copy failed", { kind: "error" });
+  }
+}
+
+function setWizardOutreachContacts_(contacts = [], selectedId = "") {
+  const select = $("wizardOutreachContact");
+  if (!select) return;
+  const list = Array.isArray(contacts) ? contacts : [];
+  if (!list.length) {
+    select.innerHTML = "";
+    select.classList.add("hidden");
+    return;
+  }
+  const desired = String(selectedId || "").trim();
+  select.innerHTML = list.map((c) => {
+    const id = String(c?.id || "").trim();
+    const name = String(c?.name || "").trim() || "Unknown contact";
+    const title = String(c?.title || "").trim();
+    const channel = String(c?.channel || "LINKEDIN").trim().toUpperCase();
+    const label = `${name}${title ? ` (${title})` : ""} - ${channel}`;
+    const selected = desired && desired === id;
+    return `<option value="${escapeHtml(id)}"${selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+  if (!desired && list[0]?.id) {
+    select.value = String(list[0].id);
+  }
+  select.classList.remove("hidden");
+}
+
+function resetWizardOutreachUi_({ hideCard = false } = {}) {
+  if (hideCard) {
+    $("wizardNetworkingCard")?.classList.add("hidden");
+  }
+  if ($("wizardOutreachHint")) $("wizardOutreachHint").textContent = "Draft targeted outreach for a recruiter or hiring manager.";
+  if ($("wizardOutreachDraft")) $("wizardOutreachDraft").value = "";
+  setWizardOutreachContacts_([]);
+  if ($("btnCopyOutreach")) $("btnCopyOutreach").disabled = true;
+}
+
+async function hydrateWizardOutreachContacts_(jobKey, { showCard = false } = {}) {
+  const key = String(jobKey || "").trim();
+  if (!key) {
+    resetWizardOutreachUi_({ hideCard: true });
+    return;
+  }
+  const card = $("wizardNetworkingCard");
+  if (!card) return;
+  card.classList.toggle("hidden", !showCard);
+  if (!showCard) {
+    resetWizardOutreachUi_({ hideCard: false });
+    return;
+  }
+
+  try {
+    const res = await api(`/jobs/${encodeURIComponent(key)}/contacts`);
+    const contacts = Array.isArray(res?.data) ? res.data : [];
+    const count = Number(res?.meta?.count || contacts.length || 0);
+    if ($("wizardOutreachHint")) {
+      $("wizardOutreachHint").textContent = count > 0
+        ? `Found ${count} contact${count === 1 ? "" : "s"}. Draft a targeted follow-up.`
+        : "No saved contacts yet. Rescore to identify potential recruiters.";
+    }
+    setWizardOutreachContacts_(contacts);
+    if ($("btnDraftOutreachLinkedin")) $("btnDraftOutreachLinkedin").disabled = contacts.length === 0;
+    if ($("btnDraftOutreachEmail")) $("btnDraftOutreachEmail").disabled = contacts.length === 0;
+    if ($("btnCopyOutreach")) $("btnCopyOutreach").disabled = !String($("wizardOutreachDraft")?.value || "").trim();
+  } catch (e) {
+    if ($("wizardOutreachHint")) {
+      $("wizardOutreachHint").textContent = `Contact load failed: ${String(e?.message || "unknown error")}`;
+    }
+    setWizardOutreachContacts_([]);
+    if ($("btnDraftOutreachLinkedin")) $("btnDraftOutreachLinkedin").disabled = true;
+    if ($("btnDraftOutreachEmail")) $("btnDraftOutreachEmail").disabled = true;
+    if ($("btnCopyOutreach")) $("btnCopyOutreach").disabled = true;
+  }
+}
+
+async function draftWizardOutreach(channel = "LINKEDIN") {
+  const jobKey = String(state.activeJob?.job_key || "").trim();
+  if (!jobKey) return toast("Select a job first", { kind: "error" });
+  const selectedContactId = String($("wizardOutreachContact")?.value || "").trim();
+  const normalizedChannel = String(channel || "LINKEDIN").trim().toUpperCase() === "EMAIL" ? "EMAIL" : "LINKEDIN";
+  const profileId = String(state.activeProfileId || "primary").trim() || "primary";
+
+  try {
+    spin(true);
+    const path = selectedContactId
+      ? `/jobs/${encodeURIComponent(jobKey)}/contacts/${encodeURIComponent(selectedContactId)}/draft`
+      : `/jobs/${encodeURIComponent(jobKey)}/draft-outreach`;
+    const res = await api(path, {
+      method: "POST",
+      body: {
+        profile_id: profileId,
+        channel: normalizedChannel,
+      },
+    });
+    const data = res?.data || {};
+    const draft = String(data?.draft || "").trim();
+    if (!draft) throw new Error("Empty outreach draft");
+    if ($("wizardOutreachDraft")) $("wizardOutreachDraft").value = draft;
+    if ($("btnCopyOutreach")) $("btnCopyOutreach").disabled = false;
+
+    const contacts = Array.isArray(data?.contacts) ? data.contacts : [];
+    const selectedId = String(data?.selected_contact?.id || selectedContactId || "").trim();
+    setWizardOutreachContacts_(contacts, selectedId);
+
+    const selectedName = String(data?.selected_contact?.name || "").trim();
+    const count = Number(data?.contacts_count || contacts.length || 0);
+    if ($("wizardOutreachHint")) {
+      $("wizardOutreachHint").textContent = selectedName
+        ? `Draft ready for ${selectedName}. ${count > 1 ? `${count} contacts available.` : ""}`.trim()
+        : `Draft ready. ${count > 0 ? `${count} contacts available.` : ""}`.trim();
+    }
+    toast(`${normalizedChannel === "EMAIL" ? "Email" : "LinkedIn DM"} draft generated`);
+  } catch (e) {
+    toast("Outreach draft failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function copyWizardOutreach(sourceBtn = null) {
+  const draft = String($("wizardOutreachDraft")?.value || "").trim();
+  if (!draft) return toast("No outreach draft available", { kind: "error" });
+  try {
+    await navigator.clipboard.writeText(draft);
+    toast("Outreach draft copied");
+    flashCopiedState_(sourceBtn || $("btnCopyOutreach"));
   } catch {
     toast("Copy failed", { kind: "error" });
   }
@@ -3184,6 +3328,8 @@ window.approvePack = approvePack;
 window.saveWizardDraft = saveWizardDraft;
 window.approveWizardPack = approveWizardPack;
 window.copyWizardCoverLetter = copyWizardCoverLetter;
+window.draftWizardOutreach = draftWizardOutreach;
+window.copyWizardOutreach = copyWizardOutreach;
 window.togglePdfReadyMode = togglePdfReadyMode;
 window.printPdfReadyView = printPdfReadyView;
 window.copyPackSummary = copyPackSummary;

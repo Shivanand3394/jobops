@@ -3,6 +3,7 @@ function safeText_(v, maxLen = 5000) {
 }
 
 export { hasContactsStorage_, upsertPotentialContactsForJob_ } from "./adapter.js";
+export { draftOutreachMessage_, normalizeOutreachChannel_ } from "./outreach.js";
 
 export function buildContactMessageContext_(input = {}) {
   const job = (input.job && typeof input.job === "object") ? input.job : {};

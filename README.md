@@ -57,6 +57,9 @@ From current Worker routing:
 - `POST /score-pending` (UI key or API key)
 - `POST /jobs/:job_key/rescore` (UI key)
 - `POST /jobs/:job_key/manual-jd` (UI key)
+- `GET /jobs/:job_key/contacts` (UI key)
+- `POST /jobs/:job_key/draft-outreach` (UI key)
+- `POST /jobs/:job_key/contacts/:contact_id/draft` (UI key)
 - `POST /extract-jd` (API key)
 - `POST /score-jd` (API key)
 

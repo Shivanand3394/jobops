@@ -214,6 +214,62 @@ Auth headers:
 }
 ```
 
+### GET /jobs/:job_key/contacts
+- Auth: `x-ui-key`
+- Response 200:
+```json
+{
+  "ok": true,
+  "data": [
+    {
+      "id":"...",
+      "name":"Sarah Chen",
+      "title":"Head of Engineering",
+      "company_name":"Acme Labs",
+      "channel":"LINKEDIN",
+      "channels":["LINKEDIN","EMAIL"],
+      "confidence":95
+    }
+  ],
+  "meta": {
+    "job_key":"...",
+    "count": 1,
+    "contacts_storage_enabled": true
+  }
+}
+```
+- Side effects: none
+- Failures: `400`, `401`, `404`, `500`
+
+### POST /jobs/:job_key/draft-outreach
+- Auth: `x-ui-key`
+- Body (optional): `contact_id`, `profile_id`, `channel (LINKEDIN|EMAIL|OTHER)`, `use_ai`
+- Response 200:
+```json
+{
+  "ok": true,
+  "data": {
+    "job_key":"...",
+    "channel":"LINKEDIN",
+    "contacts_count":2,
+    "selected_contact":{"id":"...","name":"Sarah Chen"},
+    "evidence_matches":[{"requirement":"...","evidence":"..."}],
+    "draft":"Hi Sarah ...",
+    "touchpoint":{"id":"...","status":"DRAFT","channel":"LINKEDIN"},
+    "used_ai": true
+  }
+}
+```
+- Side effects: updates/creates `contact_touchpoints.content` for selected contact+job+channel, sets touchpoint status to `DRAFT`, logs `OUTREACH_DRAFTED` event.
+- Failures: `400`, `401`, `404`, `500`
+
+### POST /jobs/:job_key/contacts/:contact_id/draft
+- Auth: `x-ui-key`
+- Body (optional): `profile_id`, `channel`, `use_ai`
+- Response: same shape as `/jobs/:job_key/draft-outreach` but contact is explicitly targeted.
+- Side effects: same as above.
+- Failures: `400`, `401`, `404`, `500`
+
 ## API routes
 
 ### POST /normalize-job
