@@ -1,0 +1,264 @@
+{
+    "ts":  1772108545151,
+    "worker_version":  "097f71ea-4b82-4f0e-a948-c0f598d61ceb",
+    "base_url":  "https://get-job.shivanand-shah94.workers.dev",
+    "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+    "contacts":  {
+                     "ok":  true,
+                     "data":  [
+                                  {
+                                      "id":  "180d912a-b9f8-404d-9d81-287baae3449f",
+                                      "name":  "Sarah Chen",
+                                      "title":  "Head of Engineering",
+                                      "company_name":  "Acme Labs",
+                                      "linkedin_url":  null,
+                                      "email":  null,
+                                      "confidence":  100,
+                                      "source":  "jd_mention",
+                                      "channel":  "LINKEDIN",
+                                      "status":  "DRAFT",
+                                      "touchpoint_content":  "Hi Sarah Chen, I came across your job posting for a Senior Product Operations Manager at Acme Labs and was impressed by the requirements. As someone with experience in product and delivery ownership, I believe I can bring value to your team.\n\nMy background in execution-focused operations has given me a strong foundation in JavaScript, SQL, and analytics. I\u0027ve successfully partnered with Engineering Managers to optimize processes and track KPIs. I\u0027d love to discuss how my skills align with your needs and explore the opportunity further. Would...",
+                                      "touchpoint_updated_at":  1772105761023,
+                                      "linked_to_job":  true,
+                                      "channels":  [
+                                                       "OTHER",
+                                                       "EMAIL",
+                                                       "LINKEDIN"
+                                                   ]
+                                  },
+                                  {
+                                      "id":  "93bd504f-76ed-4fa3-95f2-c2885c47a8ff",
+                                      "name":  "David Park",
+                                      "title":  "Engineering Manager",
+                                      "company_name":  "Acme Labs",
+                                      "linkedin_url":  null,
+                                      "email":  null,
+                                      "confidence":  100,
+                                      "source":  "jd_mention",
+                                      "channel":  "OTHER",
+                                      "status":  "DRAFT",
+                                      "touchpoint_content":  "This role partners with Engineering Manager David Park",
+                                      "touchpoint_updated_at":  1772108223424,
+                                      "linked_to_job":  true,
+                                      "channels":  [
+                                                       "OTHER"
+                                                   ]
+                                  }
+                              ],
+                     "meta":  {
+                                  "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+                                  "count":  2,
+                                  "contacts_storage_enabled":  true,
+                                  "contacts_storage_error":  null
+                              }
+                 },
+    "draft_job":  {
+                      "ok":  true,
+                      "data":  {
+                                   "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+                                   "channel":  "LINKEDIN",
+                                   "contacts_count":  2,
+                                   "contacts":  [
+                                                    {
+                                                        "id":  "180d912a-b9f8-404d-9d81-287baae3449f",
+                                                        "name":  "Sarah Chen",
+                                                        "title":  "Head of Engineering",
+                                                        "company_name":  "Acme Labs",
+                                                        "linkedin_url":  null,
+                                                        "email":  null,
+                                                        "confidence":  100,
+                                                        "source":  "jd_mention",
+                                                        "channel":  "LINKEDIN",
+                                                        "status":  "DRAFT",
+                                                        "touchpoint_content":  "Hi Sarah Chen, I came across your job posting for a Senior Product Operations Manager at Acme Labs and was impressed by the requirements. As someone with experience in product and delivery ownership, I believe I can bring value to your team.\n\nMy background in execution-focused operations has given me a strong foundation in JavaScript, SQL, and analytics. I\u0027ve successfully partnered with Engineering Managers to optimize processes and track KPIs. I\u0027d love to discuss how my skills align with your needs and explore the opportunity further. Would...",
+                                                        "touchpoint_updated_at":  1772105761023,
+                                                        "linked_to_job":  true,
+                                                        "channels":  [
+                                                                         "OTHER",
+                                                                         "EMAIL",
+                                                                         "LINKEDIN"
+                                                                     ],
+                                                        "selected":  true
+                                                    },
+                                                    {
+                                                        "id":  "93bd504f-76ed-4fa3-95f2-c2885c47a8ff",
+                                                        "name":  "David Park",
+                                                        "title":  "Engineering Manager",
+                                                        "company_name":  "Acme Labs",
+                                                        "linkedin_url":  null,
+                                                        "email":  null,
+                                                        "confidence":  100,
+                                                        "source":  "jd_mention",
+                                                        "channel":  "OTHER",
+                                                        "status":  "DRAFT",
+                                                        "touchpoint_content":  "This role partners with Engineering Manager David Park",
+                                                        "touchpoint_updated_at":  1772108223424,
+                                                        "linked_to_job":  true,
+                                                        "channels":  [
+                                                                         "OTHER"
+                                                                     ],
+                                                        "selected":  false
+                                                    }
+                                                ],
+                                   "selected_contact":  {
+                                                            "id":  "180d912a-b9f8-404d-9d81-287baae3449f",
+                                                            "name":  "Sarah Chen",
+                                                            "title":  "Head of Engineering",
+                                                            "company_name":  "Acme Labs",
+                                                            "linkedin_url":  null,
+                                                            "email":  null,
+                                                            "confidence":  100,
+                                                            "source":  "jd_mention",
+                                                            "channel":  "LINKEDIN",
+                                                            "status":  "DRAFT",
+                                                            "touchpoint_content":  "Hi Sarah Chen, I came across your job posting for a Senior Product Operations Manager at Acme Labs and was impressed by the requirements. As someone with experience in product and delivery ownership, I believe I can bring value to your team.\n\nMy background in execution-focused operations has given me a strong foundation in JavaScript, SQL, and analytics. I\u0027ve successfully partnered with Engineering Managers to optimize processes and track KPIs. I\u0027d love to discuss how my skills align with your needs and explore the opportunity further. Would...",
+                                                            "touchpoint_updated_at":  1772105761023,
+                                                            "linked_to_job":  true,
+                                                            "channels":  [
+                                                                             "OTHER",
+                                                                             "EMAIL",
+                                                                             "LINKEDIN"
+                                                                         ]
+                                                        },
+                                   "evidence_matches":  [
+                                                            {
+                                                                "requirement":  "JavaScript",
+                                                                "evidence":  "...ead of Engineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder...",
+                                                                "confidence":  70,
+                                                                "source":  "jd_text"
+                                                            },
+                                                            {
+                                                                "requirement":  "SQL",
+                                                                "evidence":  "...gineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder management, and...",
+                                                                "confidence":  70,
+                                                                "source":  "jd_text"
+                                                            },
+                                                            {
+                                                                "requirement":  "analytics",
+                                                                "evidence":  "...ss optimization, stakeholder management, and cross-functional collaboration. Must have: JavaScript, SQL, analytics, workflow automation, sprint planning. Nice to have: cloud...",
+                                                                "confidence":  70,
+                                                                "source":  "jd_text"
+                                                            }
+                                                        ],
+                                   "draft":  "Hi Sarah Chen, I came across your post for a Senior Product Operations Manager at Acme Labs and was impressed by the requirements. As an execution-focused operator with product and delivery ownership experience, I believe I can bring value to your team. \n\nMy background aligns well with your needs, particularly in JavaScript and SQL, where I\u0027ve successfully partnered with Engineering Manager David Park to drive process optimization and KPI tracking. I\u0027m excited about the opportunity to discuss how my skills can support Acme Labs\u0027 goals. Would...",
+                                   "touchpoint":  {
+                                                      "id":  "67b29ab5-531b-4bf2-865e-c7021ca0680b",
+                                                      "contact_id":  "180d912a-b9f8-404d-9d81-287baae3449f",
+                                                      "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+                                                      "channel":  "LINKEDIN",
+                                                      "status":  "DRAFT",
+                                                      "updated_at":  1772108534803
+                                                  },
+                                   "used_ai":  true,
+                                   "ai_model":  "@cf/meta/llama-3.1-8b-instruct",
+                                   "usage":  {
+                                                 "input_tokens":  317,
+                                                 "output_tokens":  114,
+                                                 "total_tokens":  431
+                                             }
+                               }
+                  },
+    "draft_contact":  {
+                          "ok":  true,
+                          "data":  {
+                                       "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+                                       "channel":  "EMAIL",
+                                       "contacts_count":  2,
+                                       "contacts":  [
+                                                        {
+                                                            "id":  "180d912a-b9f8-404d-9d81-287baae3449f",
+                                                            "name":  "Sarah Chen",
+                                                            "title":  "Head of Engineering",
+                                                            "company_name":  "Acme Labs",
+                                                            "linkedin_url":  null,
+                                                            "email":  null,
+                                                            "confidence":  100,
+                                                            "source":  "jd_mention",
+                                                            "channel":  "LINKEDIN",
+                                                            "status":  "DRAFT",
+                                                            "touchpoint_content":  "Hi Sarah Chen, I came across your post for a Senior Product Operations Manager at Acme Labs and was impressed by the requirements. As an execution-focused operator with product and delivery ownership experience, I believe I can bring value to your team. \n\nMy background aligns well with your needs, particularly in JavaScript and SQL, where I\u0027ve successfully partnered with Engineering Manager David Park to drive process optimization and KPI tracking. I\u0027m excited about the opportunity to discuss how my skills can support Acme Labs\u0027 goals. Would...",
+                                                            "touchpoint_updated_at":  1772108534803,
+                                                            "linked_to_job":  true,
+                                                            "channels":  [
+                                                                             "LINKEDIN",
+                                                                             "OTHER",
+                                                                             "EMAIL"
+                                                                         ],
+                                                            "selected":  true
+                                                        },
+                                                        {
+                                                            "id":  "93bd504f-76ed-4fa3-95f2-c2885c47a8ff",
+                                                            "name":  "David Park",
+                                                            "title":  "Engineering Manager",
+                                                            "company_name":  "Acme Labs",
+                                                            "linkedin_url":  null,
+                                                            "email":  null,
+                                                            "confidence":  100,
+                                                            "source":  "jd_mention",
+                                                            "channel":  "OTHER",
+                                                            "status":  "DRAFT",
+                                                            "touchpoint_content":  "This role partners with Engineering Manager David Park",
+                                                            "touchpoint_updated_at":  1772108223424,
+                                                            "linked_to_job":  true,
+                                                            "channels":  [
+                                                                             "OTHER"
+                                                                         ],
+                                                            "selected":  false
+                                                        }
+                                                    ],
+                                       "selected_contact":  {
+                                                                "id":  "180d912a-b9f8-404d-9d81-287baae3449f",
+                                                                "name":  "Sarah Chen",
+                                                                "title":  "Head of Engineering",
+                                                                "company_name":  "Acme Labs",
+                                                                "linkedin_url":  null,
+                                                                "email":  null,
+                                                                "confidence":  100,
+                                                                "source":  "jd_mention",
+                                                                "channel":  "EMAIL",
+                                                                "status":  "DRAFT",
+                                                                "touchpoint_content":  "Hi Sarah Chen, I came across your post for a Senior Product Operations Manager at Acme Labs and was impressed by the requirements. As an execution-focused operator with product and delivery ownership experience, I believe I can bring value to your team. \n\nMy background aligns well with your needs, particularly in JavaScript and SQL, where I\u0027ve successfully partnered with Engineering Manager David Park to drive process optimization and KPI tracking. I\u0027m excited about the opportunity to discuss how my skills can support Acme Labs\u0027 goals. Would...",
+                                                                "touchpoint_updated_at":  1772108534803,
+                                                                "linked_to_job":  true,
+                                                                "channels":  [
+                                                                                 "LINKEDIN",
+                                                                                 "OTHER",
+                                                                                 "EMAIL"
+                                                                             ]
+                                                            },
+                                       "evidence_matches":  [
+                                                                {
+                                                                    "requirement":  "JavaScript",
+                                                                    "evidence":  "...ead of Engineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder...",
+                                                                    "confidence":  70,
+                                                                    "source":  "jd_text"
+                                                                },
+                                                                {
+                                                                    "requirement":  "SQL",
+                                                                    "evidence":  "...gineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder management, and...",
+                                                                    "confidence":  70,
+                                                                    "source":  "jd_text"
+                                                                },
+                                                                {
+                                                                    "requirement":  "analytics",
+                                                                    "evidence":  "...ss optimization, stakeholder management, and cross-functional collaboration. Must have: JavaScript, SQL, analytics, workflow automation, sprint planning. Nice to have: cloud...",
+                                                                    "confidence":  70,
+                                                                    "source":  "jd_text"
+                                                                }
+                                                            ],
+                                       "draft":  "Hi Sarah,\n\nI came across the Senior Product Operations Manager opening at Acme Labs. I noticed the role emphasizes JavaScript and SQL. In my recent work, ...ead of Engineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder....\n\nIf helpful, I can share a concise walkthrough of relevant wins and how they translate to your current priorities.\n\nBest,\nSmoke User",
+                                       "touchpoint":  {
+                                                          "id":  "05348002-a16d-4f4d-9120-0295fd1c3dd3",
+                                                          "contact_id":  "180d912a-b9f8-404d-9d81-287baae3449f",
+                                                          "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+                                                          "channel":  "EMAIL",
+                                                          "status":  "DRAFT",
+                                                          "updated_at":  1772108537721
+                                                      },
+                                       "used_ai":  false,
+                                       "ai_model":  null,
+                                       "usage":  null
+                                   }
+                      },
+    "db_touchpoints_raw":  "?? wrangler 4.68.0 (update available 4.68.1)\r\n---------------------------------------------\r\nResource location: remote \r\n\r\n?? Executing on remote database jobops-db (ed4e86a7-db3c-4f2c-b392-a1aa90ea2e84):\r\n?? To execute on your local development database, remove the --remote flag from your wrangler command.\r\n?? Executed 1 command in 0.30ms\r\n[\r\n  {\r\n    \"results\": [\r\n      {\r\n        \"contact_id\": \"180d912a-b9f8-404d-9d81-287baae3449f\",\r\n        \"job_key\": \"8df817e4000a3b196109dd373de8f068bfd411ff\",\r\n        \"channel\": \"EMAIL\",\r\n        \"status\": \"DRAFT\",\r\n        \"content_len\": 463,\r\n        \"updated_at\": 1772108537721\r\n      },\r\n      {\r\n        \"contact_id\": \"180d912a-b9f8-404d-9d81-287baae3449f\",\r\n        \"job_key\": \"8df817e4000a3b196109dd373de8f068bfd411ff\",\r\n        \"channel\": \"LINKEDIN\",\r\n        \"status\": \"DRAFT\",\r\n        \"content_len\": 550,\r\n        \"updated_at\": 1772108534803\r\n      },\r\n      {\r\n        \"contact_id\": \"180d912a-b9f8-404d-9d81-287baae3449f\",\r\n        \"job_key\": \"8df817e4000a3b196109dd373de8f068bfd411ff\",\r\n        \"channel\": \"OTHER\",\r\n        \"status\": \"DRAFT\",\r\n        \"content_len\": 51,\r\n        \"updated_at\": 1772108223424\r\n      },\r\n      {\r\n        \"contact_id\": \"93bd504f-76ed-4fa3-95f2-c2885c47a8ff\",\r\n        \"job_key\": \"8df817e4000a3b196109dd373de8f068bfd411ff\",\r\n        \"channel\": \"OTHER\",\r\n        \"status\": \"DRAFT\",\r\n        \"content_len\": 54,\r\n        \"updated_at\": 1772108223424\r\n      }\r\n    ],\r\n    \"success\": true,\r\n    \"meta\": {\r\n      \"served_by\": \"v3-prod\",\r\n      \"served_by_region\": \"APAC\",\r\n      \"served_by_colo\": \"KIX\",\r\n      \"served_by_primary\": true,\r\n      \"timings\": {\r\n        \"sql_duration_ms\": 0.2959\r\n      },\r\n      \"duration\": 0.2959,\r\n      \"changes\": 0,\r\n      \"last_row_id\": 1103,\r\n      \"changed_db\": false,\r\n      \"size_after\": 1454080,\r\n      \"rows_read\": 9,\r\n      \"rows_written\": 0,\r\n      \"total_attempts\": 1\r\n    }\r\n  }\r\n]"
+}
