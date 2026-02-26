@@ -1,6 +1,6 @@
 {
-  "run_id": "f92c83c8-373c-4285-bfd3-a148e5a8815e",
-  "started_at": "2026-02-26T16:47:05.084Z",
+  "run_id": "eee1ab0d-dc6a-4612-8f70-3b442e7bd800",
+  "started_at": "2026-02-26T17:18:57.374Z",
   "base_url": "https://get-job.shivanand-shah94.workers.dev",
   "script": "scripts/smoke_pack.mjs",
   "config": {
@@ -29,13 +29,13 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 127,
+      "duration_ms": 132,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
-        "ts": 1772124425709,
+        "ts": 1772126338013,
         "worker_version": "dev"
       },
       "response_text": null
@@ -67,7 +67,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 543,
+      "duration_ms": 564,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -76,36 +76,27 @@
         "data": [
           {
             "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-            "company": "Majid Al Futtaim",
-            "role_title": "Product Manager",
-            "location": "Gurugram",
+            "company": "Smoke Systems",
+            "role_title": "Business Program Manager - Platform Operations",
+            "location": "Remote",
             "seniority": "Mid",
-            "final_score": 74,
+            "final_score": 73,
             "status": "SCORED",
             "job_url": "https://www.linkedin.com/jobs/view/4368060686/",
             "source_domain": "linkedin",
             "system_status": null,
-            "fetch_debug_json": "{\"jd_confidence\":\"low\",\"jd_length\":0,\"skipped_fetch\":\"strict_linkedin_manual\",\"ai_available\":true,\"ingest_channel\":\"recover\",\"fallback_reason\":\"blocked\",\"fallback_policy\":\"strict_linkedin\",\"source_policy_domain\":\"linkedin\"}",
-            "updated_at": 1772124423426,
+            "fetch_debug_json": "{}",
+            "updated_at": 1772126201606,
             "created_at": 1772095561049,
-            "fetch_debug": {
-              "jd_confidence": "low",
-              "jd_length": 0,
-              "skipped_fetch": "strict_linkedin_manual",
-              "ai_available": true,
-              "ingest_channel": "recover",
-              "fallback_reason": "blocked",
-              "fallback_policy": "strict_linkedin",
-              "source_policy_domain": "linkedin"
-            },
-            "ingest_channel": "recover",
-            "jd_confidence": "low",
+            "fetch_debug": {},
+            "ingest_channel": null,
+            "jd_confidence": null,
             "last_touchpoint_at": null,
             "last_touchpoint_status": null,
             "last_touchpoint_channel": null,
             "days_since_touchpoint": null,
-            "display_title": "Product Manager",
-            "display_company": "Majid Al Futtaim"
+            "display_title": "Business Program Manager - Platform Operations",
+            "display_company": "Smoke Systems"
           }
         ]
       },
@@ -121,7 +112,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 889,
+      "duration_ms": 901,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -130,7 +121,7 @@
         "data": {
           "enabled": true,
           "stale_days": 3,
-          "generated_at": 1772124426283,
+          "generated_at": 1772126338610,
           "pulse": {
             "gold_leads_count": 3,
             "replies_7d_count": 2,
@@ -181,7 +172,7 @@
                 "company": "Smoke Systems",
                 "job_status": "SCORED",
                 "final_score": 73,
-                "job_updated_at": 1772124293067,
+                "job_updated_at": 1772126195590,
                 "priority": "RESPONSE_PENDING",
                 "priority_score": 300,
                 "action_label": "Respond",
@@ -232,7 +223,7 @@
                 "company": "Smoke Systems",
                 "job_status": "SCORED",
                 "final_score": 73,
-                "job_updated_at": 1772124293067,
+                "job_updated_at": 1772126195590,
                 "priority": "RESPONSE_PENDING",
                 "priority_score": 300,
                 "action_label": "Respond",
@@ -242,22 +233,13 @@
           },
           "gold_leads": [
             {
-              "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "status": "SCORED",
-              "final_score": 74,
-              "profile_id": "primary",
-              "updated_at": 1772124423426
-            },
-            {
               "job_key": "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
               "role_title": "Product Manager",
               "company": "Majid Al Futtaim",
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772124416754
+              "updated_at": 1772126186003
             },
             {
               "job_key": "3028f15a6b7a6d1439a775c28fd38a5241565908",
@@ -266,7 +248,16 @@
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772124411812
+              "updated_at": 1772126183964
+            },
+            {
+              "job_key": "66a61647f865758b81b9596b23d64b3ad4e27c3c",
+              "role_title": "Business Consultant",
+              "company": "EY",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772126178819
             }
           ],
           "touchpoint_conversion": {
@@ -298,15 +289,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 5243,
+      "duration_ms": 5538,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "b3717035-40e2-4692-a8c9-62633d8585bf",
-          "ts": 1772124427175,
+          "run_id": "c3a287ec-0555-438d-8d25-5c9c11021ef0",
+          "ts": 1772126339523,
           "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
           "max_results": 25,
           "max_jobs_per_email": 3,
@@ -363,8 +354,8 @@
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "993664f2-b803-433f-8536-4731d2c77418",
-          "ts": 1772124432416,
+          "run_id": "f0d9c235-6bf5-402b-afb8-2457e768a93e",
+          "ts": 1772126345048,
           "skipped": true,
           "reason": "no_feeds_configured",
           "feeds_total": 0,
@@ -446,7 +437,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 215,
+      "duration_ms": 198,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -455,7 +446,7 @@
         "data": {
           "id": "primary",
           "name": "Smoke Profile",
-          "updated_at": 1772124432613
+          "updated_at": 1772126345244
         }
       },
       "response_text": null
@@ -499,7 +490,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 212,
+      "duration_ms": 191,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -508,7 +499,7 @@
         "data": {
           "id": "primary-alt",
           "name": "Smoke Profile Alt",
-          "updated_at": 1772124432827
+          "updated_at": 1772126345445
         }
       },
       "response_text": null
@@ -525,7 +516,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1421,
+      "duration_ms": 1418,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -534,7 +525,7 @@
         "data": {
           "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
           "profile_id": "primary-alt",
-          "updated_at": 1772124433562,
+          "updated_at": 1772126346148,
           "cleared": false,
           "enabled": true,
           "effective_profile_id": "primary-alt",
@@ -553,7 +544,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1076,
+      "duration_ms": 1060,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -562,7 +553,7 @@
         "data": {
           "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
           "profile_id": "primary-alt",
-          "updated_at": 1772124433562,
+          "updated_at": 1772126346148,
           "enabled": true,
           "effective_profile_id": "primary-alt",
           "effective_source": "job_preference"
@@ -585,7 +576,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 4572,
+      "duration_ms": 3828,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -596,22 +587,9 @@
           "draft_id": "c42205ac-ff56-49c4-9990-73b64a229197",
           "profile_id": "primary-alt",
           "profile_source": "job_preference",
-          "status": "CONTENT_REVIEW_REQUIRED",
-          "ats_score": 88,
-          "template_id": "",
-          "enabled_blocks_count": 0,
-          "selected_keywords_count": 0,
-          "one_page_mode": "soft",
-          "one_pager_strict": false,
-          "content_review_required": true,
-          "evidence_first": true,
-          "evidence_match_count": 0,
-          "rr_export_contract": {
-            "id": "jobops.rr_export.v1",
-            "schema_version": 1
-          },
-          "rr_export_import_ready": true,
-          "rr_export_import_errors": []
+          "status": "READY_TO_APPLY",
+          "locked": true,
+          "message": "Draft is locked after approval. Use force=true to regenerate."
         }
       },
       "response_text": null
@@ -626,704 +604,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1254,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "id": "c42205ac-ff56-49c4-9990-73b64a229197",
-          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-          "profile_id": "primary-alt",
-          "profile_lookup_source": "job_preference",
-          "requested_profile_id": null,
-          "preference_profile_id": "primary-alt",
-          "status": "CONTENT_REVIEW_REQUIRED",
-          "error_text": "",
-          "pack_json": {
-            "job": {
-              "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-              "job_url": "https://www.linkedin.com/jobs/view/4368060686/",
-              "source_domain": "linkedin",
-              "status": "SCORED"
-            },
-            "target": {
-              "id": "TGT-NEW-01",
-              "name": "Growth PM Target",
-              "primaryRole": "Product Manager",
-              "seniorityPref": "Mid",
-              "locationPref": "Bangalore",
-              "rubricProfile": "auto",
-              "rubric_profile": "auto",
-              "must": [
-                "product strategy",
-                "roadmap"
-              ],
-              "nice": [
-                "sql"
-              ],
-              "reject": []
-            },
-            "extracted": {
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "location": "Gurugram",
-              "seniority": "Mid",
-              "final_score": 74,
-              "reason_top_matches": ""
-            },
-            "tailoring": {
-              "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura",
-              "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability.",
-                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
-              ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
-              "must_keywords": [],
-              "nice_keywords": [],
-              "evidence_matches": []
-            },
-            "controls": {
-              "template_id": "balanced",
-              "enabled_blocks": [
-                "summary",
-                "experience",
-                "skills",
-                "highlights",
-                "bullets"
-              ],
-              "selected_keywords": [],
-              "ats_target_mode": "all",
-              "one_page_mode": "soft",
-              "one_pager_strict": false,
-              "content_review_required": true
-            },
-            "renderer": "reactive_resume"
-          },
-          "ats_json": {
-            "score": 88,
-            "missing_keywords": [],
-            "coverage": {
-              "must_total": 0,
-              "must_hit": 0,
-              "nice_total": 0,
-              "nice_hit": 0
-            },
-            "notes": "Good keyword coverage",
-            "target_rubric": {
-              "applicable": true,
-              "score": 27,
-              "dimensions": [
-                {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
-                },
-                {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
-                },
-                {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
-                },
-                {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "requirements",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "backlog",
-                    "agile",
-                    "scrum"
-                  ]
-                },
-                {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder",
-                    "alignment"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "communication",
-                    "collaboration",
-                    "leadership"
-                  ]
-                }
-              ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            },
-            "pm_rubric": {
-              "applicable": true,
-              "score": 27,
-              "dimensions": [
-                {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
-                },
-                {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
-                },
-                {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
-                },
-                {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "requirements",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "backlog",
-                    "agile",
-                    "scrum"
-                  ]
-                },
-                {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder",
-                    "alignment"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "communication",
-                    "collaboration",
-                    "leadership"
-                  ]
-                }
-              ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            }
-          },
-          "rr_export_json": {
-            "metadata": {
-              "source": "jobops",
-              "contract_id": "jobops.rr_export.v1",
-              "schema_version": 1,
-              "version": 1,
-              "exported_at": 1772124438623,
-              "template_id": "balanced",
-              "renderer": "reactive_resume",
-              "contract_valid": true,
-              "import_ready": true
-            },
-            "basics": {
-              "name": "Smoke User Alt",
-              "email": "smoke.user.alt@example.com",
-              "phone": "",
-              "location": "Remote",
-              "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura"
-            },
-            "sections": {
-              "experience": [
-                {
-                  "company": "Alt Smoke Co",
-                  "role": "Business Program Manager",
-                  "date_range": "2021 - Present",
-                  "bullets": [
-                    "Owned roadmap execution for program increments spanning product, ops, and engineering teams.",
-                    "Established SLA and weekly KPI review cadence to improve delivery consistency."
-                  ]
-                }
-              ],
-              "skills": [
-                "Business Program Management",
-                "Roadmap",
-                "Delivery",
-                "KPI",
-                "Stakeholder Management"
-              ],
-              "highlights": [
-                {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability."
-                },
-                {
-                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
-                },
-                {
-                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
-                }
-              ]
-            },
-            "job_context": {
-              "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-              "role_title": "Product Manager",
-              "company": "Majid Al Futtaim",
-              "job_url": "https://www.linkedin.com/jobs/view/4368060686/"
-            }
-          },
-          "rr_export_contract": {
-            "id": "jobops.rr_export.v1",
-            "schema_version": 1
-          },
-          "rr_export_import_ready": true,
-          "rr_export_import_errors": [],
-          "rr_resume_id": null,
-          "rr_last_pushed_at": 0,
-          "rr_last_push_status": null,
-          "rr_last_push_error": "",
-          "rr_pdf_url": null,
-          "rr_pdf_last_exported_at": 0,
-          "rr_pdf_last_export_status": null,
-          "rr_pdf_last_export_error": "",
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Product Manager",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": true,
-                "detail": "company: Majid Al Futtaim",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=931, jd_confidence=low",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=180/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=88 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (0/0)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 180,
-              "bullets_count": 3,
-              "experience_items": 1,
-              "skills_items": 5,
-              "estimated_density": "low"
-            },
-            "hard_gate_applied": false
-          },
-          "one_page_mode": "soft",
-          "content_review_required": true,
-          "latest_version": {
-            "id": "d9f47fde-c65e-4eb1-a49c-d1a5961ee06d",
-            "version_no": 1,
-            "source_action": "generate",
-            "created_at": 1772124439345
-          },
-          "version_history_enabled": true,
-          "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772124438623
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.review",
-      "method": "POST",
-      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/application-pack/review",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary-alt",
-        "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
-        "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability.",
-          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
-        ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1300,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-          "profile_id": "primary-alt",
-          "draft_id": "c42205ac-ff56-49c4-9990-73b64a229197",
-          "status": "READY_FOR_EXPORT",
-          "ats_score": 88,
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Product Manager",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": true,
-                "detail": "company: Majid Al Futtaim",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=931, jd_confidence=low",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=283/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=88 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (0/0)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 283,
-              "bullets_count": 3,
-              "experience_items": 1,
-              "skills_items": 5,
-              "estimated_density": "high"
-            },
-            "hard_gate_applied": false
-          },
-          "version_id": "1f1241fb-96eb-40eb-8896-0fdd919084c3",
-          "version_no": 2
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.approve",
-      "method": "POST",
-      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/approve-pack",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary-alt",
-        "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
-        "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability.",
-          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
-        ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1635,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-          "profile_id": "primary-alt",
-          "draft_id": "c42205ac-ff56-49c4-9990-73b64a229197",
-          "status": "READY_TO_APPLY",
-          "ats_score": 88,
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Product Manager",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": true,
-                "detail": "company: Majid Al Futtaim",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=931, jd_confidence=low",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=283/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=88 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (0/0)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 283,
-              "bullets_count": 3,
-              "experience_items": 1,
-              "skills_items": 5,
-              "estimated_density": "high"
-            },
-            "hard_gate_applied": false
-          },
-          "version_id": "63fc77d6-1339-49eb-958a-d3c1c939dbd6",
-          "version_no": 3
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.pack.fetch.after",
-      "method": "GET",
-      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/application-pack",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1252,
+      "duration_ms": 1235,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -1705,7 +986,7 @@
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=931, jd_confidence=low",
+                "detail": "jd_len=807, jd_confidence=-",
                 "enforced": false
               },
               {
@@ -1778,6 +1059,704 @@
       "response_text": null
     },
     {
+      "name": "wizard.review",
+      "method": "POST",
+      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/application-pack/review",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt",
+        "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "bullets": [
+          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability.",
+          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
+          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+        ],
+        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1294,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
+          "profile_id": "primary-alt",
+          "draft_id": "c42205ac-ff56-49c4-9990-73b64a229197",
+          "status": "READY_FOR_EXPORT",
+          "ats_score": 88,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Product Manager",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Majid Al Futtaim",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=807, jd_confidence=-",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=283/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=88 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (0/0)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 283,
+              "bullets_count": 3,
+              "experience_items": 1,
+              "skills_items": 5,
+              "estimated_density": "high"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "bc14b609-4f8a-4398-9f50-e71b79ea7b93",
+          "version_no": 4
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.approve",
+      "method": "POST",
+      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/approve-pack",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt",
+        "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "bullets": [
+          "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability.",
+          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
+          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+        ],
+        "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1693,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
+          "profile_id": "primary-alt",
+          "draft_id": "c42205ac-ff56-49c4-9990-73b64a229197",
+          "status": "READY_TO_APPLY",
+          "ats_score": 88,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Product Manager",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Majid Al Futtaim",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=807, jd_confidence=-",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=283/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=88 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (0/0)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 283,
+              "bullets_count": 3,
+              "experience_items": 1,
+              "skills_items": 5,
+              "estimated_density": "high"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "28447531-1ab0-4e39-abd3-5db55fd7ee65",
+          "version_no": 5
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.pack.fetch.after",
+      "method": "GET",
+      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/application-pack",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1226,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "c42205ac-ff56-49c4-9990-73b64a229197",
+          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
+          "profile_id": "primary-alt",
+          "profile_lookup_source": "job_preference",
+          "requested_profile_id": null,
+          "preference_profile_id": "primary-alt",
+          "status": "READY_TO_APPLY",
+          "error_text": "",
+          "pack_json": {
+            "job": {
+              "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
+              "job_url": "https://www.linkedin.com/jobs/view/4368060686/",
+              "source_domain": "linkedin",
+              "status": "SCORED"
+            },
+            "target": {
+              "id": "TGT-NEW-01",
+              "name": "Growth PM Target",
+              "primaryRole": "Product Manager",
+              "seniorityPref": "Mid",
+              "locationPref": "Bangalore",
+              "rubricProfile": "auto",
+              "rubric_profile": "auto",
+              "must": [
+                "product strategy",
+                "roadmap"
+              ],
+              "nice": [
+                "sql"
+              ],
+              "reject": []
+            },
+            "extracted": {
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "location": "Gurugram",
+              "seniority": "Mid",
+              "final_score": 74,
+              "reason_top_matches": ""
+            },
+            "tailoring": {
+              "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "bullets": [
+                "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability.",
+                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
+                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+              ],
+              "cover_letter": "Dear Hiring Team, I am applying for the Product Manager role at Majid Al Futtaim in Gurugram. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Product Manager. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "must_keywords": [],
+              "nice_keywords": [],
+              "evidence_matches": []
+            },
+            "controls": {
+              "template_id": "balanced",
+              "enabled_blocks": [
+                "summary",
+                "experience",
+                "skills",
+                "highlights",
+                "bullets"
+              ],
+              "selected_keywords": [],
+              "ats_target_mode": "all",
+              "one_page_mode": "soft",
+              "one_pager_strict": false,
+              "content_review_required": false,
+              "approved_at": 1772126354653
+            },
+            "renderer": "reactive_resume"
+          },
+          "ats_json": {
+            "score": 88,
+            "missing_keywords": [],
+            "coverage": {
+              "must_total": 0,
+              "must_hit": 0,
+              "nice_total": 0,
+              "nice_hit": 0
+            },
+            "notes": "Good keyword coverage",
+            "target_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "requirements",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "backlog",
+                    "agile",
+                    "scrum"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "alignment"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "communication",
+                    "collaboration",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            },
+            "pm_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "requirements",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "backlog",
+                    "agile",
+                    "scrum"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "alignment"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "communication",
+                    "collaboration",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            }
+          },
+          "rr_export_json": {
+            "metadata": {
+              "source": "jobops",
+              "contract_id": "jobops.rr_export.v1",
+              "schema_version": 1,
+              "version": 1,
+              "exported_at": 1772124438623,
+              "template_id": "balanced",
+              "renderer": "reactive_resume",
+              "contract_valid": true,
+              "import_ready": true
+            },
+            "basics": {
+              "name": "Smoke User Alt",
+              "email": "smoke.user.alt@example.com",
+              "phone": "",
+              "location": "Remote",
+              "summary": "Product Manager: Delivering measurable impact through data-driven decision making and structured execution, aligning outcomes to expectations at Majid Al Futtaim. I deliver measura Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+            },
+            "sections": {
+              "experience": [
+                {
+                  "company": "Alt Smoke Co",
+                  "role": "Business Program Manager",
+                  "date_range": "2021 - Present",
+                  "bullets": [
+                    "Owned roadmap execution for program increments spanning product, ops, and engineering teams.",
+                    "Established SLA and weekly KPI review cadence to improve delivery consistency."
+                  ]
+                }
+              ],
+              "skills": [
+                "Business Program Management",
+                "Roadmap",
+                "Delivery",
+                "KPI",
+                "Stakeholder Management"
+              ],
+              "highlights": [
+                {
+                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Product Manager expectations at Majid Al Futtaim. using core capability."
+                },
+                {
+                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
+                },
+                {
+                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                }
+              ]
+            },
+            "job_context": {
+              "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "job_url": "https://www.linkedin.com/jobs/view/4368060686/"
+            }
+          },
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": [],
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
+          "rr_last_push_error": "",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
+          "rr_pdf_last_export_error": "",
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Product Manager",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Majid Al Futtaim",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=807, jd_confidence=-",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=283/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=88 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (0/0)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 283,
+              "bullets_count": 3,
+              "experience_items": 1,
+              "skills_items": 5,
+              "estimated_density": "high"
+            },
+            "hard_gate_applied": false
+          },
+          "one_page_mode": "soft",
+          "content_review_required": false,
+          "latest_version": {
+            "id": "28447531-1ab0-4e39-abd3-5db55fd7ee65",
+            "version_no": 5,
+            "source_action": "approve",
+            "created_at": 1772126354831
+          },
+          "version_history_enabled": true,
+          "rr_base_url": "https://rxresu.me",
+          "updated_at": 1772126354831
+        }
+      },
+      "response_text": null
+    },
+    {
       "name": "wizard.evidence.rebuild",
       "method": "POST",
       "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/evidence/rebuild",
@@ -1787,103 +1766,8 @@
         200,
         400
       ],
-      "http_status": 400,
-      "duration_ms": 362,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": false,
-        "error": "No extracted requirements available. Rescore first."
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.rescore.for.evidence",
-      "method": "POST",
-      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/rescore",
-      "auth": "ui",
-      "request_body": {},
-      "expected_status": [
-        200
-      ],
       "http_status": 200,
-      "duration_ms": 12005,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-          "final_score": 74,
-          "status": "SCORED",
-          "primary_target_id": "TGT-NEW-01",
-          "potential_contacts": []
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.evidence.rebuild.after_rescore",
-      "method": "POST",
-      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/evidence/rebuild",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200,
-        400
-      ],
-      "http_status": 400,
-      "duration_ms": 399,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": false,
-        "error": "No extracted requirements available. Rescore first."
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.manual_jd.seed",
-      "method": "POST",
-      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/manual-jd",
-      "auth": "ui",
-      "request_body": {
-        "jd_text_clean": "\nBusiness Program Manager - Platform Operations\nCompany: Smoke Systems\nLocation: Remote\n\nWe are hiring a Business Program Manager to lead cross-functional delivery, KPI tracking, and stakeholder communication across product, operations, and engineering teams.\n\nMust have:\n- Program management experience owning delivery plans and roadmap milestones.\n- Cross-functional collaboration with product, engineering, design, and operations.\n- Strong SQL skills for reporting and analytics.\n- KPI tracking and executive-ready status communication.\n- Stakeholder management across multiple workstreams.\n\nNice to have:\n- Process optimization and workflow automation.\n- Experience with business strategy and operational planning.\n\nThe role requires clear written communication, execution ownership, and measurable outcomes.\n"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 4234,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
-          "status": "SCORED",
-          "final_score": 73,
-          "primary_target_id": "TGT-NEW-01",
-          "potential_contacts": []
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.evidence.rebuild.after_manual_jd",
-      "method": "POST",
-      "path": "/jobs/8b7c9cc422888048ad3cf76db39ea7918ce62e21/evidence/rebuild",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 933,
+      "duration_ms": 931,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -1909,7 +1793,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 365,
+      "duration_ms": 370,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -1927,7 +1811,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "9867f8e4-3f33-4b32-914e-623c50614ed9",
@@ -1940,7 +1824,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "38152161-bc21-430b-9721-d15c284686f6",
@@ -1953,7 +1837,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "70fe5216-2491-4a24-9d01-fc51139dd046",
@@ -1966,7 +1850,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "50e98b67-7a4a-4088-905c-908cd835533d",
@@ -1979,7 +1863,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "ebe7ab34-8081-405a-9e45-057869b44c2c",
@@ -1992,7 +1876,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "a5ef7828-ad78-4e5d-95ee-569c14fa06f9",
@@ -2005,7 +1889,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "cd8b0495-dfd0-48f9-ab09-be2fc8646c07",
@@ -2018,7 +1902,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           },
           {
             "id": "0e3505b0-8691-4850-9802-c3382e74bb32",
@@ -2031,7 +1915,7 @@
             "matched": true,
             "notes": "",
             "created_at": 1772124458496,
-            "updated_at": 1772124462927
+            "updated_at": 1772126357734
           }
         ],
         "meta": {
@@ -2053,7 +1937,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 722,
+      "duration_ms": 721,
       "ok": true,
       "error": null,
       "response_content_type": "text/html; charset=utf-8",
@@ -2070,7 +1954,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 541,
+      "duration_ms": 529,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -2157,11 +2041,11 @@
   ],
   "result": "PASS",
   "summary": {
-    "total_steps": 27,
-    "passed_steps": 27,
+    "total_steps": 23,
+    "passed_steps": 23,
     "failed_steps": 0,
     "success": true
   },
   "error": null,
-  "ended_at": "2026-02-26T16:47:44.589Z"
+  "ended_at": "2026-02-26T17:19:19.404Z"
 }

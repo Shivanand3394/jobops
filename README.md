@@ -146,6 +146,15 @@ Optional (future extractor integration): configure media extractor endpoint for 
 wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_URL
 ```
 
+Optional extractor hardening:
+
+```bash
+wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_TOKEN
+wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_ALLOW_HOSTS
+wrangler secret put WHATSAPP_MEDIA_FORWARD_VONAGE_AUTH
+wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_TIMEOUT_MS
+```
+
 ### UI
 Static UI files live in [`ui/`](/c:/Users/dell/Documents/GitHub/jobops/ui).
 Local preview options:
