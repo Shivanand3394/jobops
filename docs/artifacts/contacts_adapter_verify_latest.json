@@ -1,0 +1,82 @@
+{
+    "ts":  1772104343054,
+    "base_url":  "https://get-job.shivanand-shah94.workers.dev",
+    "seed_url":  "https://www.linkedin.com/jobs/view/1772104329/",
+    "ingest":  {
+                   "ok":  true,
+                   "data":  {
+                                "count_in":  1,
+                                "inserted_or_updated":  1,
+                                "inserted_count":  0,
+                                "updated_count":  0,
+                                "ignored":  0,
+                                "link_only":  1,
+                                "source_summary":  [
+                                                       {
+                                                           "source_domain":  "linkedin",
+                                                           "total":  1,
+                                                           "recovered":  0,
+                                                           "manual_needed":  1,
+                                                           "needs_ai":  0,
+                                                           "blocked":  1,
+                                                           "low_quality":  0,
+                                                           "link_only":  1,
+                                                           "ignored":  0,
+                                                           "inserted":  0,
+                                                           "updated":  0
+                                                       }
+                                                   ],
+                                "results":  [
+                                                {
+                                                    "raw_url":  "https://www.linkedin.com/jobs/view/1772104329/",
+                                                    "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+                                                    "job_url":  "https://www.linkedin.com/jobs/view/1772104329/",
+                                                    "source_domain":  "linkedin",
+                                                    "ingest_channel":  "ui",
+                                                    "was_existing":  false,
+                                                    "action":  "link_only",
+                                                    "status":  "LINK_ONLY",
+                                                    "jd_source":  "none",
+                                                    "fetch_status":  "blocked",
+                                                    "system_status":  "NEEDS_MANUAL_JD",
+                                                    "fallback_reason":  "blocked",
+                                                    "fallback_policy":  "strict_linkedin",
+                                                    "final_score":  null,
+                                                    "primary_target_id":  null,
+                                                    "potential_contacts":  [
+
+                                                                           ]
+                                                }
+                                            ]
+                            }
+               },
+    "manual_jd":  {
+                      "ok":  true,
+                      "data":  {
+                                   "job_key":  "8df817e4000a3b196109dd373de8f068bfd411ff",
+                                   "status":  "SCORED",
+                                   "final_score":  74,
+                                   "primary_target_id":  "TGT-NEW-01",
+                                   "potential_contacts":  [
+                                                              {
+                                                                  "name":  "Sarah Chen",
+                                                                  "title":  "Head of Engineering",
+                                                                  "company":  "Acme Labs",
+                                                                  "context_snippet":  "This role reports to Head of Engineering Sarah Chen",
+                                                                  "confidence":  100,
+                                                                  "source":  "jd_mention"
+                                                              },
+                                                              {
+                                                                  "name":  "David Park",
+                                                                  "title":  "Engineering Manager",
+                                                                  "company":  "Acme Labs",
+                                                                  "context_snippet":  "This role partners with Engineering Manager David Park",
+                                                                  "confidence":  100,
+                                                                  "source":  "jd_mention"
+                                                              }
+                                                          ]
+                               }
+                  },
+    "db_touchpoints_raw":  "?? wrangler 4.68.0 (update available 4.68.1)\r\n---------------------------------------------\r\nResource location: remote \r\n\r\n?? Executing on remote database jobops-db (ed4e86a7-db3c-4f2c-b392-a1aa90ea2e84):\r\n?? To execute on your local development database, remove the --remote flag from your wrangler command.\r\n?? Executed 1 command in 0.18ms\r\n[\r\n  {\r\n    \"results\": [\r\n      {\r\n        \"touchpoints_count\": 2\r\n      }\r\n    ],\r\n    \"success\": true,\r\n    \"meta\": {\r\n      \"served_by\": \"v3-prod\",\r\n      \"served_by_region\": \"APAC\",\r\n      \"served_by_colo\": \"KIX\",\r\n      \"served_by_primary\": true,\r\n      \"timings\": {\r\n        \"sql_duration_ms\": 0.178\r\n      },\r\n      \"duration\": 0.178,\r\n      \"changes\": 0,\r\n      \"last_row_id\": 1059,\r\n      \"changed_db\": false,\r\n      \"size_after\": 1372160,\r\n      \"rows_read\": 2,\r\n      \"rows_written\": 0,\r\n      \"total_attempts\": 1\r\n    }\r\n  }\r\n]",
+    "db_contacts_raw":  "?? wrangler 4.68.0 (update available 4.68.1)\r\n---------------------------------------------\r\nResource location: remote \r\n\r\n?? Executing on remote database jobops-db (ed4e86a7-db3c-4f2c-b392-a1aa90ea2e84):\r\n?? To execute on your local development database, remove the --remote flag from your wrangler command.\r\n?? Executed 1 command in 0.27ms\r\n[\r\n  {\r\n    \"results\": [\r\n      {\r\n        \"contacts_count\": 2\r\n      }\r\n    ],\r\n    \"success\": true,\r\n    \"meta\": {\r\n      \"served_by\": \"v3-prod\",\r\n      \"served_by_region\": \"APAC\",\r\n      \"served_by_colo\": \"KIX\",\r\n      \"served_by_primary\": true,\r\n      \"timings\": {\r\n        \"sql_duration_ms\": 0.2688\r\n      },\r\n      \"duration\": 0.2688,\r\n      \"changes\": 0,\r\n      \"last_row_id\": 1059,\r\n      \"changed_db\": false,\r\n      \"size_after\": 1372160,\r\n      \"rows_read\": 6,\r\n      \"rows_written\": 0,\r\n      \"total_attempts\": 1\r\n    }\r\n  }\r\n]"
+}
