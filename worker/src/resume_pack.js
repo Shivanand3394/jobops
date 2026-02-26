@@ -8,6 +8,7 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
   const templateId = str_(controls.template_id || controls.templateId || "balanced") || "balanced";
   const atsTargetMode = str_(controls.ats_target_mode || controls.atsTargetMode || "all").toLowerCase() || "all";
   const enabledBlocks = normalizeEnabledBlocks_(controls.enabled_blocks || controls.enabledBlocks);
+  const onePagerStrict = toBoolLike_(controls.one_pager_strict ?? controls.onePagerStrict, true);
   const focusKeywords = selectedKeywords.length ? selectedKeywords : mustAll;
   const atsMust = (atsTargetMode === "selected_only" && selectedKeywords.length) ? selectedKeywords : mustAll;
   const atsNice = (atsTargetMode === "selected_only" && selectedKeywords.length) ? [] : niceAll;
@@ -36,6 +37,10 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
 
   if (!enabledBlocks.has("summary")) tailoredSummary = "";
   if (!enabledBlocks.has("bullets")) tailoredBullets = [];
+  if (onePagerStrict) {
+    tailoredSummary = trimTextToMaxChars_(tailoredSummary, 320);
+    tailoredBullets = tailoredBullets.slice(0, 4);
+  }
 
   const atsText = `${tailoredSummary}\n${tailoredBullets.join("\n")}`.trim() || `${role}\n${company}\n${location}`.trim();
   const keywordCoverage = computeKeywordCoverage_(atsMust, atsNice, atsText);
@@ -96,11 +101,12 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
       enabled_blocks: Array.from(enabledBlocks),
       selected_keywords: selectedKeywords,
       ats_target_mode: atsTargetMode,
+      one_pager_strict: onePagerStrict,
     },
     renderer,
   };
 
-  const rrExportRaw = toReactiveResumeExport_(profileJson, packJson, { enabledBlocks, templateId });
+  const rrExportRaw = toReactiveResumeExport_(profileJson, packJson, { enabledBlocks, templateId, onePagerStrict });
   const rrExport = ensureReactiveResumeExportContract_(rrExportRaw, {
     jobKey: str_(job.job_key),
     templateId,
@@ -489,6 +495,13 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
   const includeSkills = enabledBlocks.has("skills");
   const includeHighlights = enabledBlocks.has("highlights");
   const templateId = str_(opts.templateId || packJson?.controls?.template_id || "balanced") || "balanced";
+  const onePagerStrict = toBoolLike_(opts.onePagerStrict ?? packJson?.controls?.one_pager_strict, true);
+  const experienceOut = includeExperience ? experience.slice(0, onePagerStrict ? 3 : experience.length) : [];
+  const skillsOut = includeSkills ? skills.slice(0, onePagerStrict ? 12 : skills.length) : [];
+  const highlightsOut = includeHighlights
+    ? bullets.map((x) => ({ text: str_(x) })).filter((x) => x.text).slice(0, onePagerStrict ? 4 : bullets.length)
+    : [];
+  const summaryOut = includeSummary ? trimTextToMaxChars_(str_(packJson?.tailoring?.summary), onePagerStrict ? 320 : 1200) : "";
 
   return {
     metadata: {
@@ -499,18 +512,19 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
       version: 1,
       template_id: templateId,
       renderer: "reactive_resume",
+      one_pager_strict: onePagerStrict,
     },
     basics: {
       name: str_(basics.name),
       email: str_(basics.email),
       phone: str_(basics.phone),
       location: str_(basics.location),
-      summary: includeSummary ? str_(packJson?.tailoring?.summary) : "",
+      summary: summaryOut,
     },
     sections: {
-      experience: includeExperience ? experience : [],
-      skills: includeSkills ? skills : [],
-      highlights: includeHighlights ? bullets.map((x) => ({ text: str_(x) })).filter((x) => x.text) : [],
+      experience: experienceOut,
+      skills: skillsOut,
+      highlights: highlightsOut,
     },
     job_context: {
       job_key: str_(packJson?.job?.job_key),
@@ -650,6 +664,26 @@ function unique_(arr) {
 
 function str_(v) {
   return String(v || "").trim();
+}
+
+function toBoolLike_(v, defaultValue = false) {
+  if (v === undefined || v === null || String(v).trim() === "") return defaultValue;
+  const s = String(v).trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(s)) return true;
+  if (["0", "false", "no", "n", "off"].includes(s)) return false;
+  return defaultValue;
+}
+
+function trimTextToMaxChars_(text, maxChars = 320) {
+  const s = str_(text);
+  const max = Number.isFinite(Number(maxChars)) ? Math.max(80, Number(maxChars)) : 320;
+  if (!s || s.length <= max) return s;
+  const clipped = s.slice(0, max);
+  const lastSentence = Math.max(clipped.lastIndexOf(". "), clipped.lastIndexOf("! "), clipped.lastIndexOf("? "));
+  if (lastSentence >= 120) return clipped.slice(0, lastSentence + 1).trim();
+  const lastSpace = clipped.lastIndexOf(" ");
+  if (lastSpace >= 80) return `${clipped.slice(0, lastSpace).trim()}...`;
+  return `${clipped.trim()}...`;
 }
 
 function normalizeRubricProfile_(input) {

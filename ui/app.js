@@ -2,6 +2,7 @@ const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
+const ONE_PAGER_STRICT_KEY = "jobops_one_pager_strict_v1";
 
 function getCfg() {
   return {
@@ -16,6 +17,16 @@ function setCfg({ apiBase, uiKey }) {
 }
 
 const $ = (id) => document.getElementById(id);
+
+function getOnePagerStrictPref_() {
+  const raw = String(localStorage.getItem(ONE_PAGER_STRICT_KEY) || "").trim().toLowerCase();
+  if (!raw) return true;
+  return ["1", "true", "yes", "on", "y"].includes(raw);
+}
+
+function setOnePagerStrictPref_(on) {
+  localStorage.setItem(ONE_PAGER_STRICT_KEY, on ? "1" : "0");
+}
 
 function loadLastRecoveryRun_() {
   try {
@@ -623,12 +634,14 @@ async function ensureRrPdfForJob_(jobKey, { forceExport = false } = {}) {
   }
 
   if (!pack) {
+    const onePagerStrict = getOnePagerStrictPref_();
     await api(`/jobs/${encodeURIComponent(key)}/generate-application-pack`, {
       method: "POST",
       body: {
         profile_id: profileId,
         force: false,
         renderer: "reactive_resume",
+        one_pager_strict: onePagerStrict,
       },
     });
   }
@@ -1043,6 +1056,11 @@ function renderDetail(j) {
               <option value="all">Use all target keywords</option>
               <option value="selected_only">Use selected ATS keywords only</option>
             </select>
+            <label class="muted tiny" style="margin-top:8px;">Length rule</label>
+            <label class="tiny" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+              <input type="checkbox" id="appOnePagerStrict" ${getOnePagerStrictPref_() ? "checked" : ""} />
+              Enforce 1-page strict (cap summary/sections/bullets)
+            </label>
             <label class="muted tiny" style="margin-top:8px;">Resume blocks</label>
             <div class="block-checks" style="margin-top:6px;">
               <label><input type="checkbox" id="blkSummary" checked /> Summary</label>
@@ -1734,6 +1752,8 @@ async function generateApplicationPack(jobKey, force = false) {
     const enabledBlocks = getEnabledBlocksFromUi_();
     const selectedKeywords = readSelectedKeywordsFromUi_();
     const atsTargetMode = String($("appAtsTargetMode")?.value || "all").trim().toLowerCase() || "all";
+    const onePagerStrict = Boolean($("appOnePagerStrict")?.checked ?? getOnePagerStrictPref_());
+    setOnePagerStrictPref_(onePagerStrict);
     const res = await api(`/jobs/${encodeURIComponent(jobKey)}/generate-application-pack`, {
       method: "POST",
       body: {
@@ -1744,6 +1764,7 @@ async function generateApplicationPack(jobKey, force = false) {
         enabled_blocks: enabledBlocks,
         selected_keywords: selectedKeywords,
         ats_target_mode: atsTargetMode,
+        one_pager_strict: onePagerStrict,
       },
     });
     toast(`Pack ${res?.data?.status || "generated"} (${res?.data?.ats_score ?? "-"})`);
@@ -1789,6 +1810,13 @@ async function hydrateApplicationPack(jobOrKey) {
   if (rendererSelect) {
     rendererSelect.onchange = () => {
       syncRrDownloadUi_();
+    };
+  }
+  const onePagerToggle = $("appOnePagerStrict");
+  if (onePagerToggle) {
+    onePagerToggle.checked = getOnePagerStrictPref_();
+    onePagerToggle.onchange = () => {
+      setOnePagerStrictPref_(Boolean(onePagerToggle.checked));
     };
   }
 
@@ -1908,6 +1936,12 @@ async function hydrateApplicationPack(jobOrKey) {
     if ($("appAtsTargetMode")) {
       $("appAtsTargetMode").value = String(controls.ats_target_mode || "all");
     }
+    if ($("appOnePagerStrict")) {
+      const controlOnePager = controls.one_pager_strict;
+      const onePager = (typeof controlOnePager === "boolean") ? controlOnePager : getOnePagerStrictPref_();
+      $("appOnePagerStrict").checked = onePager;
+      setOnePagerStrictPref_(onePager);
+    }
     setEnabledBlocksUi_(Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks : getTemplateById_(state.activeTemplateId)?.enabled_blocks || []);
     state.selectedAtsKeywords = Array.isArray(controls.selected_keywords) ? controls.selected_keywords : [];
     renderKeywordPicker_(currentJob, d);
@@ -1942,6 +1976,7 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrPdfUrl = "";
     section.dataset.pdfReady = "0";
     section.dataset.pdfReadyIssues = "";
+    if ($("appOnePagerStrict")) $("appOnePagerStrict").checked = getOnePagerStrictPref_();
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
     syncRrDownloadUi_();

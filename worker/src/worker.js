@@ -1007,6 +1007,7 @@ export default {
             ? body.selected_keywords
             : (Array.isArray(body.selectedKeywords) ? body.selectedKeywords : []),
           ats_target_mode: String(body.ats_target_mode || body.atsTargetMode || "").trim().toLowerCase(),
+          one_pager_strict: toBool_(body.one_pager_strict ?? body.onePagerStrict, true),
         };
 
         const job = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
@@ -1103,6 +1104,7 @@ export default {
             template_id: controls.template_id || "",
             enabled_blocks_count: Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks.length : 0,
             selected_keywords_count: Array.isArray(controls.selected_keywords) ? controls.selected_keywords.length : 0,
+            one_pager_strict: Boolean(controls.one_pager_strict),
             rr_export_contract: {
               id: RR_EXPORT_CONTRACT_ID,
               schema_version: RR_EXPORT_SCHEMA_VERSION,
@@ -4423,6 +4425,14 @@ async function runRssDiagnostics_(env, opts = {}) {
 }
 
 function toBoolEnv_(v, defaultValue = false) {
+  if (v === undefined || v === null || String(v).trim() === "") return defaultValue;
+  const s = String(v).trim().toLowerCase();
+  if (["1", "true", "yes", "y", "on"].includes(s)) return true;
+  if (["0", "false", "no", "n", "off"].includes(s)) return false;
+  return defaultValue;
+}
+
+function toBool_(v, defaultValue = false) {
   if (v === undefined || v === null || String(v).trim() === "") return defaultValue;
   const s = String(v).trim().toLowerCase();
   if (["1", "true", "yes", "y", "on"].includes(s)) return true;
