@@ -3452,7 +3452,7 @@ export default {
               media_url_host: sourceDomainFromUrl_(mediaUrl) || null,
               extractor_configured: extractorConfigured,
               extraction_status: extractorConfigured ? "queued" : "queued_unconfigured",
-              source_health,
+              source_health: sourceHealth,
               ts: Date.now(),
             });
 
@@ -3485,7 +3485,7 @@ export default {
                   media_file_name: mediaFileName || null,
                   media_url_host: sourceDomainFromUrl_(mediaUrl) || null,
                   error: String(extracted.error || "extract_failed").slice(0, 500),
-                  source_health,
+                  source_health: sourceHealth,
                   ts: Date.now(),
                 });
               } else {
@@ -3502,7 +3502,7 @@ export default {
                     media_type: mediaType || null,
                     extracted_text_len: extractedText.length,
                     extracted_url_count: extractedUrls.length,
-                    source_health,
+                    source_health: sourceHealth,
                     ts: Date.now(),
                   });
                 } else {
@@ -3542,7 +3542,7 @@ export default {
                       ignored: numOr_(extractionIngest?.ignored, 0),
                       link_only: numOr_(extractionIngest?.link_only, 0),
                     },
-                    source_health,
+                    source_health: sourceHealth,
                     ts: Date.now(),
                   });
                 }
