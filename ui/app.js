@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-26-triage-pulse-v1";
+const UI_BUILD_ID = "2026-02-26-resume-html-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -1509,6 +1509,7 @@ function renderDetail(j) {
           <textarea id="wizardOutreachDraft" rows="7" style="margin-top:8px;" placeholder="Outreach draft appears here"></textarea>
         </div>
         <div class="actions-grid wizard-finish-actions" style="margin-top:10px;">
+          <button class="btn btn-secondary" onclick="openTailoredResumeHtml('${escapeHtml(j.job_key)}')">View Tailored Resume</button>
           <button class="btn btn-ghost" id="btnPdfReadyToggle" onclick="togglePdfReadyMode()">PDF-ready view</button>
           <button class="btn btn-ghost" onclick="printPdfReadyView()">Print / Save PDF</button>
         </div>
@@ -3155,6 +3156,65 @@ function printPdfReadyView() {
   window.print();
 }
 
+async function openTailoredResumeHtml(jobKey) {
+  const key = String(jobKey || state.activeJob?.job_key || "").trim();
+  if (!key) {
+    toast("Select a job first.", { kind: "error" });
+    return;
+  }
+
+  const cfg = getCfg();
+  if (!cfg.uiKey) {
+    toast("Missing UI_KEY. Open Settings and set UI key.", { kind: "error" });
+    return;
+  }
+
+  const previewWindow = window.open("about:blank", "_blank");
+  if (previewWindow) {
+    previewWindow.opener = null;
+    previewWindow.document.title = "JobOps Tailored Resume";
+    previewWindow.document.body.innerHTML = "<p style=\"font-family:Arial,sans-serif;padding:16px;\">Loading tailored resume...</p>";
+  }
+
+  try {
+    spin(true);
+    const profileId = String($("appProfileId")?.value || state.activeProfileId || "").trim();
+    const qs = new URLSearchParams();
+    if (profileId) qs.set("profile_id", profileId);
+    const path = `/jobs/${encodeURIComponent(key)}/resume/html${qs.toString() ? `?${qs.toString()}` : ""}`;
+    const res = await fetch(cfg.apiBase + path, {
+      method: "GET",
+      headers: { "x-ui-key": cfg.uiKey },
+    });
+
+    if (!res.ok) {
+      const ct = String(res.headers.get("content-type") || "").toLowerCase();
+      let message = `HTTP ${res.status}`;
+      if (ct.includes("application/json")) {
+        const payload = await res.json().catch(() => null);
+        message = String(payload?.error || payload?.detail || message);
+      } else {
+        const text = String(await res.text().catch(() => "")).trim();
+        if (text) message = text.slice(0, 180);
+      }
+      throw new Error(message);
+    }
+
+    const html = await res.text();
+    const blob = new Blob([html], { type: "text/html; charset=utf-8" });
+    const blobUrl = URL.createObjectURL(blob);
+    if (previewWindow) previewWindow.location.replace(blobUrl);
+    else window.open(blobUrl, "_blank", "noopener");
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+    toast("Tailored resume opened");
+  } catch (e) {
+    if (previewWindow) previewWindow.close();
+    toast("Resume preview failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
 async function rebuildEvidence(jobKey) {
   const key = String(jobKey || state.activeJob?.job_key || "").trim();
   if (!key) return;
@@ -3781,6 +3841,7 @@ window.copyWizardOutreach = copyWizardOutreach;
 window.markWizardOutreachStatus = markWizardOutreachStatus;
 window.togglePdfReadyMode = togglePdfReadyMode;
 window.printPdfReadyView = printPdfReadyView;
+window.openTailoredResumeHtml = openTailoredResumeHtml;
 window.copyPackSummary = copyPackSummary;
 window.copyPackBullets = copyPackBullets;
 window.downloadRrJson = downloadRrJson;
