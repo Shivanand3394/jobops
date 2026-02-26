@@ -1,0 +1,13 @@
+{
+  "name": "jobops-whatsapp-extractor",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-02-26",
+  "vars": {
+    "ALLOW_ORIGIN": "*",
+    "GEMINI_MODEL": "gemini-1.5-flash",
+    "MEDIA_FETCH_TIMEOUT_MS": "12000",
+    "MEDIA_MAX_BYTES": "6291456",
+    "GEMINI_TIMEOUT_MS": "20000",
+    "MEDIA_ALLOWED_MIME_TYPES": "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp,text/plain"
+  }
+}

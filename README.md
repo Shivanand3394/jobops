@@ -140,7 +140,8 @@ Optional: restrict webhook to known sender IDs (comma/newline list):
 wrangler secret put WHATSAPP_VONAGE_ALLOWED_SENDERS
 ```
 
-Optional (future extractor integration): configure media extractor endpoint for WhatsApp attachments:
+Optional: configure dedicated media extractor endpoint for WhatsApp attachments.
+Reference implementation is in [`extractor/`](/c:/Users/dell/Documents/GitHub/jobops/extractor) and setup notes in [`extractor/README.md`](/c:/Users/dell/Documents/GitHub/jobops/extractor/README.md).
 
 ```bash
 wrangler secret put WHATSAPP_MEDIA_EXTRACTOR_URL
