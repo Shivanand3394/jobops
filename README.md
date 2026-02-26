@@ -55,6 +55,7 @@ From current Worker routing:
 - `GET /jobs?status=&limit=&offset=` (UI key)
 - `GET /dashboard/triage?stale_days=&limit=&gold_limit=` (UI key)
 - `GET /jobs/:job_key` (UI key)
+- `GET /jobs/:job_key/resume/html?profile_id=&evidence_limit=` (UI key)
 - `GET /jobs/:job_key/profile-preference` (UI key)
 - `POST /jobs/:job_key/profile-preference` (UI key)
 - `POST /jobs/:job_key/status` (UI key)

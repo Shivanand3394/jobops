@@ -22,6 +22,7 @@ import {
   normalizeOutreachChannel_,
   upsertPotentialContactsForJob_,
 } from "./domains/contacts/index.js";
+import { generateProfessionalHtml } from "./domains/resume/index.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -515,6 +516,38 @@ export default {
             effective_source: String(resolved.source || "").trim() || "primary_fallback",
           },
         }, env, 200);
+      }
+
+      if (path.startsWith("/jobs/") && path.endsWith("/resume/html") && request.method === "GET") {
+        const parts = path.split("/");
+        const jobKey = decodeURIComponent(parts[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const job = await env.DB.prepare(`
+          SELECT *
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const profileResolved = await resolvePreferredProfileForJob_(env, {
+          jobKey,
+          profileIdIn: String(url.searchParams.get("profile_id") || "").trim(),
+        });
+        const profile = profileResolved.profile || await ensurePrimaryProfile_(env);
+        const evidenceLimit = clampInt_(url.searchParams.get("evidence_limit") || 12, 1, 30);
+        const matchedEvidence = await loadMatchedEvidenceForPack_(env, jobKey, evidenceLimit);
+        const html = generateProfessionalHtml(profile, job, matchedEvidence);
+
+        return new Response(html, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+            ...corsHeaders_(env),
+          },
+        });
       }
 
       if (

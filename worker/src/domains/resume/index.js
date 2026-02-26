@@ -12,3 +12,5 @@ export {
   isDraftLockedStatus_,
   normalizeDraftStatus_,
 } from "./versions.js";
+
+export { generateProfessionalHtml } from "./html_simple.js";
