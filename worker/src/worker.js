@@ -7490,9 +7490,13 @@ async function resolveJd_(env, jobUrl, { emailHtml, emailText, emailSubject, ema
   const fallback = extractJdFromEmail_(emailHtml, emailText, emailSubject, emailFrom);
   if (fallback && fallback.length >= 180) {
     const confidence = computeJdConfidence_(fallback);
+    const priorFetchStatus = out.fetch_status;
     out.jd_text_clean = fallback.slice(0, 12000);
     out.jd_source = "email";
+    // Fallback content is now the source of truth for scoring readiness.
+    out.fetch_status = "ok";
     out.debug.used_email_fallback = true;
+    out.debug.fetch_status_before_fallback = priorFetchStatus;
     out.debug.jd_confidence = confidence;
     out.debug.jd_length = fallback.length;
     return out;
@@ -7604,6 +7608,7 @@ function getSourceFallbackPolicy_(sourceDomain) {
       source_domain: "linkedin",
       min_chars: 280,
       require_high_confidence_for_fetched: true,
+      allow_low_confidence_email: false,
       label: "strict_linkedin",
     };
   }
@@ -7612,6 +7617,7 @@ function getSourceFallbackPolicy_(sourceDomain) {
       source_domain: "iimjobs",
       min_chars: 220,
       require_high_confidence_for_fetched: false,
+      allow_low_confidence_email: false,
       label: "standard_iimjobs",
     };
   }
@@ -7620,13 +7626,24 @@ function getSourceFallbackPolicy_(sourceDomain) {
       source_domain: "naukri",
       min_chars: 220,
       require_high_confidence_for_fetched: false,
+      allow_low_confidence_email: false,
       label: "standard_naukri",
+    };
+  }
+  if (source === "whatsapp.vonage.local") {
+    return {
+      source_domain: "whatsapp.vonage.local",
+      min_chars: 120,
+      require_high_confidence_for_fetched: false,
+      allow_low_confidence_email: true,
+      label: "whatsapp_media_email_fallback",
     };
   }
   return {
     source_domain: source || "unknown",
     min_chars: 220,
     require_high_confidence_for_fetched: false,
+    allow_low_confidence_email: false,
     label: "default",
   };
 }
@@ -7637,19 +7654,21 @@ function computeFallbackDecision_(sourceDomain, resolved, jdText, aiAvailable) {
   const fetchStatus = String(resolved?.fetch_status || "").toLowerCase();
   const confidence = String(resolved?.debug?.jd_confidence || "").toLowerCase();
   const len = String(jdText || "").trim().length;
+  const allowLowConfidence = Boolean(policy?.allow_low_confidence_email && jdSource === "email" && len >= policy.min_chars);
+  const hasUsableEmailFallback = jdSource === "email" && len >= policy.min_chars;
 
   let reason = "none";
   if (!aiAvailable) {
     reason = "manual_required";
-  } else if (fetchStatus === "blocked") {
+  } else if (fetchStatus === "blocked" && !hasUsableEmailFallback) {
     reason = "blocked";
-  } else if (fetchStatus === "low_quality") {
+  } else if (fetchStatus === "low_quality" && !hasUsableEmailFallback) {
     reason = "low_quality";
   } else if (jdSource !== "email" && jdSource !== "fetched") {
     reason = "manual_required";
   } else if (len < policy.min_chars) {
     reason = "low_quality";
-  } else if (confidence === "low") {
+  } else if (confidence === "low" && !allowLowConfidence) {
     reason = "low_quality";
   } else if (policy.require_high_confidence_for_fetched && jdSource === "fetched" && confidence !== "high") {
     reason = "low_quality";

@@ -1,6 +1,6 @@
 {
-  "run_id": "5d5075f6-fb2c-4080-a4b7-8dd6005be14f",
-  "started_at": "2026-02-26T21:21:37.035Z",
+  "run_id": "64f8d083-1c32-4843-8ad3-bf7d69727358",
+  "started_at": "2026-02-26T21:31:19.894Z",
   "base_url": "https://get-job.shivanand-shah94.workers.dev",
   "script": "scripts/smoke_pack.mjs",
   "config": {
@@ -11,10 +11,10 @@
     "require_outreach": false,
     "whatsapp_sim_enabled": false,
     "whatsapp_webhook_path": "/ingest/whatsapp/vonage",
-    "job_key_resolved": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+    "job_key_resolved": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
     "profile_id_effective": "primary-alt",
-    "resume_html_evidence_rows": 9,
-    "resume_html_evidence_needle": "...outcomes to expectations at company. i deliver measurable",
+    "resume_html_evidence_rows": 13,
+    "resume_html_evidence_needle": "data analysis expert delivering measurable impact through data-driven",
     "resume_html_expected_email": "smoke.user.alt@example.com",
     "outreach_contact_id": null,
     "outreach_skipped": true
@@ -30,13 +30,13 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 522,
+      "duration_ms": 425,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
-        "ts": 1772140898087,
+        "ts": 1772141480910,
         "worker_version": "dev"
       },
       "response_text": null
@@ -85,7 +85,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 800,
+      "duration_ms": 590,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -93,36 +93,36 @@
         "ok": true,
         "data": [
           {
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
             "company": "",
-            "role_title": "Architects",
+            "role_title": "senior role product analytics 3",
             "location": "",
-            "seniority": "",
+            "seniority": "Mid",
             "final_score": 74,
-            "status": "SCORED",
-            "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac",
-            "source_domain": "whatsapp.vonage.local",
+            "status": "READY_TO_APPLY",
+            "job_url": "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893",
+            "source_domain": "iimjobs",
             "system_status": null,
-            "fetch_debug_json": "{\"jd_confidence\":\"low\",\"jd_length\":0,\"http_status\":530,\"ai_available\":true,\"ingest_channel\":\"recover\",\"fallback_reason\":\"manual_required\",\"fallback_policy\":\"default\",\"source_policy_domain\":\"whatsapp.vonage.local\"}",
-            "updated_at": 1772140625428,
-            "created_at": 1772140171157,
+            "fetch_debug_json": "{\"jd_confidence\":\"high\",\"jd_length\":1456,\"http_status\":200,\"ai_available\":true,\"ingest_channel\":\"recover\",\"fallback_reason\":\"none\",\"fallback_policy\":\"standard_iimjobs\",\"source_policy_domain\":\"iimjobs\"}",
+            "updated_at": 1772141477813,
+            "created_at": 1771894358293,
             "fetch_debug": {
-              "jd_confidence": "low",
-              "jd_length": 0,
-              "http_status": 530,
+              "jd_confidence": "high",
+              "jd_length": 1456,
+              "http_status": 200,
               "ai_available": true,
               "ingest_channel": "recover",
-              "fallback_reason": "manual_required",
-              "fallback_policy": "default",
-              "source_policy_domain": "whatsapp.vonage.local"
+              "fallback_reason": "none",
+              "fallback_policy": "standard_iimjobs",
+              "source_policy_domain": "iimjobs"
             },
             "ingest_channel": "recover",
-            "jd_confidence": "low",
+            "jd_confidence": "high",
             "last_touchpoint_at": null,
             "last_touchpoint_status": null,
             "last_touchpoint_channel": null,
             "days_since_touchpoint": null,
-            "display_title": "Architects",
+            "display_title": "senior role product analytics 3",
             "display_company": ""
           }
         ]
@@ -139,7 +139,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1070,
+      "duration_ms": 977,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -148,7 +148,7 @@
         "data": {
           "enabled": true,
           "stale_days": 3,
-          "generated_at": 1772140899156,
+          "generated_at": 1772141481571,
           "pulse": {
             "gold_leads_count": 3,
             "replies_7d_count": 3,
@@ -308,22 +308,13 @@
           },
           "gold_leads": [
             {
-              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-              "role_title": "Architects",
-              "company": "",
-              "status": "SCORED",
-              "final_score": 74,
-              "profile_id": "primary",
-              "updated_at": 1772140625428
-            },
-            {
               "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
               "role_title": "",
               "company": "Microsoft",
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772140623308
+              "updated_at": 1772141464373
             },
             {
               "job_key": "1418874c737d46afa6dd2d2bcd5c53cb1c379c9e",
@@ -332,7 +323,16 @@
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772140616914
+              "updated_at": 1772141460488
+            },
+            {
+              "job_key": "0876eef0e21e91599febd8fd47b300554347a2cf",
+              "role_title": "Enterprise Sales",
+              "company": "AuthBridge",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772140614338
             }
           ],
           "touchpoint_conversion": {
@@ -364,15 +364,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 6137,
+      "duration_ms": 5405,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "19e34a34-9ac3-4b2b-a0f3-a580d9edb483",
-          "ts": 1772140900079,
+          "run_id": "5d9f175a-f75c-439b-b920-e5d09cf0a321",
+          "ts": 1772141482543,
           "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
           "max_results": 25,
           "max_jobs_per_email": 3,
@@ -422,15 +422,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 330,
+      "duration_ms": 325,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "0d76a066-4da8-4a1f-8551-80e4a006901e",
-          "ts": 1772140906303,
+          "run_id": "ee07683d-2d00-4f15-8c5c-bf0e38246abb",
+          "ts": 1772141487974,
           "skipped": true,
           "reason": "no_feeds_configured",
           "feeds_total": 0,
@@ -512,7 +512,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 279,
+      "duration_ms": 285,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -521,7 +521,7 @@
         "data": {
           "id": "primary",
           "name": "Smoke Profile",
-          "updated_at": 1772140906551
+          "updated_at": 1772141488269
         }
       },
       "response_text": null
@@ -565,7 +565,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 336,
+      "duration_ms": 297,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -574,7 +574,7 @@
         "data": {
           "id": "primary-alt",
           "name": "Smoke Profile Alt",
-          "updated_at": 1772140906839
+          "updated_at": 1772141488550
         }
       },
       "response_text": null
@@ -582,7 +582,7 @@
     {
       "name": "wizard.profile.preference.set",
       "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/profile-preference",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/profile-preference",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt"
@@ -591,16 +591,16 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1477,
+      "duration_ms": 1632,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
           "profile_id": "primary-alt",
-          "updated_at": 1772140907679,
+          "updated_at": 1772141489355,
           "cleared": false,
           "enabled": true,
           "effective_profile_id": "primary-alt",
@@ -612,23 +612,23 @@
     {
       "name": "wizard.profile.preference.get",
       "method": "GET",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/profile-preference",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/profile-preference",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1067,
+      "duration_ms": 1246,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
           "profile_id": "primary-alt",
-          "updated_at": 1772140907679,
+          "updated_at": 1772141489355,
           "enabled": true,
           "effective_profile_id": "primary-alt",
           "effective_source": "job_preference"
@@ -639,7 +639,7 @@
     {
       "name": "wizard.generate",
       "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/generate-application-pack",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/generate-application-pack",
       "auth": "ui",
       "request_body": {
         "force": false,
@@ -651,33 +651,20 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 4459,
+      "duration_ms": 4408,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "draft_id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+          "draft_id": "affb9adf-9ecd-414c-835f-1322be45fa0d",
           "profile_id": "primary-alt",
           "profile_source": "job_preference",
-          "status": "CONTENT_REVIEW_REQUIRED",
-          "ats_score": 88,
-          "template_id": "",
-          "enabled_blocks_count": 0,
-          "selected_keywords_count": 0,
-          "one_page_mode": "soft",
-          "one_pager_strict": false,
-          "content_review_required": true,
-          "evidence_first": true,
-          "evidence_match_count": 0,
-          "rr_export_contract": {
-            "id": "jobops.rr_export.v1",
-            "schema_version": 1
-          },
-          "rr_export_import_ready": true,
-          "rr_export_import_errors": []
+          "status": "READY_TO_APPLY",
+          "locked": true,
+          "message": "Draft is locked after approval. Use force=true to regenerate."
         }
       },
       "response_text": null
@@ -685,33 +672,33 @@
     {
       "name": "wizard.pack.fetch.before",
       "method": "GET",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/application-pack",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/application-pack",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1344,
+      "duration_ms": 1385,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+          "id": "affb9adf-9ecd-414c-835f-1322be45fa0d",
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
           "profile_id": "primary-alt",
           "profile_lookup_source": "job_preference",
           "requested_profile_id": null,
           "preference_profile_id": "primary-alt",
-          "status": "CONTENT_REVIEW_REQUIRED",
+          "status": "READY_TO_APPLY",
           "error_text": "",
           "pack_json": {
             "job": {
-              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac",
-              "source_domain": "whatsapp.vonage.local",
+              "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+              "job_url": "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893",
+              "source_domain": "iimjobs",
               "status": "SCORED"
             },
             "target": {
@@ -732,745 +719,81 @@
               "reject": []
             },
             "extracted": {
-              "role_title": "Architects",
+              "role_title": "senior role product analytics 3",
               "company": "",
               "location": "",
-              "seniority": "",
+              "seniority": "Mid",
               "final_score": 74,
               "reason_top_matches": ""
             },
             "tailoring": {
-              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership,",
+              "summary": "Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams.",
               "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
-                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                "Delivered measurable impact using data analysis and data-driven decision making to drive quantified business outcomes.",
+                "Delivered measurable impact by utilized SQL and Python to drive product analytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams.",
+                "Delivered measurable impact by developed and executed structured plans to drive measurable KPI movement and improve business outcomes. using SQL.",
+                "Delivered measurable impact by applied A/B testing to drive business growth and improvement, while maintaining speed and quality. using Python."
               ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
-              "must_keywords": [],
-              "nice_keywords": [],
-              "evidence_matches": []
-            },
-            "controls": {
-              "template_id": "balanced",
-              "enabled_blocks": [
-                "summary",
-                "experience",
-                "skills",
-                "highlights",
-                "bullets"
+              "cover_letter": "Dear Hiring Team, I am confident in my ability to drive measurable impact and deliver quantified business outcomes as a senior role product analytics professional. My experience with data analysis, SQL, Python, and Power BI aligns directly with your needs, and I am excited to bring my skills and expertise to the Company. Regards, [Your Name] My experience aligns directly with your need for data analysis.",
+              "must_keywords": [
+                "data analysis",
+                "product or growth teams",
+                "SQL",
+                "Python",
+                "Power BI"
               ],
-              "selected_keywords": [],
-              "ats_target_mode": "all",
-              "one_page_mode": "soft",
-              "one_pager_strict": false,
-              "content_review_required": true
-            },
-            "renderer": "reactive_resume"
-          },
-          "ats_json": {
-            "score": 88,
-            "missing_keywords": [],
-            "coverage": {
-              "must_total": 0,
-              "must_hit": 0,
-              "nice_total": 0,
-              "nice_hit": 0
-            },
-            "notes": "Good keyword coverage",
-            "target_rubric": {
-              "applicable": true,
-              "score": 27,
-              "dimensions": [
-                {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
-                },
-                {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
-                },
-                {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
-                },
-                {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "requirements",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "backlog",
-                    "agile",
-                    "scrum"
-                  ]
-                },
-                {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder",
-                    "alignment"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "communication",
-                    "collaboration",
-                    "leadership"
-                  ]
-                }
+              "nice_keywords": [
+                "A/B tests",
+                "data-driven recommendations",
+                "actionable insights",
+                "complex data",
+                "clear stories",
+                "dynamic environment",
+                "product metrics",
+                "user behavior analysis"
               ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            },
-            "pm_rubric": {
-              "applicable": true,
-              "score": 27,
-              "dimensions": [
+              "evidence_matches": [
                 {
-                  "id": "strategy",
-                  "label": "Product Strategy",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "strategy",
-                    "vision",
-                    "roadmap",
-                    "prioritization"
-                  ]
+                  "requirement_text": "data analysis",
+                  "requirement_type": "must",
+                  "confidence_score": 95
                 },
                 {
-                  "id": "discovery",
-                  "label": "Discovery & Research",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "customer",
-                    "user research",
-                    "discovery",
-                    "problem statement"
-                  ]
+                  "requirement_text": "product or growth teams",
+                  "requirement_type": "must",
+                  "confidence_score": 95
                 },
                 {
-                  "id": "analytics",
-                  "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
-                  "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
-                    "a/b",
-                    "experiment",
-                    "hypothesis",
-                    "funnel"
-                  ]
+                  "requirement_text": "SQL",
+                  "requirement_type": "must",
+                  "confidence_score": 95
                 },
                 {
-                  "id": "execution",
-                  "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "requirements",
-                    "execution"
-                  ],
-                  "missing_evidence": [
-                    "prd",
-                    "backlog",
-                    "agile",
-                    "scrum"
-                  ]
+                  "requirement_text": "Python",
+                  "requirement_type": "must",
+                  "confidence_score": 95
                 },
                 {
-                  "id": "leadership",
-                  "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
-                  "target_hits": 3,
-                  "evidence": [
-                    "stakeholder",
-                    "alignment"
-                  ],
-                  "missing_evidence": [
-                    "influence",
-                    "communication",
-                    "collaboration",
-                    "leadership"
-                  ]
-                }
-              ],
-              "missing_evidence": [
-                "Product Strategy: strategy",
-                "Product Strategy: vision",
-                "Product Strategy: roadmap",
-                "Product Strategy: prioritization",
-                "Discovery & Research: customer",
-                "Discovery & Research: user research",
-                "Discovery & Research: discovery",
-                "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
-              ],
-              "notes": "Add stronger PM evidence in summary/bullets.",
-              "template_id": "pm_v1",
-              "rubric_profile": "auto",
-              "target_id": "TGT-NEW-01",
-              "target_name": "Growth PM Target",
-              "target_role": "Product Manager"
-            }
-          },
-          "rr_export_json": {
-            "metadata": {
-              "source": "jobops",
-              "contract_id": "jobops.rr_export.v1",
-              "schema_version": 1,
-              "version": 1,
-              "exported_at": 1772140912708,
-              "template_id": "balanced",
-              "renderer": "reactive_resume",
-              "contract_valid": true,
-              "import_ready": true
-            },
-            "basics": {
-              "name": "Smoke User Alt",
-              "email": "smoke.user.alt@example.com",
-              "phone": "",
-              "location": "Remote",
-              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership,"
-            },
-            "sections": {
-              "experience": [
-                {
-                  "company": "Alt Smoke Co",
-                  "role": "Business Program Manager",
-                  "date_range": "2021 - Present",
-                  "bullets": [
-                    "Owned roadmap execution for program increments spanning product, ops, and engineering teams.",
-                    "Established SLA and weekly KPI review cadence to improve delivery consistency."
-                  ]
-                }
-              ],
-              "skills": [
-                "Business Program Management",
-                "Roadmap",
-                "Delivery",
-                "KPI",
-                "Stakeholder Management"
-              ],
-              "highlights": [
-                {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability."
+                  "requirement_text": "Power BI",
+                  "requirement_type": "must",
+                  "confidence_score": 95
                 },
                 {
-                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
+                  "requirement_text": "A/B tests",
+                  "requirement_type": "nice",
+                  "confidence_score": 88
                 },
                 {
-                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                  "requirement_text": "data-driven recommendations",
+                  "requirement_type": "nice",
+                  "confidence_score": 88
+                },
+                {
+                  "requirement_text": "actionable insights",
+                  "requirement_type": "nice",
+                  "confidence_score": 88
                 }
               ]
-            },
-            "job_context": {
-              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-              "role_title": "Architects",
-              "company": "",
-              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac"
-            }
-          },
-          "rr_export_contract": {
-            "id": "jobops.rr_export.v1",
-            "schema_version": 1
-          },
-          "rr_export_import_ready": true,
-          "rr_export_import_errors": [],
-          "rr_resume_id": null,
-          "rr_last_pushed_at": 0,
-          "rr_last_push_status": null,
-          "rr_last_push_error": "",
-          "rr_pdf_url": null,
-          "rr_pdf_last_exported_at": 0,
-          "rr_pdf_last_export_status": null,
-          "rr_pdf_last_export_error": "",
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Architects",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": false,
-                "detail": "Missing company",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=455, jd_confidence=low",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=179/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=88 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (0/0)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": false,
-                "detail": "Missing company",
-                "enforced": false
-              }
-            ],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 179,
-              "bullets_count": 3,
-              "experience_items": 1,
-              "skills_items": 5,
-              "estimated_density": "low"
-            },
-            "hard_gate_applied": false
-          },
-          "one_page_mode": "soft",
-          "content_review_required": true,
-          "latest_version": {
-            "id": "0d99dae3-6487-4ed1-9e52-ee76c116ef4c",
-            "version_no": 1,
-            "source_action": "generate",
-            "created_at": 1772140913409
-          },
-          "version_history_enabled": true,
-          "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772140912708
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.review",
-      "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/application-pack/review",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary-alt",
-        "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
-        "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
-          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
-        ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1307,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "profile_id": "primary-alt",
-          "draft_id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
-          "status": "READY_FOR_EXPORT",
-          "ats_score": 88,
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Architects",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": false,
-                "detail": "Missing company",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=455, jd_confidence=low",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=282/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=88 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (0/0)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": false,
-                "detail": "Missing company",
-                "enforced": false
-              }
-            ],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 282,
-              "bullets_count": 3,
-              "experience_items": 1,
-              "skills_items": 5,
-              "estimated_density": "high"
-            },
-            "hard_gate_applied": false
-          },
-          "version_id": "957a3c03-90b4-4544-9ff3-d589f24c09da",
-          "version_no": 2
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.approve",
-      "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/approve-pack",
-      "auth": "ui",
-      "request_body": {
-        "profile_id": "primary-alt",
-        "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
-        "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
-          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
-        ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1726,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "profile_id": "primary-alt",
-          "draft_id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
-          "status": "READY_TO_APPLY",
-          "ats_score": 88,
-          "pdf_readiness": {
-            "gate_version": "pdf_readiness_v2",
-            "ready": true,
-            "failed_count": 0,
-            "checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": true,
-                "detail": "role: Architects",
-                "enforced": false
-              },
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": false,
-                "detail": "Missing company",
-                "enforced": false
-              },
-              {
-                "id": "jd_quality",
-                "label": "JD quality usable",
-                "ok": true,
-                "detail": "jd_len=455, jd_confidence=low",
-                "enforced": false
-              },
-              {
-                "id": "summary_length",
-                "label": "Tailored summary length",
-                "ok": true,
-                "detail": "summary_chars=282/80",
-                "enforced": false
-              },
-              {
-                "id": "bullets_count",
-                "label": "Tailored bullets count",
-                "ok": true,
-                "detail": "bullets=3/3",
-                "enforced": false
-              },
-              {
-                "id": "ats_score",
-                "label": "ATS score threshold",
-                "ok": true,
-                "detail": "ats_score=88 / 60",
-                "enforced": false
-              },
-              {
-                "id": "must_coverage",
-                "label": "Must-keyword coverage",
-                "ok": true,
-                "detail": "must_coverage=100% (0/0)",
-                "enforced": false
-              },
-              {
-                "id": "rr_import_ready",
-                "label": "RR import contract ready",
-                "ok": true,
-                "detail": "ready",
-                "enforced": true
-              }
-            ],
-            "failed_checks": [],
-            "warning_checks": [
-              {
-                "id": "company",
-                "label": "Company present",
-                "ok": false,
-                "detail": "Missing company",
-                "enforced": false
-              }
-            ],
-            "thresholds": {
-              "min_summary_chars": 80,
-              "min_bullets": 3,
-              "min_ats_score": 60,
-              "min_must_coverage_pct": 50
-            },
-            "one_page_mode": "soft",
-            "one_page_estimate": {
-              "summary_chars": 282,
-              "bullets_count": 3,
-              "experience_items": 1,
-              "skills_items": 5,
-              "estimated_density": "high"
-            },
-            "hard_gate_applied": false
-          },
-          "version_id": "e628a020-6220-4930-b883-f066ed281966",
-          "version_no": 3
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.pack.fetch.after",
-      "method": "GET",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/application-pack",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1340,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "id": "5f6c9eed-0c25-4503-94a3-367cf0b70735",
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "profile_id": "primary-alt",
-          "profile_lookup_source": "job_preference",
-          "requested_profile_id": null,
-          "preference_profile_id": "primary-alt",
-          "status": "READY_TO_APPLY",
-          "error_text": "",
-          "pack_json": {
-            "job": {
-              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac",
-              "source_domain": "whatsapp.vonage.local",
-              "status": "SCORED"
-            },
-            "target": {
-              "id": "TGT-NEW-01",
-              "name": "Growth PM Target",
-              "primaryRole": "Product Manager",
-              "seniorityPref": "Mid",
-              "locationPref": "Bangalore",
-              "rubricProfile": "auto",
-              "rubric_profile": "auto",
-              "must": [
-                "product strategy",
-                "roadmap"
-              ],
-              "nice": [
-                "sql"
-              ],
-              "reject": []
-            },
-            "extracted": {
-              "role_title": "Architects",
-              "company": "",
-              "location": "",
-              "seniority": "",
-              "final_score": 74,
-              "reason_top_matches": ""
-            },
-            "tailoring": {
-              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
-              "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability.",
-                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
-              ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Architects role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for Architects. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
-              "must_keywords": [],
-              "nice_keywords": [],
-              "evidence_matches": []
             },
             "controls": {
               "template_id": "balanced",
@@ -1486,17 +809,17 @@
               "one_page_mode": "soft",
               "one_pager_strict": false,
               "content_review_required": false,
-              "approved_at": 1772140916992
+              "approved_at": 1772115238403
             },
             "renderer": "reactive_resume"
           },
           "ats_json": {
-            "score": 88,
+            "score": 70,
             "missing_keywords": [],
             "coverage": {
-              "must_total": 0,
-              "must_hit": 0,
-              "nice_total": 0,
+              "must_total": 5,
+              "must_hit": 5,
+              "nice_total": 8,
               "nice_hit": 0
             },
             "notes": "Good keyword coverage",
@@ -1535,49 +858,50 @@
                 {
                   "id": "analytics",
                   "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
+                  "score": 100,
+                  "hit_count": 4,
                   "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
+                  "evidence": [
                     "a/b",
+                    "kpi",
+                    "sql",
+                    "analytics"
+                  ],
+                  "missing_evidence": [
                     "experiment",
                     "hypothesis",
-                    "funnel"
+                    "funnel",
+                    "retention"
                   ]
                 },
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 0,
+                  "hit_count": 0,
                   "target_hits": 3,
-                  "evidence": [
-                    "requirements",
-                    "execution"
-                  ],
+                  "evidence": [],
                   "missing_evidence": [
                     "prd",
+                    "requirements",
                     "backlog",
-                    "agile",
-                    "scrum"
+                    "agile"
                   ]
                 },
                 {
                   "id": "leadership",
                   "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 33,
+                  "hit_count": 1,
                   "target_hits": 3,
                   "evidence": [
-                    "stakeholder",
-                    "alignment"
+                    "stakeholder"
                   ],
                   "missing_evidence": [
                     "influence",
+                    "alignment",
                     "communication",
-                    "collaboration",
-                    "leadership"
+                    "collaboration"
                   ]
                 }
               ],
@@ -1590,8 +914,8 @@
                 "Discovery & Research: user research",
                 "Discovery & Research: discovery",
                 "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
+                "Analytics & Experimentation: experiment",
+                "Analytics & Experimentation: hypothesis"
               ],
               "notes": "Add stronger PM evidence in summary/bullets.",
               "template_id": "pm_v1",
@@ -1635,49 +959,50 @@
                 {
                   "id": "analytics",
                   "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
+                  "score": 100,
+                  "hit_count": 4,
                   "target_hits": 3,
-                  "evidence": [],
-                  "missing_evidence": [
+                  "evidence": [
                     "a/b",
+                    "kpi",
+                    "sql",
+                    "analytics"
+                  ],
+                  "missing_evidence": [
                     "experiment",
                     "hypothesis",
-                    "funnel"
+                    "funnel",
+                    "retention"
                   ]
                 },
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 0,
+                  "hit_count": 0,
                   "target_hits": 3,
-                  "evidence": [
-                    "requirements",
-                    "execution"
-                  ],
+                  "evidence": [],
                   "missing_evidence": [
                     "prd",
+                    "requirements",
                     "backlog",
-                    "agile",
-                    "scrum"
+                    "agile"
                   ]
                 },
                 {
                   "id": "leadership",
                   "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 33,
+                  "hit_count": 1,
                   "target_hits": 3,
                   "evidence": [
-                    "stakeholder",
-                    "alignment"
+                    "stakeholder"
                   ],
                   "missing_evidence": [
                     "influence",
+                    "alignment",
                     "communication",
-                    "collaboration",
-                    "leadership"
+                    "collaboration"
                   ]
                 }
               ],
@@ -1690,8 +1015,8 @@
                 "Discovery & Research: user research",
                 "Discovery & Research: discovery",
                 "Discovery & Research: problem statement",
-                "Analytics & Experimentation: a/b",
-                "Analytics & Experimentation: experiment"
+                "Analytics & Experimentation: experiment",
+                "Analytics & Experimentation: hypothesis"
               ],
               "notes": "Add stronger PM evidence in summary/bullets.",
               "template_id": "pm_v1",
@@ -1707,7 +1032,7 @@
               "contract_id": "jobops.rr_export.v1",
               "schema_version": 1,
               "version": 1,
-              "exported_at": 1772140912708,
+              "exported_at": 1772115234235,
               "template_id": "balanced",
               "renderer": "reactive_resume",
               "contract_valid": true,
@@ -1715,47 +1040,34 @@
             },
             "basics": {
               "name": "Smoke User Alt",
-              "email": "smoke.user.alt@example.com",
+              "email": "",
               "phone": "",
-              "location": "Remote",
-              "summary": "Architects: Results-driven Architects professional delivering measurable impact and aligning outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+              "location": "",
+              "summary": "Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams."
             },
             "sections": {
-              "experience": [
-                {
-                  "company": "Alt Smoke Co",
-                  "role": "Business Program Manager",
-                  "date_range": "2021 - Present",
-                  "bullets": [
-                    "Owned roadmap execution for program increments spanning product, ops, and engineering teams.",
-                    "Established SLA and weekly KPI review cadence to improve delivery consistency."
-                  ]
-                }
-              ],
-              "skills": [
-                "Business Program Management",
-                "Roadmap",
-                "Delivery",
-                "KPI",
-                "Stakeholder Management"
-              ],
+              "experience": [],
+              "skills": [],
               "highlights": [
                 {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Architects expectations at Company. using core capability."
+                  "text": "Delivered measurable impact using data analysis and data-driven decision making to drive quantified business outcomes."
                 },
                 {
-                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
+                  "text": "Delivered measurable impact by utilized SQL and Python to drive product analytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams."
                 },
                 {
-                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                  "text": "Delivered measurable impact by developed and executed structured plans to drive measurable KPI movement and improve business outcomes. using SQL."
+                },
+                {
+                  "text": "Delivered measurable impact by applied A/B testing to drive business growth and improvement, while maintaining speed and quality. using Python."
                 }
               ]
             },
             "job_context": {
-              "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-              "role_title": "Architects",
+              "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+              "role_title": "senior role product analytics 3",
               "company": "",
-              "job_url": "https://whatsapp.vonage.local/media/4ed61109-8a96-4f2a-9321-edd5f29235ac"
+              "job_url": "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893"
             }
           },
           "rr_export_contract": {
@@ -1781,7 +1093,7 @@
                 "id": "role_title",
                 "label": "Role title present",
                 "ok": true,
-                "detail": "role: Architects",
+                "detail": "role: senior role product analytics 3",
                 "enforced": false
               },
               {
@@ -1795,35 +1107,35 @@
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=455, jd_confidence=low",
+                "detail": "jd_len=1456, jd_confidence=high",
                 "enforced": false
               },
               {
                 "id": "summary_length",
                 "label": "Tailored summary length",
                 "ok": true,
-                "detail": "summary_chars=282/80",
+                "detail": "summary_chars=196/80",
                 "enforced": false
               },
               {
                 "id": "bullets_count",
                 "label": "Tailored bullets count",
                 "ok": true,
-                "detail": "bullets=3/3",
+                "detail": "bullets=4/3",
                 "enforced": false
               },
               {
                 "id": "ats_score",
                 "label": "ATS score threshold",
                 "ok": true,
-                "detail": "ats_score=88 / 60",
+                "detail": "ats_score=70 / 60",
                 "enforced": false
               },
               {
                 "id": "must_coverage",
                 "label": "Must-keyword coverage",
                 "ok": true,
-                "detail": "must_coverage=100% (0/0)",
+                "detail": "must_coverage=100% (5/5)",
                 "enforced": false
               },
               {
@@ -1852,10 +1164,780 @@
             },
             "one_page_mode": "soft",
             "one_page_estimate": {
-              "summary_chars": 282,
-              "bullets_count": 3,
-              "experience_items": 1,
-              "skills_items": 5,
+              "summary_chars": 196,
+              "bullets_count": 4,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "medium"
+            },
+            "hard_gate_applied": false
+          },
+          "one_page_mode": "soft",
+          "content_review_required": false,
+          "latest_version": {
+            "id": "6f37fbde-699c-4faa-a2a7-f789135789e2",
+            "version_no": 3,
+            "source_action": "approve",
+            "created_at": 1772115238578
+          },
+          "version_history_enabled": true,
+          "rr_base_url": "https://rxresu.me",
+          "updated_at": 1772115238578
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.review",
+      "method": "POST",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/application-pack/review",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt",
+        "summary": "Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "bullets": [
+          "Delivered measurable impact using data analysis and data-driven decision making to drive quantified business outcomes.",
+          "Delivered measurable impact by utilized SQL and Python to drive product analytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams.",
+          "Delivered measurable impact by developed and executed structured plans to drive measurable KPI movement and improve business outcomes. using SQL.",
+          "Delivered measurable impact by applied A/B testing to drive business growth and improvement, while maintaining speed and quality. using Python."
+        ],
+        "cover_letter": "Dear Hiring Team, I am confident in my ability to drive measurable impact and deliver quantified business outcomes as a senior role product analytics professional. My experience with data analysis, SQL, Python, and Power BI aligns directly with your needs, and I am excited to bring my skills and expertise to the Company. Regards, [Your Name] My experience aligns directly with your need for data analysis."
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1308,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+          "profile_id": "primary-alt",
+          "draft_id": "affb9adf-9ecd-414c-835f-1322be45fa0d",
+          "status": "READY_FOR_EXPORT",
+          "ats_score": 70,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: senior role product analytics 3",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=1456, jd_confidence=high",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=299/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=4/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=70 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (5/5)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              }
+            ],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 299,
+              "bullets_count": 4,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "high"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "aa8baefc-a32a-4e99-a07a-a7c685e476ac",
+          "version_no": 4
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.approve",
+      "method": "POST",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/approve-pack",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary-alt",
+        "summary": "Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "bullets": [
+          "Delivered measurable impact using data analysis and data-driven decision making to drive quantified business outcomes.",
+          "Delivered measurable impact by utilized SQL and Python to drive product analytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams.",
+          "Delivered measurable impact by developed and executed structured plans to drive measurable KPI movement and improve business outcomes. using SQL.",
+          "Delivered measurable impact by applied A/B testing to drive business growth and improvement, while maintaining speed and quality. using Python."
+        ],
+        "cover_letter": "Dear Hiring Team, I am confident in my ability to drive measurable impact and deliver quantified business outcomes as a senior role product analytics professional. My experience with data analysis, SQL, Python, and Power BI aligns directly with your needs, and I am excited to bring my skills and expertise to the Company. Regards, [Your Name] My experience aligns directly with your need for data analysis."
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1809,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+          "profile_id": "primary-alt",
+          "draft_id": "affb9adf-9ecd-414c-835f-1322be45fa0d",
+          "status": "READY_TO_APPLY",
+          "ats_score": 70,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: senior role product analytics 3",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=1456, jd_confidence=high",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=299/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=4/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=70 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (5/5)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              }
+            ],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 299,
+              "bullets_count": 4,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "high"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "ca630d3e-9469-4d6f-b614-9d2f53f70209",
+          "version_no": 5
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.pack.fetch.after",
+      "method": "GET",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/application-pack",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1283,
+      "ok": true,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "affb9adf-9ecd-414c-835f-1322be45fa0d",
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+          "profile_id": "primary-alt",
+          "profile_lookup_source": "job_preference",
+          "requested_profile_id": null,
+          "preference_profile_id": "primary-alt",
+          "status": "READY_TO_APPLY",
+          "error_text": "",
+          "pack_json": {
+            "job": {
+              "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+              "job_url": "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893",
+              "source_domain": "iimjobs",
+              "status": "SCORED"
+            },
+            "target": {
+              "id": "TGT-NEW-01",
+              "name": "Growth PM Target",
+              "primaryRole": "Product Manager",
+              "seniorityPref": "Mid",
+              "locationPref": "Bangalore",
+              "rubricProfile": "auto",
+              "rubric_profile": "auto",
+              "must": [
+                "product strategy",
+                "roadmap"
+              ],
+              "nice": [
+                "sql"
+              ],
+              "reject": []
+            },
+            "extracted": {
+              "role_title": "senior role product analytics 3",
+              "company": "",
+              "location": "",
+              "seniority": "Mid",
+              "final_score": 74,
+              "reason_top_matches": ""
+            },
+            "tailoring": {
+              "summary": "Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "bullets": [
+                "Delivered measurable impact using data analysis and data-driven decision making to drive quantified business outcomes.",
+                "Delivered measurable impact by utilized SQL and Python to drive product analytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams.",
+                "Delivered measurable impact by developed and executed structured plans to drive measurable KPI movement and improve business outcomes. using SQL.",
+                "Delivered measurable impact by applied A/B testing to drive business growth and improvement, while maintaining speed and quality. using Python."
+              ],
+              "cover_letter": "Dear Hiring Team, I am confident in my ability to drive measurable impact and deliver quantified business outcomes as a senior role product analytics professional. My experience with data analysis, SQL, Python, and Power BI aligns directly with your needs, and I am excited to bring my skills and expertise to the Company. Regards, [Your Name] My experience aligns directly with your need for data analysis.",
+              "must_keywords": [
+                "data analysis",
+                "product or growth teams",
+                "SQL",
+                "Python",
+                "Power BI"
+              ],
+              "nice_keywords": [
+                "A/B tests",
+                "data-driven recommendations",
+                "actionable insights",
+                "complex data",
+                "clear stories",
+                "dynamic environment",
+                "product metrics",
+                "user behavior analysis"
+              ],
+              "evidence_matches": [
+                {
+                  "requirement_text": "data analysis",
+                  "requirement_type": "must",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "product or growth teams",
+                  "requirement_type": "must",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "SQL",
+                  "requirement_type": "must",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Python",
+                  "requirement_type": "must",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Power BI",
+                  "requirement_type": "must",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "A/B tests",
+                  "requirement_type": "nice",
+                  "confidence_score": 88
+                },
+                {
+                  "requirement_text": "data-driven recommendations",
+                  "requirement_type": "nice",
+                  "confidence_score": 88
+                },
+                {
+                  "requirement_text": "actionable insights",
+                  "requirement_type": "nice",
+                  "confidence_score": 88
+                }
+              ]
+            },
+            "controls": {
+              "template_id": "balanced",
+              "enabled_blocks": [
+                "summary",
+                "experience",
+                "skills",
+                "highlights",
+                "bullets"
+              ],
+              "selected_keywords": [],
+              "ats_target_mode": "all",
+              "one_page_mode": "soft",
+              "one_pager_strict": false,
+              "content_review_required": false,
+              "approved_at": 1772141499057
+            },
+            "renderer": "reactive_resume"
+          },
+          "ats_json": {
+            "score": 70,
+            "missing_keywords": [],
+            "coverage": {
+              "must_total": 5,
+              "must_hit": 5,
+              "nice_total": 8,
+              "nice_hit": 0
+            },
+            "notes": "Good keyword coverage",
+            "target_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 100,
+                  "hit_count": 4,
+                  "target_hits": 3,
+                  "evidence": [
+                    "a/b",
+                    "kpi",
+                    "sql",
+                    "analytics"
+                  ],
+                  "missing_evidence": [
+                    "experiment",
+                    "hypothesis",
+                    "funnel",
+                    "retention"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "collaboration"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: experiment",
+                "Analytics & Experimentation: hypothesis"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            },
+            "pm_rubric": {
+              "applicable": true,
+              "score": 27,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 100,
+                  "hit_count": 4,
+                  "target_hits": 3,
+                  "evidence": [
+                    "a/b",
+                    "kpi",
+                    "sql",
+                    "analytics"
+                  ],
+                  "missing_evidence": [
+                    "experiment",
+                    "hypothesis",
+                    "funnel",
+                    "retention"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "collaboration"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: experiment",
+                "Analytics & Experimentation: hypothesis"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            }
+          },
+          "rr_export_json": {
+            "metadata": {
+              "source": "jobops",
+              "contract_id": "jobops.rr_export.v1",
+              "schema_version": 1,
+              "version": 1,
+              "exported_at": 1772115234235,
+              "template_id": "balanced",
+              "renderer": "reactive_resume",
+              "contract_valid": true,
+              "import_ready": true
+            },
+            "basics": {
+              "name": "Smoke User Alt",
+              "email": "",
+              "phone": "",
+              "location": "",
+              "summary": "Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+            },
+            "sections": {
+              "experience": [],
+              "skills": [],
+              "highlights": [
+                {
+                  "text": "Delivered measurable impact using data analysis and data-driven decision making to drive quantified business outcomes."
+                },
+                {
+                  "text": "Delivered measurable impact by utilized SQL and Python to drive product analytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams."
+                },
+                {
+                  "text": "Delivered measurable impact by developed and executed structured plans to drive measurable KPI movement and improve business outcomes. using SQL."
+                },
+                {
+                  "text": "Delivered measurable impact by applied A/B testing to drive business growth and improvement, while maintaining speed and quality. using Python."
+                }
+              ]
+            },
+            "job_context": {
+              "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+              "role_title": "senior role product analytics 3",
+              "company": "",
+              "job_url": "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893"
+            }
+          },
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": [],
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
+          "rr_last_push_error": "",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
+          "rr_pdf_last_export_error": "",
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: senior role product analytics 3",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=1456, jd_confidence=high",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=299/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=4/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=70 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (5/5)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              }
+            ],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 299,
+              "bullets_count": 4,
+              "experience_items": 0,
+              "skills_items": 0,
               "estimated_density": "high"
             },
             "hard_gate_applied": false
@@ -1863,14 +1945,14 @@
           "one_page_mode": "soft",
           "content_review_required": false,
           "latest_version": {
-            "id": "e628a020-6220-4930-b883-f066ed281966",
-            "version_no": 3,
+            "id": "ca630d3e-9469-4d6f-b614-9d2f53f70209",
+            "version_no": 5,
             "source_action": "approve",
-            "created_at": 1772140917167
+            "created_at": 1772141499229
           },
           "version_history_enabled": true,
           "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772140917167
+          "updated_at": 1772141499229
         }
       },
       "response_text": null
@@ -1878,121 +1960,26 @@
     {
       "name": "wizard.evidence.rebuild",
       "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence/rebuild",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/evidence/rebuild",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200,
         400
       ],
-      "http_status": 400,
-      "duration_ms": 506,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": false,
-        "error": "No extracted requirements available. Rescore first."
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.rescore.for.evidence",
-      "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/rescore",
-      "auth": "ui",
-      "request_body": {},
-      "expected_status": [
-        200
-      ],
       "http_status": 200,
-      "duration_ms": 3789,
+      "duration_ms": 969,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "final_score": 74,
-          "status": "SCORED",
-          "primary_target_id": "TGT-NEW-01",
-          "potential_contacts": []
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.evidence.rebuild.after_rescore",
-      "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence/rebuild",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200,
-        400
-      ],
-      "http_status": 400,
-      "duration_ms": 400,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": false,
-        "error": "No extracted requirements available. Rescore first."
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.manual_jd.seed",
-      "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/manual-jd",
-      "auth": "ui",
-      "request_body": {
-        "jd_text_clean": "\nBusiness Program Manager - Platform Operations\nCompany: Smoke Systems\nLocation: Remote\n\nWe are hiring a Business Program Manager to lead cross-functional delivery, KPI tracking, and stakeholder communication across product, operations, and engineering teams.\n\nMust have:\n- Program management experience owning delivery plans and roadmap milestones.\n- Cross-functional collaboration with product, engineering, design, and operations.\n- Strong SQL skills for reporting and analytics.\n- KPI tracking and executive-ready status communication.\n- Stakeholder management across multiple workstreams.\n\nNice to have:\n- Process optimization and workflow automation.\n- Experience with business strategy and operational planning.\n\nThe role requires clear written communication, execution ownership, and measurable outcomes.\n"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 4668,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "status": "SCORED",
-          "final_score": 73,
-          "primary_target_id": "TGT-NEW-01",
-          "potential_contacts": []
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.evidence.rebuild.after_manual_jd",
-      "method": "POST",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence/rebuild",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 2004,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "rows_written": 9,
-          "matched_count": 9,
-          "unmatched_count": 0,
-          "requirement_count": 9
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+          "rows_written": 13,
+          "matched_count": 11,
+          "unmatched_count": 2,
+          "requirement_count": 13
         }
       },
       "response_text": null
@@ -2000,14 +1987,14 @@
     {
       "name": "wizard.evidence.fetch",
       "method": "GET",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/evidence?limit=60",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/evidence?limit=60",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 655,
+      "duration_ms": 522,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -2015,128 +2002,180 @@
         "ok": true,
         "data": [
           {
-            "id": "34b29609-1bc7-45e9-9426-2312db41369d",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "Program management",
+            "id": "f27f4f03-17a4-4c9e-91c3-c7dca5d830e9",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "data analysis",
             "requirement_type": "must",
-            "evidence_text": "...outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program ma",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "9fd36945-89d2-43f9-b33c-a09f5c93bb07",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "KPI tracking",
+            "id": "e5953207-6948-4cf4-add2-7e5e01fbd946",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "SQL",
             "requirement_type": "must",
-            "evidence_text": "...easurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...livering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-func",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "ee49c31c-fbbc-4738-9bb6-a592ab5f04c5",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "Stakeholder management",
+            "id": "b31fd864-c9ed-43d4-b4b2-d45b73196f98",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "Python",
             "requirement_type": "must",
-            "evidence_text": "...th clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...ng measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "162595d2-5e42-4543-baed-8fe104e3e891",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "Cross-functional collaboration",
+            "id": "8c49b67c-58bd-4488-bb8d-af4534c162c9",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "Power BI",
             "requirement_type": "must",
-            "evidence_text": "...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an",
-            "evidence_source": "jd_text",
-            "confidence_score": 70,
+            "evidence_text": "...impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional delivery, SQL",
+            "evidence_source": "resume_summary",
+            "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "874ed372-db95-48c9-b232-6b5286b01931",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "SQL skills",
+            "id": "b40406ee-5c79-4744-a84e-f91a072bfbf4",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "product or growth teams",
             "requirement_type": "must",
-            "evidence_text": "...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m",
-            "evidence_source": "jd_text",
-            "confidence_score": 70,
+            "evidence_text": "...alytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams.",
+            "evidence_source": "resume_bullets",
+            "confidence_score": 88,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "20d8e131-bafb-4565-b884-4059eedc76f4",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "Process optimization",
+            "id": "17936c6e-6020-493d-8bd6-f4612d466602",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "A/B tests",
             "requirement_type": "nice",
-            "evidence_text": "...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role ",
+            "evidence_text": "...nduct root cause analysis for metric fluctuations and user behavior changes - Design, run, and interpret A/B tests to validate product changes. - Build real-time dashboards and periodic reports to track KPIs and busin",
             "evidence_source": "jd_text",
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "3759b4db-9b96-4393-b4e9-7df754a1a57f",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "Workflow automation",
+            "id": "30398827-ac8f-4302-8b43-9e9f312399e1",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "data-driven recommendations",
             "requirement_type": "nice",
-            "evidence_text": "...ion. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written co",
+            "evidence_text": "...s to track KPIs and business health. - Partner with product managers to influence roadmaps with data-driven recommendations. - Dive deep into datasets using SQL, Python, Excel, PowerBI, GA4, and Mixpanel to generate a",
             "evidence_source": "jd_text",
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "8343a10b-16b7-4927-8ad6-f9d38469137e",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "Business strategy",
+            "id": "8cb15282-9409-4f5a-83fe-8c0e05cdf25d",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "actionable insights",
             "requirement_type": "nice",
-            "evidence_text": "...ultiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and ",
+            "evidence_text": "...dations. - Dive deep into datasets using SQL, Python, Excel, PowerBI, GA4, and Mixpanel to generate actionable insights. Preferred candidate profile: - 3 - 5 years of experience in data analysis, preferably with produ",
             "evidence_source": "jd_text",
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           },
           {
-            "id": "4f530536-fa0f-4bd7-864b-4b7fe9e3c4d2",
-            "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-            "requirement_text": "Operational planning",
+            "id": "ec44f26b-98cd-4f6f-8b14-16d4d3689659",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "complex data",
             "requirement_type": "nice",
-            "evidence_text": "...ce to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and measurable outcomes.",
+            "evidence_text": "...mation) - Power BI (dashboard creation, data modeling, visualization best practices). - Ability to turn complex data into clear, concise stories for stakeholders. - A curious mindset with strong attention to detail an",
             "evidence_source": "jd_text",
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772140924752,
-            "updated_at": 1772140930458
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
+          },
+          {
+            "id": "1147bc25-7dd3-4f8d-aa58-0a12d3ed2016",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "product metrics",
+            "requirement_type": "nice",
+            "evidence_text": "...table in a dynamic, fast-paced environment where priorities evolve quickly. - Strong understanding of product metrics and user behavior analysis - Experience working with large datasets and data warehouses",
+            "evidence_source": "jd_text",
+            "confidence_score": 70,
+            "matched": true,
+            "notes": "",
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
+          },
+          {
+            "id": "b3f13293-fcf5-4c39-ac5c-8e2b7868569f",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "user behavior analysis",
+            "requirement_type": "nice",
+            "evidence_text": "...t-paced environment where priorities evolve quickly. - Strong understanding of product metrics and user behavior analysis - Experience working with large datasets and data warehouses",
+            "evidence_source": "jd_text",
+            "confidence_score": 70,
+            "matched": true,
+            "notes": "",
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
+          },
+          {
+            "id": "dd971ee1-ae1f-4016-85f0-d8dd8a53f78d",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "clear stories",
+            "requirement_type": "nice",
+            "evidence_text": "",
+            "evidence_source": "none",
+            "confidence_score": 0,
+            "matched": false,
+            "notes": "No deterministic match in summary/bullets/JD",
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
+          },
+          {
+            "id": "0ea2054d-23ac-4904-917e-275780b0ccf6",
+            "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+            "requirement_text": "dynamic environment",
+            "requirement_type": "nice",
+            "evidence_text": "",
+            "evidence_source": "none",
+            "confidence_score": 0,
+            "matched": false,
+            "notes": "No deterministic match in summary/bullets/JD",
+            "created_at": 1772085279189,
+            "updated_at": 1772141502252
           }
         ],
         "meta": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
-          "count": 9,
-          "matched_count": 9,
-          "unmatched_count": 0
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+          "count": 13,
+          "matched_count": 11,
+          "unmatched_count": 2
         }
       },
       "response_text": null
@@ -2144,31 +2183,31 @@
     {
       "name": "wizard.resume.html",
       "method": "GET",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/resume/html?profile_id=primary-alt&evidence_limit=12",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/resume/html?profile_id=primary-alt&evidence_limit=12",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 922,
+      "duration_ms": 835,
       "ok": true,
       "error": null,
       "response_content_type": "text/html; charset=utf-8",
       "response_json": null,
-      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Alternate profile for per-job preference verification.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Smoke Systems (Business Program Manager - Platform Operations)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div class=\"impact-head\"><strong>Program management</strong><span class=\"impact-score\">95%</span></div><div>...outcomes to expectations at Company. I deliver measurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>KPI tracking</strong><span class=\"impact-score\">95%</span></div><div>...easurable impact with clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Stakeholder management</strong><span class=\"impact-score\">95%</span></div><div>...th clear ownership, Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Cross-functional collaboration</strong><span class=\"impact-score\">70%</span></div><div>...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>SQL skills</strong><span class=\"impact-score\">70%</span></div><div>...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Process optimization</strong><span class=\"impact-score\">70%</span></div><div>...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Workflow automation</strong><span class=\"impact-score\">70%</span></div><div>...ion. - Stakeholder management across multiple wor..."
+      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Alternate profile for per-job preference verification.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Company (senior role product analytics 3)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div class=\"impact-head\"><strong>data analysis</strong><span class=\"impact-score\">95%</span></div><div>Data analysis expert delivering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program ma</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>SQL</strong><span class=\"impact-score\">95%</span></div><div>...livering measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-func</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Python</strong><span class=\"impact-score\">95%</span></div><div>...ng measurable impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Power BI</strong><span class=\"impact-score\">95%</span></div><div>...impact through data-driven decision making and quantified business outcomes, leveraging SQL, Python, and Power BI for product analytics and growth teams. Focus areas: program management, cross-functional delivery, SQL</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>product or growth teams</strong><span class=\"impact-score\">88%</span></div><div>...alytics and growth teams, resulting in improved speed, quality, and stakeholder confidence. using product or growth teams.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>A/B tests</strong><span class=\"impact-score\">70%</span></div><div>...nduct root cause analysis for metric fluctuations and user behavior changes - Design, run, and interpret A/B tests to validate product changes. - Build real-time dashboards and periodic reports to track KPIs and busin</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>data-driven recommendations</strong><span class=\"impact-score\">70%</span></div><div>...s to tr..."
     },
     {
       "name": "outreach.contacts.list",
       "method": "GET",
-      "path": "/jobs/81b1b81b89989d8258f411aedfbe0b627ec2d9f3/contacts",
+      "path": "/jobs/f8afb9622db40e553459b1ae1ee2e6d93623d1b0/contacts",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 805,
+      "duration_ms": 476,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -2176,7 +2215,7 @@
         "ok": true,
         "data": [],
         "meta": {
-          "job_key": "81b1b81b89989d8258f411aedfbe0b627ec2d9f3",
+          "job_key": "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
           "count": 0,
           "contacts_storage_enabled": true,
           "contacts_storage_error": null
@@ -2255,11 +2294,11 @@
   ],
   "result": "PASS",
   "summary": {
-    "total_steps": 28,
-    "passed_steps": 28,
+    "total_steps": 24,
+    "passed_steps": 24,
     "failed_steps": 0,
     "success": true
   },
   "error": null,
-  "ended_at": "2026-02-26T21:22:12.984Z"
+  "ended_at": "2026-02-26T21:31:44.076Z"
 }
