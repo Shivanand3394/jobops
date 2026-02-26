@@ -9,6 +9,7 @@ import {
   persistResumeDraft_,
 } from "./resume_pack.js";
 import { diagnoseRssFeedsAndIngest_, pollRssFeedsAndIngest_ } from "./rss.js";
+import { processIngest as processDomainIngest_ } from "./domains/ingest/index.js";
 
 // JobOps V2 â€” consolidated Worker (Option D + UI Plus)
 // Features:
@@ -131,7 +132,8 @@ export default {
         path === "/jobs/evidence/rebuild-archived" ||
         path === "/jobs/recover/missing-fields" ||
         path === "/jobs/recover/rescore-existing-jd" ||
-        (path.startsWith("/jobs/") && path.endsWith("/rescore"));
+        (path.startsWith("/jobs/") && path.endsWith("/rescore")) ||
+        (path.startsWith("/jobs/") && path.endsWith("/auto-pilot"));
 
       const ai = needsAI ? getAi_(env) : null;
       if (needsAI && !ai) {
@@ -585,7 +587,7 @@ export default {
 
         const body = await request.json().catch(() => ({}));
         const status = String(body.status || "").trim().toUpperCase();
-        const allowed = new Set(["NEW","LINK_ONLY","SCORED","SHORTLISTED","APPLIED","REJECTED","ARCHIVED"]);
+        const allowed = new Set(["NEW","LINK_ONLY","SCORED","SHORTLISTED","READY_TO_APPLY","APPLIED","REJECTED","ARCHIVED"]);
         if (!allowed.has(status)) {
           return json_({ ok: false, error: "Invalid status", allowed: Array.from(allowed) }, env, 400);
         }
@@ -1141,6 +1143,298 @@ export default {
         await logEvent_(env, "RESCORED_ONE", jobKey, { final_score: finalScore, status: transition.status, ts: now });
 
         return json_({ ok: true, data: { job_key: jobKey, final_score: finalScore, status: transition.status, primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID } }, env, 200);
+      }
+
+      // ============================
+      // UI: Auto-pilot (score + generate)
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/auto-pilot") && request.method === "POST") {
+        const parts = path.split("/");
+        const jobKey = decodeURIComponent(parts[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const body = await request.json().catch(() => ({}));
+        const aiAuto = ai || getAi_(env);
+        if (!aiAuto) {
+          return json_({ ok: false, error: "Missing Workers AI binding (env.AI or AI_BINDING)" }, env, 500);
+        }
+
+        const job = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
+        if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const targets = await loadTargets_(env);
+        if (!targets.length) return json_({ ok: false, error: "No targets configured" }, env, 400);
+
+        const jdClean = String(job.jd_text_clean || "").trim();
+        let roleTitle = String(job.role_title || "").trim();
+        let location = String(job.location || "").trim();
+        let seniority = String(job.seniority || "").trim();
+        let company = String(job.company || "").trim();
+        let extracted = null;
+        if (!jdClean && !roleTitle) {
+          return json_({ ok: false, error: "Job missing jd_text_clean and role_title" }, env, 400);
+        }
+
+        if (jdClean.length >= 200) {
+          extracted = await extractJdWithModel_(aiAuto, jdClean)
+            .then((x) => sanitizeExtracted_(x, jdClean, {
+              job_url: job?.job_url,
+              source_domain: job?.source_domain,
+              email_subject: "",
+            }))
+            .catch(() => null);
+          if (extracted) {
+            roleTitle = String(extracted.role_title || roleTitle || "").trim();
+            location = String(extracted.location || location || "").trim();
+            seniority = String(extracted.seniority || seniority || "").trim();
+            company = String(extracted.company || company || "").trim();
+          }
+        }
+
+        const cfg = await loadSysCfg_(env);
+        const scoring = await scoreJobWithModel_(aiAuto, {
+          role_title: roleTitle,
+          location,
+          seniority,
+          jd_clean: jdClean,
+        }, targets, cfg);
+
+        const rejectFromTargets = computeTargetReject_(jdClean, scoring.primary_target_id, targets);
+        const mergedRejectTriggered = Boolean(scoring.reject_triggered || rejectFromTargets.triggered || hasRejectMarker_(jdClean));
+        const rejectReasons = [];
+        if (hasRejectMarker_(jdClean)) rejectReasons.push("Contains 'Reject:' marker in JD");
+        if (scoring.reject_triggered) rejectReasons.push("AI flagged reject_triggered=true");
+        if (rejectFromTargets.triggered) rejectReasons.push(`Target reject keywords: ${rejectFromTargets.matches.join(", ")}`);
+
+        const finalScore = mergedRejectTriggered ? 0 : clampInt_(scoring.final_score, 0, 100);
+        const transition = applyStatusTransition_(job, "scored", {
+          final_score: finalScore,
+          reject_triggered: mergedRejectTriggered,
+          cfg,
+        });
+
+        const scoredAt = Date.now();
+        await env.DB.prepare(`
+          UPDATE jobs SET
+            company = COALESCE(?, company),
+            role_title = COALESCE(?, role_title),
+            location = COALESCE(?, location),
+            work_mode = COALESCE(?, work_mode),
+            seniority = COALESCE(?, seniority),
+            experience_years_min = COALESCE(?, experience_years_min),
+            experience_years_max = COALESCE(?, experience_years_max),
+            skills_json = CASE WHEN ? != '[]' THEN ? ELSE skills_json END,
+            must_have_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE must_have_keywords_json END,
+            nice_to_have_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE nice_to_have_keywords_json END,
+            reject_keywords_json = CASE WHEN ? != '[]' THEN ? ELSE reject_keywords_json END,
+            primary_target_id = ?,
+            score_must = ?,
+            score_nice = ?,
+            final_score = ?,
+            reject_triggered = ?,
+            reject_reasons_json = ?,
+            reject_evidence = ?,
+            reason_top_matches = ?,
+            next_status = ?,
+            system_status = ?,
+            status = ?,
+            updated_at = ?,
+            last_scored_at = ?
+          WHERE job_key = ?;
+        `.trim()).bind(
+          extracted?.company ?? null,
+          extracted?.role_title ?? null,
+          extracted?.location ?? null,
+          extracted?.work_mode ?? null,
+          extracted?.seniority ?? null,
+          numOrNull_(extracted?.experience_years_min),
+          numOrNull_(extracted?.experience_years_max),
+          JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+          JSON.stringify(Array.isArray(extracted?.skills) ? extracted.skills : []),
+          JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
+          JSON.stringify(Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : []),
+          scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+          clampInt_(scoring.score_must, 0, 100),
+          clampInt_(scoring.score_nice, 0, 100),
+          finalScore,
+          mergedRejectTriggered ? 1 : 0,
+          JSON.stringify(rejectReasons),
+          mergedRejectTriggered ? extractRejectEvidence_(jdClean) : "",
+          String(scoring.reason_top_matches || "").slice(0, 1000),
+          transition.next_status,
+          transition.system_status,
+          transition.status,
+          scoredAt,
+          scoredAt,
+          jobKey
+        ).run();
+
+        try {
+          const resumeTailoring = await loadLatestResumeTailoringForEvidence_(env, jobKey);
+          const evidenceRows = buildEvidenceRows_({
+            jobKey,
+            extractedJd: {
+              must_have_keywords: Array.isArray(extracted?.must_have_keywords)
+                ? extracted.must_have_keywords
+                : safeJsonParseArray_(job.must_have_keywords_json),
+              nice_to_have_keywords: Array.isArray(extracted?.nice_to_have_keywords)
+                ? extracted.nice_to_have_keywords
+                : safeJsonParseArray_(job.nice_to_have_keywords_json),
+              reject_keywords: Array.isArray(extracted?.reject_keywords)
+                ? extracted.reject_keywords
+                : safeJsonParseArray_(job.reject_keywords_json),
+              constraints: [],
+              jd_text: jdClean,
+            },
+            resumeJson: resumeTailoring,
+            now: scoredAt,
+          });
+          await upsertJobEvidence_(env, jobKey, evidenceRows);
+        } catch (e) {
+          await logEvent_(env, "EVIDENCE_UPSERT_FAILED", jobKey, {
+            route: "auto-pilot",
+            error: String(e?.message || e || "unknown").slice(0, 300),
+            ts: Date.now(),
+          });
+        }
+
+        const scoredJob = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
+        if (!scoredJob) return json_({ ok: false, error: "Not found after score update" }, env, 404);
+
+        const force = Boolean(body.force);
+        const renderer = String(body.renderer || "reactive_resume").trim().toLowerCase();
+        const rendererSafe = (renderer === "html_simple" || renderer === "reactive_resume") ? renderer : "reactive_resume";
+        const legacyOnePagerProvided = (body.one_pager_strict !== undefined || body.onePagerStrict !== undefined);
+        const controls = {
+          template_id: String(body.template_id || body.templateId || "").trim().slice(0, 80),
+          enabled_blocks: Array.isArray(body.enabled_blocks)
+            ? body.enabled_blocks
+            : (Array.isArray(body.enabledBlocks) ? body.enabledBlocks : []),
+          selected_keywords: Array.isArray(body.selected_keywords)
+            ? body.selected_keywords
+            : (Array.isArray(body.selectedKeywords) ? body.selectedKeywords : []),
+          ats_target_mode: String(body.ats_target_mode || body.atsTargetMode || "").trim().toLowerCase(),
+          one_page_mode: normalizeOnePageMode_(body.one_page_mode ?? body.onePageMode),
+          one_pager_strict: toBool_(body.one_pager_strict ?? body.onePagerStrict, true),
+          content_review_required: true,
+        };
+        const resolvedOnePageMode = controls.one_page_mode || resolveDefaultOnePageMode_(scoredJob);
+        controls.one_page_mode = resolvedOnePageMode;
+        controls.one_pager_strict = legacyOnePagerProvided
+          ? toBool_(body.one_pager_strict ?? body.onePagerStrict, true)
+          : (resolvedOnePageMode === "hard");
+
+        let profile = null;
+        const profileIdIn = String(body.profile_id || "").trim();
+        if (profileIdIn) {
+          profile = await env.DB.prepare(`SELECT * FROM resume_profiles WHERE id = ? LIMIT 1;`).bind(profileIdIn).first();
+        }
+        if (!profile) profile = await ensurePrimaryProfile_(env);
+
+        const target = targets.find((t) => t.id === String(scoredJob.primary_target_id || "")) || null;
+        const evidenceFirst = body.evidence_first === undefined ? true : toBool_(body.evidence_first, true);
+        const evidenceLimit = clampInt_(body.evidence_limit || 12, 1, 30);
+
+        let packData = null;
+        try {
+          const matchedEvidence = evidenceFirst
+            ? await loadMatchedEvidenceForPack_(env, scoredJob.job_key, evidenceLimit)
+            : [];
+          packData = await generateApplicationPack_({
+            env,
+            ai: aiAuto,
+            job: scoredJob,
+            target,
+            profile,
+            renderer: rendererSafe,
+            controls,
+            matchedEvidence,
+          });
+        } catch (e) {
+          packData = {
+            status: "ERROR",
+            error_text: String(e?.message || e).slice(0, 1000),
+            pack_json: {
+              job: { job_key: scoredJob.job_key, job_url: scoredJob.job_url, source_domain: scoredJob.source_domain, status: scoredJob.status },
+              target: target || null,
+              extracted: { role_title: scoredJob.role_title, company: scoredJob.company, location: scoredJob.location, seniority: scoredJob.seniority, final_score: scoredJob.final_score },
+              tailoring: {
+                summary: "",
+                bullets: [],
+                cover_letter: "",
+                must_keywords: safeJsonParseArray_(scoredJob.must_have_keywords_json),
+                nice_keywords: safeJsonParseArray_(scoredJob.nice_to_have_keywords_json),
+              },
+              renderer: rendererSafe,
+            },
+            ats_json: {
+              score: 0,
+              missing_keywords: safeJsonParseArray_(scoredJob.must_have_keywords_json).slice(0, 20),
+              coverage: {},
+              notes: "Pack generation failed. Retry later.",
+            },
+            rr_export_json: {},
+            ats_score: 0,
+          };
+        }
+
+        const saved = await persistResumeDraft_({
+          env,
+          jobKey: scoredJob.job_key,
+          profileId: profile.id,
+          pack: packData,
+          force,
+        });
+        const versionMeta = await createResumeDraftVersionFromLatest_(env, {
+          draftId: saved.draft_id,
+          jobKey: scoredJob.job_key,
+          profileId: profile.id,
+          sourceAction: force ? "regenerate" : "generate",
+          controls,
+        });
+
+        const finishedAt = Date.now();
+        await logEvent_(env, "AUTOPILOT_COMPLETED", jobKey, {
+          final_score: finalScore,
+          job_status: transition.status,
+          pack_status: packData.status,
+          profile_id: profile.id,
+          draft_id: saved.draft_id,
+          version_id: versionMeta?.id || null,
+          version_no: versionMeta?.version_no || null,
+          ts: finishedAt,
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: scoredJob.job_key,
+            score: {
+              final_score: finalScore,
+              status: transition.status,
+              primary_target_id: scoring.primary_target_id || cfg.DEFAULT_TARGET_ID,
+            },
+            pack: {
+              draft_id: saved.draft_id,
+              profile_id: profile.id,
+              status: packData.status,
+              ats_score: packData.ats_score,
+              one_page_mode: controls.one_page_mode,
+              one_pager_strict: Boolean(controls.one_pager_strict),
+            },
+            output: {
+              summary: String(packData?.pack_json?.tailoring?.summary || ""),
+              bullets: Array.isArray(packData?.pack_json?.tailoring?.bullets) ? packData.pack_json.tailoring.bullets : [],
+              cover_letter: String(packData?.pack_json?.tailoring?.cover_letter || ""),
+            },
+            next_action: "review_and_copy",
+            updated_at: finishedAt,
+          }
+        }, env, 200);
       }
 
       // ============================
@@ -1884,7 +2178,7 @@ export default {
           rrExportJson: rrExport,
         });
 
-        const approvedStatus = "READY_FOR_SUBMISSION";
+        const approvedStatus = "READY_TO_APPLY";
         const now = Date.now();
         await env.DB.prepare(`
           UPDATE resume_drafts
@@ -1901,9 +2195,10 @@ export default {
 
         await env.DB.prepare(`
           UPDATE jobs
-          SET system_status = ?, updated_at = ?
+          SET status = ?, system_status = ?, updated_at = ?
           WHERE job_key = ?;
         `.trim()).bind(
+          approvedStatus,
           approvedStatus,
           now,
           row.job_key
@@ -1931,6 +2226,14 @@ export default {
           ats_score: numOrNull_(atsJson?.score),
           pdf_ready: Boolean(pdfReadiness?.ready),
           hard_gate_applied: Boolean(pdfReadiness?.hard_gate_applied),
+          ts: now,
+        });
+        await logEvent_(env, "PACK_APPROVED", jobKey, {
+          profile_id: row.profile_id,
+          draft_id: row.id,
+          version_id: versionMeta?.id || null,
+          version_no: versionMeta?.version_no || null,
+          ats_score: numOrNull_(atsJson?.score),
           ts: now,
         });
 
@@ -2633,11 +2936,12 @@ export default {
       // ============================
       if (path === "/ingest" && request.method === "POST") {
         const body = await request.json().catch(() => ({}));
-        const rawUrls = Array.isArray(body.raw_urls) ? body.raw_urls : [];
-        const emailText = typeof body.email_text === "string" ? body.email_text : "";
-        const emailHtml = typeof body.email_html === "string" ? body.email_html : "";
-        const emailSubject = typeof body.email_subject === "string" ? body.email_subject : "";
-        const emailFrom = typeof body.email_from === "string" ? body.email_from : "";
+        const processed = processDomainIngest_(body, "MANUAL");
+        const rawUrls = Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [];
+        const emailText = typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "";
+        const emailHtml = typeof processed?.ingest_input?.email_html === "string" ? processed.ingest_input.email_html : "";
+        const emailSubject = typeof processed?.ingest_input?.email_subject === "string" ? processed.ingest_input.email_subject : "";
+        const emailFrom = typeof processed?.ingest_input?.email_from === "string" ? processed.ingest_input.email_from : "";
 
         if (!rawUrls.length) return json_({ ok: false, error: "Missing raw_urls[]" }, env, 400);
         const data = await ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject, emailFrom, ingestChannel: "ui" });
@@ -5280,7 +5584,7 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
         fetch_status = COALESCE(excluded.fetch_status, jobs.fetch_status),
         fetch_debug_json = COALESCE(excluded.fetch_debug_json, jobs.fetch_debug_json),
         status = CASE
-          WHEN jobs.status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN jobs.status
+          WHEN jobs.status IN ('READY_TO_APPLY', 'APPLIED', 'REJECTED', 'ARCHIVED') THEN jobs.status
           WHEN excluded.status = 'LINK_ONLY' AND jobs.status IN ('NEW', 'LINK_ONLY') THEN 'LINK_ONLY'
           ELSE jobs.status
         END,
@@ -5334,15 +5638,15 @@ async function ingestRawUrls_(env, { rawUrls, emailText, emailHtml, emailSubject
           reject_evidence = ?,
           reason_top_matches = ?,
           status = CASE
-            WHEN status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN status
+            WHEN status IN ('READY_TO_APPLY', 'APPLIED', 'REJECTED', 'ARCHIVED') THEN status
             ELSE ?
           END,
           system_status = CASE
-            WHEN status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN system_status
+            WHEN status IN ('READY_TO_APPLY', 'APPLIED', 'REJECTED', 'ARCHIVED') THEN system_status
             ELSE ?
           END,
           next_status = CASE
-            WHEN status IN ('APPLIED', 'REJECTED', 'ARCHIVED') THEN next_status
+            WHEN status IN ('READY_TO_APPLY', 'APPLIED', 'REJECTED', 'ARCHIVED') THEN next_status
             ELSE ?
           END,
           last_scored_at = ?,
@@ -6178,12 +6482,19 @@ async function runGmailPoll_(env, opts = {}) {
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     classifyMessageFn: async (msg) => classifyPromotionalGmailMessage_(env, aiForMailFilter, msg, { enabled: promoFilterEnabled }),
     ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
+      const processed = processDomainIngest_({
+        raw_urls,
+        email_text,
+        email_html,
+        email_subject,
+        email_from,
+      }, "GMAIL");
       return ingestRawUrls_(env, {
-        rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
-        emailText: typeof email_text === "string" ? email_text : "",
-        emailHtml: typeof email_html === "string" ? email_html : "",
-        emailSubject: typeof email_subject === "string" ? email_subject : "",
-        emailFrom: typeof email_from === "string" ? email_from : "",
+        rawUrls: Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [],
+        emailText: typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "",
+        emailHtml: typeof processed?.ingest_input?.email_html === "string" ? processed.ingest_input.email_html : "",
+        emailSubject: typeof processed?.ingest_input?.email_subject === "string" ? processed.ingest_input.email_subject : "",
+        emailFrom: typeof processed?.ingest_input?.email_from === "string" ? processed.ingest_input.email_from : "",
         ingestChannel: "gmail",
       });
     },
@@ -6222,12 +6533,19 @@ async function runRssPoll_(env, opts = {}) {
     blockKeywords: opts.blockKeywords,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
+      const processed = processDomainIngest_({
+        raw_urls,
+        email_text,
+        email_html,
+        email_subject,
+        email_from,
+      }, "RSS");
       return ingestRawUrls_(env, {
-        rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
-        emailText: typeof email_text === "string" ? email_text : "",
-        emailHtml: typeof email_html === "string" ? email_html : "",
-        emailSubject: typeof email_subject === "string" ? email_subject : "",
-        emailFrom: typeof email_from === "string" ? email_from : "",
+        rawUrls: Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [],
+        emailText: typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "",
+        emailHtml: typeof processed?.ingest_input?.email_html === "string" ? processed.ingest_input.email_html : "",
+        emailSubject: typeof processed?.ingest_input?.email_subject === "string" ? processed.ingest_input.email_subject : "",
+        emailFrom: typeof processed?.ingest_input?.email_from === "string" ? processed.ingest_input.email_from : "",
         ingestChannel: "rss",
       });
     },
@@ -6257,12 +6575,19 @@ async function runRssDiagnostics_(env, opts = {}) {
     blockKeywords: opts.blockKeywords,
     normalizeFn: async (raw_url) => normalizeJobUrl_(String(raw_url || "")),
     ingestFn: async ({ raw_urls, email_text, email_html, email_subject, email_from }) => {
+      const processed = processDomainIngest_({
+        raw_urls,
+        email_text,
+        email_html,
+        email_subject,
+        email_from,
+      }, "RSS");
       return ingestRawUrls_(env, {
-        rawUrls: Array.isArray(raw_urls) ? raw_urls : [],
-        emailText: typeof email_text === "string" ? email_text : "",
-        emailHtml: typeof email_html === "string" ? email_html : "",
-        emailSubject: typeof email_subject === "string" ? email_subject : "",
-        emailFrom: typeof email_from === "string" ? email_from : "",
+        rawUrls: Array.isArray(processed?.ingest_input?.raw_urls) ? processed.ingest_input.raw_urls : [],
+        emailText: typeof processed?.ingest_input?.email_text === "string" ? processed.ingest_input.email_text : "",
+        emailHtml: typeof processed?.ingest_input?.email_html === "string" ? processed.ingest_input.email_html : "",
+        emailSubject: typeof processed?.ingest_input?.email_subject === "string" ? processed.ingest_input.email_subject : "",
+        emailFrom: typeof processed?.ingest_input?.email_from === "string" ? processed.ingest_input.email_from : "",
         ingestChannel: "rss",
       });
     },
