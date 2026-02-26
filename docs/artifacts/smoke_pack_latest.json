@@ -1,0 +1,1556 @@
+{
+  "run_id": "237427e4-b549-45f3-bffa-f8568c32c2ae",
+  "started_at": "2026-02-26T10:34:03.468Z",
+  "base_url": "https://get-job.shivanand-shah94.workers.dev",
+  "script": "scripts/smoke_pack.mjs",
+  "config": {
+    "timeout_ms": 45000,
+    "profile_id": "primary",
+    "job_key_input": null,
+    "output_file": "docs/artifacts/smoke_pack_latest.json",
+    "job_key_resolved": "86127ba33fae7546017ffb69782ed3922b2298be"
+  },
+  "steps": [
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health",
+      "auth": "none",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 133,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "ts": 1772102042515,
+        "worker_version": "dev"
+      },
+      "response_text": null
+    },
+    {
+      "name": "jobs.list.limit1",
+      "method": "GET",
+      "path": "/jobs?limit=1&offset=0",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 496,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": [
+          {
+            "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+            "company": "",
+            "role_title": "Marketing Leader",
+            "location": "",
+            "seniority": "Senior",
+            "final_score": 74,
+            "status": "SCORED",
+            "job_url": "https://www.iimjobs.com/j/senior-marketing-manager-brand-growth-partnerships-iit-iim-5-10-yrs-1674704",
+            "source_domain": "iimjobs",
+            "system_status": null,
+            "fetch_debug_json": "{\"jd_confidence\":\"high\",\"jd_length\":2902,\"http_status\":200,\"ai_available\":true,\"ingest_channel\":\"recover\",\"fallback_reason\":\"none\",\"fallback_policy\":\"standard_iimjobs\",\"source_policy_domain\":\"iimjobs\"}",
+            "updated_at": 1772101918943,
+            "created_at": 1772000146085,
+            "fetch_debug": {
+              "jd_confidence": "high",
+              "jd_length": 2902,
+              "http_status": 200,
+              "ai_available": true,
+              "ingest_channel": "recover",
+              "fallback_reason": "none",
+              "fallback_policy": "standard_iimjobs",
+              "source_policy_domain": "iimjobs"
+            },
+            "ingest_channel": "recover",
+            "jd_confidence": "high",
+            "display_title": "Marketing Leader",
+            "display_company": ""
+          }
+        ]
+      },
+      "response_text": null
+    },
+    {
+      "name": "gmail.poll",
+      "method": "POST",
+      "path": "/gmail/poll",
+      "auth": "api",
+      "request_body": {},
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 5341,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "run_id": "ca274c9d-c165-4953-a571-edf5dc7c78fc",
+          "ts": 1772102043042,
+          "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
+          "max_results": 25,
+          "max_jobs_per_email": 3,
+          "max_jobs_per_poll": 10,
+          "messages_listed": 25,
+          "scanned": 25,
+          "processed": 0,
+          "skipped_already_ingested": 25,
+          "skipped_existing": 25,
+          "blocked_or_failed_fetch": 0,
+          "urls_found_total": 0,
+          "urls_unique_total": 0,
+          "urls_job_domains_total": 0,
+          "jobs_kept_total": 0,
+          "jobs_dropped_due_to_caps_total": 0,
+          "skipped_promotional": 0,
+          "skipped_promotional_heuristic": 0,
+          "skipped_promotional_ai": 0,
+          "ignored_domains_count": 0,
+          "ingested_count": 0,
+          "ingest_inserted_count": 0,
+          "ingest_updated_count": 0,
+          "ingest_link_only_count": 0,
+          "ingest_ignored_count": 0,
+          "results_sample": [],
+          "inserted_or_updated": 0,
+          "inserted_count": 0,
+          "updated_count": 0,
+          "ignored": 0,
+          "ignored_count": 0,
+          "link_only": 0,
+          "link_only_count": 0
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "rss.diagnostics",
+      "method": "POST",
+      "path": "/rss/diagnostics",
+      "auth": "api",
+      "request_body": {
+        "max_per_run": 10,
+        "sample_limit": 5
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 195,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "run_id": "9093b7d1-6554-44bf-8fb4-5e12e53c30e6",
+          "ts": 1772102048381,
+          "skipped": true,
+          "reason": "no_feeds_configured",
+          "feeds_total": 0,
+          "feeds_processed": 0,
+          "feeds_failed": 0,
+          "max_per_run": 10,
+          "items_listed": 0,
+          "processed": 0,
+          "skipped_empty": 0,
+          "blocked_or_failed_fetch": 0,
+          "allow_keywords_count": 0,
+          "block_keywords_count": 0,
+          "items_filtered_allow": 0,
+          "items_filtered_block": 0,
+          "urls_found_total": 0,
+          "urls_unique_total": 0,
+          "urls_job_domains_total": 0,
+          "ignored_domains_count": 0,
+          "ingested_count": 0,
+          "inserted_or_updated": 0,
+          "inserted_count": 0,
+          "updated_count": 0,
+          "ignored": 0,
+          "link_only": 0,
+          "reason_buckets": {
+            "unsupported_domain": 0,
+            "normalize_ignored": 0,
+            "unresolved_wrapper": 0,
+            "duplicate_candidate": 0,
+            "no_url_in_item": 0,
+            "ingested": 0
+          },
+          "unsupported_domain_by_host": {},
+          "rejected_url_samples": [],
+          "feed_summaries": [],
+          "source_summary": [],
+          "results_sample": [],
+          "mode": "diagnostics"
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.profile.upsert",
+      "method": "POST",
+      "path": "/resume/profiles",
+      "auth": "ui",
+      "request_body": {
+        "id": "primary",
+        "name": "Smoke Profile",
+        "profile_json": {
+          "basics": {
+            "name": "Smoke User"
+          },
+          "summary": "Execution-focused operator with product and delivery ownership experience.",
+          "experience": [],
+          "skills": []
+        }
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 225,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "primary",
+          "name": "Smoke Profile",
+          "updated_at": 1772102048576
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.generate",
+      "method": "POST",
+      "path": "/jobs/86127ba33fae7546017ffb69782ed3922b2298be/generate-application-pack",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary",
+        "force": false,
+        "renderer": "reactive_resume",
+        "evidence_first": true,
+        "evidence_limit": 8
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 4681,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+          "draft_id": "e2553b4a-58b8-4dfd-a644-0c1001bb230f",
+          "profile_id": "primary",
+          "status": "CONTENT_REVIEW_REQUIRED",
+          "ats_score": 25,
+          "template_id": "",
+          "enabled_blocks_count": 0,
+          "selected_keywords_count": 0,
+          "one_page_mode": "soft",
+          "one_pager_strict": false,
+          "content_review_required": true,
+          "evidence_first": true,
+          "evidence_match_count": 0,
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": []
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.pack.fetch.before",
+      "method": "GET",
+      "path": "/jobs/86127ba33fae7546017ffb69782ed3922b2298be/application-pack?profile_id=primary",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 866,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "e2553b4a-58b8-4dfd-a644-0c1001bb230f",
+          "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+          "profile_id": "primary",
+          "status": "CONTENT_REVIEW_REQUIRED",
+          "error_text": "",
+          "pack_json": {
+            "job": {
+              "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+              "job_url": "https://www.iimjobs.com/j/senior-marketing-manager-brand-growth-partnerships-iit-iim-5-10-yrs-1674704",
+              "source_domain": "iimjobs",
+              "status": "SCORED"
+            },
+            "target": {
+              "id": "TGT-NEW-01",
+              "name": "Growth PM Target",
+              "primaryRole": "Product Manager",
+              "seniorityPref": "Mid",
+              "locationPref": "Bangalore",
+              "rubricProfile": "auto",
+              "rubric_profile": "auto",
+              "must": [
+                "product strategy",
+                "roadmap"
+              ],
+              "nice": [
+                "sql"
+              ],
+              "reject": []
+            },
+            "extracted": {
+              "role_title": "Marketing Leader",
+              "company": "",
+              "location": "",
+              "seniority": "Senior",
+              "final_score": 74,
+              "reason_top_matches": ""
+            },
+            "tailoring": {
+              "summary": "Brand marketing leader with execution-focused experience in product and delivery ownership, driving growth through strategic marketing and digital marketing. I deliver measurable i",
+              "bullets": [
+                "Delivered measurable impact using brand marketing, aligning outcomes to Marketing Leader expectations at Company.",
+                "Delivered measurable impact by achieved growth through structured planning, execution, and measurable KPI movement.",
+                "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes. using strategic marketing."
+              ],
+              "cover_letter": "Dear Hiring Team, I am applying for the Marketing Leader role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for brand marketing. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "must_keywords": [
+                "brand marketing",
+                "growth",
+                "strategic marketing",
+                "digital marketing",
+                "SEM/SEO",
+                "performance metrics",
+                "partnership-led marketing",
+                "analytical mindset",
+                "data-driven decision-making",
+                "communication",
+                "leadership"
+              ],
+              "nice_keywords": [
+                "MBA",
+                "IIT/IIM",
+                "equivalent"
+              ],
+              "evidence_matches": []
+            },
+            "controls": {
+              "template_id": "balanced",
+              "enabled_blocks": [
+                "summary",
+                "experience",
+                "skills",
+                "highlights",
+                "bullets"
+              ],
+              "selected_keywords": [],
+              "ats_target_mode": "all",
+              "one_page_mode": "soft",
+              "one_pager_strict": false,
+              "content_review_required": true
+            },
+            "renderer": "reactive_resume"
+          },
+          "ats_json": {
+            "score": 25,
+            "missing_keywords": [
+              "sem/seo",
+              "performance metrics",
+              "partnership-led marketing",
+              "analytical mindset",
+              "data-driven decision-making",
+              "communication",
+              "leadership"
+            ],
+            "coverage": {
+              "must_total": 11,
+              "must_hit": 4,
+              "nice_total": 3,
+              "nice_hit": 0
+            },
+            "notes": "Add evidence for: sem/seo, performance metrics, partnership-led marketing, analytical mindset, data-driven decision-making, communication, leadership",
+            "target_rubric": {
+              "applicable": true,
+              "score": 33,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "market"
+                  ],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "kpi"
+                  ],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "delivery",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "collaboration"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            },
+            "pm_rubric": {
+              "applicable": true,
+              "score": 33,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "market"
+                  ],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "kpi"
+                  ],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "delivery",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "collaboration"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            }
+          },
+          "rr_export_json": {
+            "metadata": {
+              "source": "jobops",
+              "contract_id": "jobops.rr_export.v1",
+              "schema_version": 1,
+              "version": 1,
+              "exported_at": 1772102052066,
+              "template_id": "balanced",
+              "renderer": "reactive_resume",
+              "contract_valid": true,
+              "import_ready": true
+            },
+            "basics": {
+              "name": "Smoke User",
+              "email": "",
+              "phone": "",
+              "location": "",
+              "summary": "Brand marketing leader with execution-focused experience in product and delivery ownership, driving growth through strategic marketing and digital marketing. I deliver measurable i"
+            },
+            "sections": {
+              "experience": [],
+              "skills": [],
+              "highlights": [
+                {
+                  "text": "Delivered measurable impact using brand marketing, aligning outcomes to Marketing Leader expectations at Company."
+                },
+                {
+                  "text": "Delivered measurable impact by achieved growth through structured planning, execution, and measurable KPI movement."
+                },
+                {
+                  "text": "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes. using strategic marketing."
+                }
+              ]
+            },
+            "job_context": {
+              "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+              "role_title": "Marketing Leader",
+              "company": "",
+              "job_url": "https://www.iimjobs.com/j/senior-marketing-manager-brand-growth-partnerships-iit-iim-5-10-yrs-1674704"
+            }
+          },
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": [],
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
+          "rr_last_push_error": "",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
+          "rr_pdf_last_export_error": "",
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Marketing Leader",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=2902, jd_confidence=high",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              }
+            ],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "one_page_mode": "soft",
+          "content_review_required": true,
+          "latest_version": {
+            "id": "5e5546aa-4d61-4cbc-afbf-a722840bd721",
+            "version_no": 2,
+            "source_action": "generate",
+            "created_at": 1772102052763
+          },
+          "version_history_enabled": true,
+          "rr_base_url": "https://rxresu.me",
+          "updated_at": 1772102052066
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.review",
+      "method": "POST",
+      "path": "/jobs/86127ba33fae7546017ffb69782ed3922b2298be/application-pack/review",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary",
+        "summary": "Brand marketing leader with execution-focused experience in product and delivery ownership, driving growth through strategic marketing and digital marketing. I deliver measurable i",
+        "bullets": [
+          "Delivered measurable impact using brand marketing, aligning outcomes to Marketing Leader expectations at Company.",
+          "Delivered measurable impact by achieved growth through structured planning, execution, and measurable KPI movement.",
+          "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes. using strategic marketing."
+        ],
+        "cover_letter": "Dear Hiring Team, I am applying for the Marketing Leader role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for brand marketing. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1282,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+          "profile_id": "primary",
+          "draft_id": "e2553b4a-58b8-4dfd-a644-0c1001bb230f",
+          "status": "READY_FOR_EXPORT",
+          "ats_score": 25,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Marketing Leader",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=2902, jd_confidence=high",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              }
+            ],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "9941a16c-d6c2-43e5-80c2-2e8d8cdbd89a",
+          "version_no": 3
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.approve",
+      "method": "POST",
+      "path": "/jobs/86127ba33fae7546017ffb69782ed3922b2298be/approve-pack",
+      "auth": "ui",
+      "request_body": {
+        "profile_id": "primary",
+        "summary": "Brand marketing leader with execution-focused experience in product and delivery ownership, driving growth through strategic marketing and digital marketing. I deliver measurable i",
+        "bullets": [
+          "Delivered measurable impact using brand marketing, aligning outcomes to Marketing Leader expectations at Company.",
+          "Delivered measurable impact by achieved growth through structured planning, execution, and measurable KPI movement.",
+          "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes. using strategic marketing."
+        ],
+        "cover_letter": "Dear Hiring Team, I am applying for the Marketing Leader role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for brand marketing. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+      },
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 1595,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+          "profile_id": "primary",
+          "draft_id": "e2553b4a-58b8-4dfd-a644-0c1001bb230f",
+          "status": "READY_TO_APPLY",
+          "ats_score": 25,
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Marketing Leader",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=2902, jd_confidence=high",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              }
+            ],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "version_id": "cc0db34f-001d-44b1-896b-c162ffb9409a",
+          "version_no": 4
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "wizard.pack.fetch.after",
+      "method": "GET",
+      "path": "/jobs/86127ba33fae7546017ffb69782ed3922b2298be/application-pack?profile_id=primary",
+      "auth": "ui",
+      "request_body": null,
+      "expected_status": [
+        200
+      ],
+      "http_status": 200,
+      "duration_ms": 868,
+      "ok": true,
+      "error": null,
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "e2553b4a-58b8-4dfd-a644-0c1001bb230f",
+          "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+          "profile_id": "primary",
+          "status": "READY_TO_APPLY",
+          "error_text": "",
+          "pack_json": {
+            "job": {
+              "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+              "job_url": "https://www.iimjobs.com/j/senior-marketing-manager-brand-growth-partnerships-iit-iim-5-10-yrs-1674704",
+              "source_domain": "iimjobs",
+              "status": "SCORED"
+            },
+            "target": {
+              "id": "TGT-NEW-01",
+              "name": "Growth PM Target",
+              "primaryRole": "Product Manager",
+              "seniorityPref": "Mid",
+              "locationPref": "Bangalore",
+              "rubricProfile": "auto",
+              "rubric_profile": "auto",
+              "must": [
+                "product strategy",
+                "roadmap"
+              ],
+              "nice": [
+                "sql"
+              ],
+              "reject": []
+            },
+            "extracted": {
+              "role_title": "Marketing Leader",
+              "company": "",
+              "location": "",
+              "seniority": "Senior",
+              "final_score": 74,
+              "reason_top_matches": ""
+            },
+            "tailoring": {
+              "summary": "Brand marketing leader with execution-focused experience in product and delivery ownership, driving growth through strategic marketing and digital marketing. I deliver measurable i",
+              "bullets": [
+                "Delivered measurable impact using brand marketing, aligning outcomes to Marketing Leader expectations at Company.",
+                "Delivered measurable impact by achieved growth through structured planning, execution, and measurable KPI movement.",
+                "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes. using strategic marketing."
+              ],
+              "cover_letter": "Dear Hiring Team, I am applying for the Marketing Leader role at Company. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for brand marketing. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "must_keywords": [
+                "brand marketing",
+                "growth",
+                "strategic marketing",
+                "digital marketing",
+                "SEM/SEO",
+                "performance metrics",
+                "partnership-led marketing",
+                "analytical mindset",
+                "data-driven decision-making",
+                "communication",
+                "leadership"
+              ],
+              "nice_keywords": [
+                "MBA",
+                "IIT/IIM",
+                "equivalent"
+              ],
+              "evidence_matches": []
+            },
+            "controls": {
+              "template_id": "balanced",
+              "enabled_blocks": [
+                "summary",
+                "experience",
+                "skills",
+                "highlights",
+                "bullets"
+              ],
+              "selected_keywords": [],
+              "ats_target_mode": "all",
+              "one_page_mode": "soft",
+              "one_pager_strict": false,
+              "content_review_required": false,
+              "approved_at": 1772102055805
+            },
+            "renderer": "reactive_resume"
+          },
+          "ats_json": {
+            "score": 25,
+            "missing_keywords": [
+              "SEM/SEO",
+              "performance metrics",
+              "partnership-led marketing",
+              "analytical mindset",
+              "data-driven decision-making",
+              "communication",
+              "leadership"
+            ],
+            "coverage": {
+              "must_total": 11,
+              "must_hit": 4,
+              "nice_total": 3,
+              "nice_hit": 0
+            },
+            "notes": "Add evidence for: SEM/SEO, performance metrics, partnership-led marketing, analytical mindset, data-driven decision-making, communication, leadership",
+            "target_rubric": {
+              "applicable": true,
+              "score": 33,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "market"
+                  ],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "kpi"
+                  ],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "delivery",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "collaboration"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            },
+            "pm_rubric": {
+              "applicable": true,
+              "score": 33,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "market"
+                  ],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "kpi"
+                  ],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "delivery",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 33,
+                  "hit_count": 1,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "collaboration"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            }
+          },
+          "rr_export_json": {
+            "metadata": {
+              "source": "jobops",
+              "contract_id": "jobops.rr_export.v1",
+              "schema_version": 1,
+              "version": 1,
+              "exported_at": 1772102052066,
+              "template_id": "balanced",
+              "renderer": "reactive_resume",
+              "contract_valid": true,
+              "import_ready": true
+            },
+            "basics": {
+              "name": "Smoke User",
+              "email": "",
+              "phone": "",
+              "location": "",
+              "summary": "Brand marketing leader with execution-focused experience in product and delivery ownership, driving growth through strategic marketing and digital marketing. I deliver measurable i"
+            },
+            "sections": {
+              "experience": [],
+              "skills": [],
+              "highlights": [
+                {
+                  "text": "Delivered measurable impact using brand marketing, aligning outcomes to Marketing Leader expectations at Company."
+                },
+                {
+                  "text": "Delivered measurable impact by achieved growth through structured planning, execution, and measurable KPI movement."
+                },
+                {
+                  "text": "Delivered measurable impact by improved speed, quality, and stakeholder confidence through data-driven decision making and quantified business outcomes. using strategic marketing."
+                }
+              ]
+            },
+            "job_context": {
+              "job_key": "86127ba33fae7546017ffb69782ed3922b2298be",
+              "role_title": "Marketing Leader",
+              "company": "",
+              "job_url": "https://www.iimjobs.com/j/senior-marketing-manager-brand-growth-partnerships-iit-iim-5-10-yrs-1674704"
+            }
+          },
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": [],
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
+          "rr_last_push_error": "",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
+          "rr_pdf_last_export_error": "",
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Marketing Leader",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=2902, jd_confidence=high",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=180/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=3/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": false,
+                "detail": "Missing company",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": false,
+                "detail": "ats_score=25 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": false,
+                "detail": "must_coverage=36% (4/11)",
+                "enforced": false
+              }
+            ],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 180,
+              "bullets_count": 3,
+              "experience_items": 0,
+              "skills_items": 0,
+              "estimated_density": "low"
+            },
+            "hard_gate_applied": false
+          },
+          "one_page_mode": "soft",
+          "content_review_required": false,
+          "latest_version": {
+            "id": "cc0db34f-001d-44b1-896b-c162ffb9409a",
+            "version_no": 4,
+            "source_action": "approve",
+            "created_at": 1772102055976
+          },
+          "version_history_enabled": true,
+          "rr_base_url": "https://rxresu.me",
+          "updated_at": 1772102055976
+        }
+      },
+      "response_text": null
+    }
+  ],
+  "result": "PASS",
+  "summary": {
+    "total_steps": 10,
+    "passed_steps": 10,
+    "failed_steps": 0,
+    "success": true
+  },
+  "error": null,
+  "ended_at": "2026-02-26T10:34:19.154Z"
+}

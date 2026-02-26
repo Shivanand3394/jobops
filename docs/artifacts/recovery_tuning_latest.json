@@ -1,0 +1,558 @@
+﻿{
+    "ts":  "2026-02-26T10:46:42.8484642Z",
+    "base_url":  "https://get-job.shivanand-shah94.workers.dev",
+    "runs":  {
+                 "backfill_missing":  {
+                                          "status_code":  200,
+                                          "path":  "/jobs/backfill-missing",
+                                          "data":  {
+                                                       "ok":  true,
+                                                       "data":  {
+                                                                    "picked":  6,
+                                                                    "processed":  6,
+                                                                    "skipped_no_url":  0,
+                                                                    "skipped_job_keys":  [
+
+                                                                                         ],
+                                                                    "inserted_or_updated":  6,
+                                                                    "inserted_count":  0,
+                                                                    "updated_count":  3,
+                                                                    "ignored":  0,
+                                                                    "link_only":  3,
+                                                                    "source_summary":  [
+                                                                                           {
+                                                                                               "source_domain":  "iimjobs",
+                                                                                               "total":  3,
+                                                                                               "recovered":  3,
+                                                                                               "manual_needed":  0,
+                                                                                               "needs_ai":  0,
+                                                                                               "blocked":  0,
+                                                                                               "low_quality":  0,
+                                                                                               "link_only":  0,
+                                                                                               "ignored":  0,
+                                                                                               "inserted":  0,
+                                                                                               "updated":  3
+                                                                                           },
+                                                                                           {
+                                                                                               "source_domain":  "linkedin",
+                                                                                               "total":  3,
+                                                                                               "recovered":  0,
+                                                                                               "manual_needed":  3,
+                                                                                               "needs_ai":  0,
+                                                                                               "blocked":  3,
+                                                                                               "low_quality":  0,
+                                                                                               "link_only":  3,
+                                                                                               "ignored":  0,
+                                                                                               "inserted":  0,
+                                                                                               "updated":  0
+                                                                                           }
+                                                                                       ],
+                                                                    "results":  [
+                                                                                    {
+                                                                                        "raw_url":  "https://www.linkedin.com/jobs/view/1234567890/",
+                                                                                        "job_key":  "bbd2b6c5c53f4a634b6da59d070af1e97845eba6",
+                                                                                        "job_url":  "https://www.linkedin.com/jobs/view/1234567890/",
+                                                                                        "source_domain":  "linkedin",
+                                                                                        "ingest_channel":  "recover",
+                                                                                        "was_existing":  true,
+                                                                                        "action":  "link_only",
+                                                                                        "status":  "LINK_ONLY",
+                                                                                        "jd_source":  "none",
+                                                                                        "fetch_status":  "blocked",
+                                                                                        "system_status":  "NEEDS_MANUAL_JD",
+                                                                                        "fallback_reason":  "blocked",
+                                                                                        "fallback_policy":  "strict_linkedin",
+                                                                                        "final_score":  null,
+                                                                                        "primary_target_id":  null
+                                                                                    },
+                                                                                    {
+                                                                                        "raw_url":  "https://www.iimjobs.com/j/program-manager-2-5-yrs-1676620",
+                                                                                        "job_key":  "ad999e0886021a21e6ab2612b2ce6aeb991418da",
+                                                                                        "job_url":  "https://www.iimjobs.com/j/program-manager-2-5-yrs-1676620",
+                                                                                        "source_domain":  "iimjobs",
+                                                                                        "ingest_channel":  "recover",
+                                                                                        "was_existing":  true,
+                                                                                        "action":  "updated",
+                                                                                        "status":  "SCORED",
+                                                                                        "jd_source":  "fetched",
+                                                                                        "fetch_status":  "ok",
+                                                                                        "system_status":  null,
+                                                                                        "fallback_reason":  "none",
+                                                                                        "fallback_policy":  "standard_iimjobs",
+                                                                                        "final_score":  74,
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "raw_url":  "https://www.linkedin.com/jobs/view/4370722725/",
+                                                                                        "job_key":  "705f7c063eb7bd67752995c9993cf7af24429291",
+                                                                                        "job_url":  "https://www.linkedin.com/jobs/view/4370722725/",
+                                                                                        "source_domain":  "linkedin",
+                                                                                        "ingest_channel":  "recover",
+                                                                                        "was_existing":  true,
+                                                                                        "action":  "link_only",
+                                                                                        "status":  "LINK_ONLY",
+                                                                                        "jd_source":  "none",
+                                                                                        "fetch_status":  "blocked",
+                                                                                        "system_status":  "NEEDS_MANUAL_JD",
+                                                                                        "fallback_reason":  "blocked",
+                                                                                        "fallback_policy":  "strict_linkedin",
+                                                                                        "final_score":  null,
+                                                                                        "primary_target_id":  null
+                                                                                    },
+                                                                                    {
+                                                                                        "raw_url":  "https://www.linkedin.com/jobs/view/4375685564/",
+                                                                                        "job_key":  "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+                                                                                        "job_url":  "https://www.linkedin.com/jobs/view/4375685564/",
+                                                                                        "source_domain":  "linkedin",
+                                                                                        "ingest_channel":  "recover",
+                                                                                        "was_existing":  true,
+                                                                                        "action":  "link_only",
+                                                                                        "status":  "LINK_ONLY",
+                                                                                        "jd_source":  "none",
+                                                                                        "fetch_status":  "blocked",
+                                                                                        "system_status":  "NEEDS_MANUAL_JD",
+                                                                                        "fallback_reason":  "blocked",
+                                                                                        "fallback_policy":  "strict_linkedin",
+                                                                                        "final_score":  null,
+                                                                                        "primary_target_id":  null
+                                                                                    },
+                                                                                    {
+                                                                                        "raw_url":  "https://www.iimjobs.com/j/senior-marketing-manager-brand-growth-partnerships-iit-iim-5-10-yrs-1674704",
+                                                                                        "job_key":  "86127ba33fae7546017ffb69782ed3922b2298be",
+                                                                                        "job_url":  "https://www.iimjobs.com/j/senior-marketing-manager-brand-growth-partnerships-iit-iim-5-10-yrs-1674704",
+                                                                                        "source_domain":  "iimjobs",
+                                                                                        "ingest_channel":  "recover",
+                                                                                        "was_existing":  true,
+                                                                                        "action":  "updated",
+                                                                                        "status":  "SCORED",
+                                                                                        "jd_source":  "fetched",
+                                                                                        "fetch_status":  "ok",
+                                                                                        "system_status":  null,
+                                                                                        "fallback_reason":  "none",
+                                                                                        "fallback_policy":  "standard_iimjobs",
+                                                                                        "final_score":  74,
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "raw_url":  "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893",
+                                                                                        "job_key":  "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+                                                                                        "job_url":  "https://www.iimjobs.com/j/cardekhocom-senior-role-product-analytics-3-5-yrs-1674893",
+                                                                                        "source_domain":  "iimjobs",
+                                                                                        "ingest_channel":  "recover",
+                                                                                        "was_existing":  true,
+                                                                                        "action":  "updated",
+                                                                                        "status":  "SCORED",
+                                                                                        "jd_source":  "fetched",
+                                                                                        "fetch_status":  "ok",
+                                                                                        "system_status":  null,
+                                                                                        "fallback_reason":  "none",
+                                                                                        "fallback_policy":  "standard_iimjobs",
+                                                                                        "final_score":  74,
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    }
+                                                                                ]
+                                                                }
+                                                   }
+                                      },
+                 "rescore_existing_jd":  {
+                                             "status_code":  200,
+                                             "path":  "/jobs/recover/rescore-existing-jd",
+                                             "data":  {
+                                                          "ok":  true,
+                                                          "data":  {
+                                                                       "picked":  12,
+                                                                       "updated":  0,
+                                                                       "jobs":  [
+                                                                                    {
+                                                                                        "job_key":  "c46d27b7b3ea93dc451c0586f962d17732bcc749",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  64,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-001"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "ef8bbb0701c76c02780ff4c0aaf60620d8bb47c5",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  74,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "66a61647f865758b81b9596b23d64b3ad4e27c3c",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  74,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "dcf775770b8577f4eddaea8e217e5c689ab50352",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  58,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-001"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "3028f15a6b7a6d1439a775c28fd38a5241565908",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  74,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "7b4613b11f0ac36dcb751ab2bac4fc797ec7b619",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  74,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "8b7c9cc422888048ad3cf76db39ea7918ce62e21",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  74,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "bbd2b6c5c53f4a634b6da59d070af1e97845eba6",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  73,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "ad999e0886021a21e6ab2612b2ce6aeb991418da",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  74,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "705f7c063eb7bd67752995c9993cf7af24429291",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  72,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  72,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    },
+                                                                                    {
+                                                                                        "job_key":  "f8afb9622db40e553459b1ae1ee2e6d93623d1b0",
+                                                                                        "ok":  true,
+                                                                                        "final_score":  74,
+                                                                                        "status":  "SCORED",
+                                                                                        "primary_target_id":  "TGT-NEW-01"
+                                                                                    }
+                                                                                ]
+                                                                   }
+                                                      }
+                                         },
+                 "evidence_rebuild_archived":  [
+                                                   {
+                                                       "status_code":  200,
+                                                       "path":  "/jobs/evidence/rebuild-archived",
+                                                       "data":  {
+                                                                    "ok":  true,
+                                                                    "data":  {
+                                                                                 "archived_total":  17,
+                                                                                 "attempted":  5,
+                                                                                 "succeeded":  5,
+                                                                                 "failed":  0,
+                                                                                 "skipped_existing":  0,
+                                                                                 "skipped_no_jd":  0,
+                                                                                 "rows_created":  0,
+                                                                                 "matched_count":  0,
+                                                                                 "unmatched_count":  0,
+                                                                                 "next_cursor_job_key":  "9941a9a481d623cf98e4a14fc08db3d4be591b6a",
+                                                                                 "has_more":  true,
+                                                                                 "max_tokens_used":  500,
+                                                                                 "delay_ms_used":  2000,
+                                                                                 "profile_id":  "primary",
+                                                                                 "mode":  "retry_failed",
+                                                                                 "forced":  false,
+                                                                                 "profile_only":  true,
+                                                                                 "jobs_processed":  5,
+                                                                                 "jobs_skipped_existing":  0,
+                                                                                 "jobs_skipped_no_jd":  0,
+                                                                                 "jobs_ai_failed":  0
+                                                                             }
+                                                                }
+                                                   },
+                                                   {
+                                                       "status_code":  200,
+                                                       "path":  "/jobs/evidence/rebuild-archived",
+                                                       "data":  {
+                                                                    "ok":  true,
+                                                                    "data":  {
+                                                                                 "archived_total":  17,
+                                                                                 "attempted":  1,
+                                                                                 "succeeded":  1,
+                                                                                 "failed":  0,
+                                                                                 "skipped_existing":  0,
+                                                                                 "skipped_no_jd":  0,
+                                                                                 "rows_created":  0,
+                                                                                 "matched_count":  0,
+                                                                                 "unmatched_count":  0,
+                                                                                 "next_cursor_job_key":  null,
+                                                                                 "has_more":  false,
+                                                                                 "max_tokens_used":  500,
+                                                                                 "delay_ms_used":  2000,
+                                                                                 "profile_id":  "primary",
+                                                                                 "mode":  "retry_failed",
+                                                                                 "forced":  false,
+                                                                                 "profile_only":  true,
+                                                                                 "jobs_processed":  1,
+                                                                                 "jobs_skipped_existing":  0,
+                                                                                 "jobs_skipped_no_jd":  0,
+                                                                                 "jobs_ai_failed":  0
+                                                                             }
+                                                                }
+                                                   }
+                                               ],
+                 "gap_report":  {
+                                    "status_code":  200,
+                                    "path":  "/jobs/evidence/gap-report?status=ARCHIVED\u0026top=10\u0026min_missed=1\u0026profile_id=primary",
+                                    "data":  {
+                                                 "ok":  true,
+                                                 "data":  {
+                                                              "top_missing_must":  [
+                                                                                       {
+                                                                                           "requirement_text":  "digital marketing",
+                                                                                           "missed_count":  7
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "growth",
+                                                                                           "missed_count":  7
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "partnership-led marketing",
+                                                                                           "missed_count":  7
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "performance metrics",
+                                                                                           "missed_count":  7
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "strategic marketing",
+                                                                                           "missed_count":  7
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "SEM/SEO",
+                                                                                           "missed_count":  6
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "analytical mindset",
+                                                                                           "missed_count":  6
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "brand marketing",
+                                                                                           "missed_count":  6
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "communication",
+                                                                                           "missed_count":  6
+                                                                                       },
+                                                                                       {
+                                                                                           "requirement_text":  "data-driven decision-making",
+                                                                                           "missed_count":  6
+                                                                                       }
+                                                                                   ],
+                                                              "vocabulary_gap_candidates":  [
+                                                                                                {
+                                                                                                    "requirement_text":  "digital marketing",
+                                                                                                    "missed_count":  7,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"digital marketing\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "growth",
+                                                                                                    "missed_count":  7,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"growth\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "partnership-led marketing",
+                                                                                                    "missed_count":  7,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"partnership-led marketing\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "performance metrics",
+                                                                                                    "missed_count":  7,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"performance metrics\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "strategic marketing",
+                                                                                                    "missed_count":  7,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"strategic marketing\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "SEM/SEO",
+                                                                                                    "missed_count":  6,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"SEM/SEO\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "analytical mindset",
+                                                                                                    "missed_count":  6,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"analytical mindset\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "brand marketing",
+                                                                                                    "missed_count":  6,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"brand marketing\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "communication",
+                                                                                                    "missed_count":  6,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"communication\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                },
+                                                                                                {
+                                                                                                    "requirement_text":  "data-driven decision-making",
+                                                                                                    "missed_count":  6,
+                                                                                                    "synonym_hits":  [
+
+                                                                                                                     ],
+                                                                                                    "suggested_rewrite":  "Acquire or document \"data-driven decision-making\" experience. This is a recurring bottleneck in your archive.",
+                                                                                                    "classification":  "true_gap"
+                                                                                                }
+                                                                                            ],
+                                                              "coverage_meta":  {
+                                                                                    "archived_total":  17,
+                                                                                    "archived_with_evidence":  11,
+                                                                                    "analyzed_jobs":  11
+                                                                                },
+                                                              "status":  "ARCHIVED",
+                                                              "top":  10,
+                                                              "min_missed":  1,
+                                                              "profile_id":  "primary",
+                                                              "profile_source_table":  "resume_profiles"
+                                                          }
+                                             }
+                                },
+                 "scoring_report":  {
+                                        "status_code":  200,
+                                        "path":  "/admin/scoring-runs/report?window_days=14\u0026trend_days=14\u0026stage_sample_limit=1500",
+                                        "data":  {
+                                                     "ok":  true,
+                                                     "data":  {
+                                                                  "enabled":  true,
+                                                                  "source":  null,
+                                                                  "window":  {
+                                                                                 "days":  14,
+                                                                                 "start_at":  1770893356905,
+                                                                                 "end_at":  1772102956905
+                                                                             },
+                                                                  "trend":  {
+                                                                                "days":  14,
+                                                                                "start_at":  1770893356905,
+                                                                                "end_at":  1772102956905
+                                                                            },
+                                                                  "totals":  {
+                                                                                 "total_runs":  62,
+                                                                                 "heuristic_passed_runs":  58,
+                                                                                 "heuristic_rejected_runs":  4
+                                                                             },
+                                                                  "heuristic_reject_rate":  {
+                                                                                                "ratio":  0.0645,
+                                                                                                "percent":  6.45
+                                                                                            },
+                                                                  "latency_ms":  {
+                                                                                     "avg_total_latency_ms":  1823.02,
+                                                                                     "avg_ai_latency_ms":  1823.02,
+                                                                                     "stage_sample_limit":  1500,
+                                                                                     "stage_rows_scanned":  62,
+                                                                                     "stage_avg_latency_ms":  {
+                                                                                                                  "ai_extract":  {
+                                                                                                                                     "runs_seen":  62,
+                                                                                                                                     "latency_samples":  62,
+                                                                                                                                     "avg_latency_ms":  0,
+                                                                                                                                     "status_counts":  {
+                                                                                                                                                           "skipped":  62
+                                                                                                                                                       }
+                                                                                                                                 },
+                                                                                                                  "ai_reason":  {
+                                                                                                                                    "runs_seen":  62,
+                                                                                                                                    "latency_samples":  62,
+                                                                                                                                    "avg_latency_ms":  1823.02,
+                                                                                                                                    "status_counts":  {
+                                                                                                                                                          "ok":  58,
+                                                                                                                                                          "skipped":  4
+                                                                                                                                                      }
+                                                                                                                                },
+                                                                                                                  "evidence_upsert":  {
+                                                                                                                                          "runs_seen":  62,
+                                                                                                                                          "latency_samples":  62,
+                                                                                                                                          "avg_latency_ms":  0,
+                                                                                                                                          "status_counts":  {
+                                                                                                                                                                "skipped":  62
+                                                                                                                                                            }
+                                                                                                                                      },
+                                                                                                                  "heuristic":  {
+                                                                                                                                    "runs_seen":  62,
+                                                                                                                                    "latency_samples":  62,
+                                                                                                                                    "avg_latency_ms":  0,
+                                                                                                                                    "status_counts":  {
+                                                                                                                                                          "ok":  58,
+                                                                                                                                                          "rejected":  4
+                                                                                                                                                      }
+                                                                                                                                }
+                                                                                                              }
+                                                                                 },
+                                                                  "token_spend":  {
+                                                                                      "ai_tokens_total_sum":  67546,
+                                                                                      "ai_tokens_total_avg_per_run":  1089.45,
+                                                                                      "trend_by_day":  [
+                                                                                                           {
+                                                                                                               "day":  "2026-02-26",
+                                                                                                               "run_count":  62,
+                                                                                                               "heuristic_rejected_runs":  4,
+                                                                                                               "heuristic_reject_rate_percent":  6.45,
+                                                                                                               "ai_tokens_in":  64314,
+                                                                                                               "ai_tokens_out":  3232,
+                                                                                                               "ai_tokens_total":  67546,
+                                                                                                               "avg_total_latency_ms":  1823.02
+                                                                                                           }
+                                                                                                       ]
+                                                                                  }
+                                                              }
+                                                 }
+                                    }
+             }
+}
