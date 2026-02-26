@@ -1,46 +1,89 @@
 export const RR_EXPORT_CONTRACT_ID = "jobops.rr_export.v1";
 export const RR_EXPORT_SCHEMA_VERSION = 1;
 
-export async function generateApplicationPack_({ env, ai, job, target, profile, renderer = "reactive_resume", controls = {} }) {
+export async function generateApplicationPack_({
+  env,
+  ai,
+  job,
+  target,
+  profile,
+  renderer = "reactive_resume",
+  controls = {},
+  matchedEvidence = [],
+}) {
   const mustAll = arr_(job.must_have_keywords_json || job.must_have_keywords);
   const niceAll = arr_(job.nice_to_have_keywords_json || job.nice_to_have_keywords);
+  const evidenceRows = normalizeMatchedEvidenceRows_(matchedEvidence);
   const selectedKeywords = unique_(arr_(controls.selected_keywords || controls.selectedKeywords));
   const templateId = str_(controls.template_id || controls.templateId || "balanced") || "balanced";
   const atsTargetMode = str_(controls.ats_target_mode || controls.atsTargetMode || "all").toLowerCase() || "all";
   const enabledBlocks = normalizeEnabledBlocks_(controls.enabled_blocks || controls.enabledBlocks);
-  const onePagerStrict = toBoolLike_(controls.one_pager_strict ?? controls.onePagerStrict, true);
+  const onePageModeRaw = str_(controls.one_page_mode || controls.onePageMode).toLowerCase();
+  const onePageMode = (onePageModeRaw === "hard" || onePageModeRaw === "soft")
+    ? onePageModeRaw
+    : (toBoolLike_(controls.one_pager_strict ?? controls.onePagerStrict, true) ? "hard" : "soft");
+  const onePagerStrict = onePageMode === "hard";
   const focusKeywords = selectedKeywords.length ? selectedKeywords : mustAll;
   const atsMust = (atsTargetMode === "selected_only" && selectedKeywords.length) ? selectedKeywords : mustAll;
   const atsNice = (atsTargetMode === "selected_only" && selectedKeywords.length) ? [] : niceAll;
   const profileJson = safeJsonObj_(profile?.profile_json) || {};
+  const strongestMust = pickStrongestMustMatch_(atsMust, evidenceRows);
+  const strongestKeyword = str_(strongestMust?.requirement_text || atsMust[0] || focusKeywords[0] || roleFallback_(job));
 
   const role = str_(job.role_title) || "Role";
   const company = str_(job.company) || "Company";
   const location = str_(job.location) || "";
-  const summaryBase = buildTailoredSummary_({ role, company, location, must: focusKeywords, profileJson });
-  const bulletsBase = buildTailoredBullets_({ role, company, must: focusKeywords, nice: niceAll, profileJson });
+  const summaryBase = buildTailoredSummary_({
+    role,
+    company,
+    location,
+    must: focusKeywords,
+    profileJson,
+    strongestKeyword,
+    strongestEvidenceSnippet: str_(strongestMust?.evidence_text),
+  });
+  const bulletsBase = buildTailoredBullets_({
+    role,
+    company,
+    must: focusKeywords,
+    nice: niceAll,
+    profileJson,
+    evidenceRows,
+  });
+  const coverLetterBase = buildTailoredCoverLetter_({
+    role,
+    company,
+    location,
+    strongestKeyword,
+    strongestEvidenceSnippet: str_(strongestMust?.evidence_text),
+  });
 
   let tailoredSummary = summaryBase;
   let tailoredBullets = bulletsBase;
-  let status = "DRAFT_READY";
+  let tailoredCoverLetter = coverLetterBase;
+  let status = "CONTENT_REVIEW_REQUIRED";
   let errorText = "";
 
   if (!ai) {
     status = "NEEDS_AI";
   } else {
-    const polished = await polishWithAi_(ai, summaryBase, bulletsBase).catch(() => null);
+    const polished = await polishWithAi_(ai, summaryBase, bulletsBase, coverLetterBase, strongestKeyword).catch(() => null);
     if (polished) {
       tailoredSummary = str_(polished.summary) || summaryBase;
       tailoredBullets = Array.isArray(polished.bullets) && polished.bullets.length ? polished.bullets.map(str_).filter(Boolean) : bulletsBase;
+      tailoredCoverLetter = str_(polished.cover_letter || polished.coverLetter) || coverLetterBase;
     }
   }
 
+  tailoredSummary = enforceSummaryConstraints_(tailoredSummary, summaryBase, strongestKeyword);
+  tailoredBullets = enforceImpactKeywordBullets_(tailoredBullets, focusKeywords, evidenceRows);
+  tailoredCoverLetter = enforceCoverLetterTone_(tailoredCoverLetter, coverLetterBase, strongestKeyword);
+
   if (!enabledBlocks.has("summary")) tailoredSummary = "";
   if (!enabledBlocks.has("bullets")) tailoredBullets = [];
-  if (onePagerStrict) {
-    tailoredSummary = trimTextToMaxChars_(tailoredSummary, 320);
-    tailoredBullets = tailoredBullets.slice(0, 4);
-  }
+  const onePageApplied = applyOnePagePolicy_(tailoredSummary, tailoredBullets, onePageMode);
+  tailoredSummary = onePageApplied.summary;
+  tailoredBullets = onePageApplied.bullets;
 
   const atsText = `${tailoredSummary}\n${tailoredBullets.join("\n")}`.trim() || `${role}\n${company}\n${location}`.trim();
   const keywordCoverage = computeKeywordCoverage_(atsMust, atsNice, atsText);
@@ -93,20 +136,28 @@ export async function generateApplicationPack_({ env, ai, job, target, profile, 
     tailoring: {
       summary: tailoredSummary,
       bullets: tailoredBullets,
+      cover_letter: tailoredCoverLetter,
       must_keywords: atsMust,
       nice_keywords: atsNice,
+      evidence_matches: evidenceRows.slice(0, 12).map((x) => ({
+        requirement_text: x.requirement_text,
+        requirement_type: x.requirement_type,
+        confidence_score: x.confidence_score,
+      })),
     },
     controls: {
       template_id: templateId,
       enabled_blocks: Array.from(enabledBlocks),
       selected_keywords: selectedKeywords,
       ats_target_mode: atsTargetMode,
+      one_page_mode: onePageMode,
       one_pager_strict: onePagerStrict,
+      content_review_required: true,
     },
     renderer,
   };
 
-  const rrExportRaw = toReactiveResumeExport_(profileJson, packJson, { enabledBlocks, templateId, onePagerStrict });
+  const rrExportRaw = toReactiveResumeExport_(profileJson, packJson, { enabledBlocks, templateId, onePagerStrict, onePageMode });
   const rrExport = ensureReactiveResumeExportContract_(rrExportRaw, {
     jobKey: str_(job.job_key),
     templateId,
@@ -455,18 +506,23 @@ function computePmRubric_({ roleTitle = "", targetRole = "", text = "" } = {}) {
   };
 }
 
-function buildTailoredSummary_({ role, company, location, must, profileJson }) {
-  const profileSummary = str_(profileJson?.summary);
+function buildTailoredSummary_({ role, company, location, must, profileJson, strongestKeyword = "", strongestEvidenceSnippet = "" }) {
+  const profileSummary = str_(profileJson?.summary || profileJson?.basics?.summary);
   const focus = must.slice(0, 5).join(", ");
   const where = location ? ` based in ${location}` : "";
+  const anchor = str_(strongestKeyword || must?.[0] || role || "Core requirement");
+  const evidenceSentence = strongestEvidenceSnippet
+    ? ` Recent evidence: ${toSentenceFragment_(strongestEvidenceSnippet)}.`
+    : "";
   return [
-    profileSummary || "Results-driven professional with experience delivering measurable business outcomes.",
+    `${anchor}: ${profileSummary || "I deliver measurable business outcomes through disciplined execution."}`,
     `Targeting ${role} at ${company}${where}.`,
     focus ? `Core strengths aligned: ${focus}.` : "",
+    evidenceSentence,
   ].filter(Boolean).join(" ");
 }
 
-function buildTailoredBullets_({ role, company, must, nice, profileJson }) {
+function buildTailoredBullets_({ role, company, must, nice, profileJson, evidenceRows = [] }) {
   const profileExp = Array.isArray(profileJson?.experience) ? profileJson.experience : [];
   const expBullets = profileExp
     .slice(0, 2)
@@ -474,14 +530,44 @@ function buildTailoredBullets_({ role, company, must, nice, profileJson }) {
     .filter(Boolean);
   const keyMust = must.slice(0, 4);
   const keyNice = nice.slice(0, 3);
+  const evidenceBullets = (Array.isArray(evidenceRows) ? evidenceRows : [])
+    .slice(0, 3)
+    .map((row) => {
+      const req = str_(row?.requirement_text);
+      const snippet = str_(row?.evidence_text);
+      if (!req) return "";
+      if (snippet) {
+        return `Delivered measurable impact using ${req} by ${toSentenceFragment_(snippet)}.`;
+      }
+      return `Delivered measurable impact using ${req} through cross-functional execution and clear ownership.`;
+    })
+    .filter(Boolean);
 
   const generated = [
-    `Align achievements to ${role} expectations at ${company}.`,
-    keyMust.length ? `Demonstrate hands-on delivery across: ${keyMust.join(", ")}.` : "",
-    keyNice.length ? `Supplementary strengths: ${keyNice.join(", ")}.` : "",
-    "Quantify impact using metrics (revenue, efficiency, adoption, or quality).",
+    `Delivered measurable impact using ${keyMust[0] || "core requirements"} while aligning outcomes to ${role} expectations at ${company}.`,
+    keyMust[1] ? `Delivered measurable impact using ${keyMust[1]} through structured planning, execution, and measurable KPI movement.` : "",
+    keyNice.length ? `Delivered measurable impact using ${keyNice[0]} while improving speed, quality, and stakeholder confidence.` : "",
+    "Delivered measurable impact using data-driven decision making and quantified business outcomes.",
   ].filter(Boolean);
-  return unique_([...expBullets, ...generated]).slice(0, 8);
+  return unique_([...evidenceBullets, ...expBullets, ...generated]).slice(0, 8);
+}
+
+function buildTailoredCoverLetter_({ role, company, location, strongestKeyword = "", strongestEvidenceSnippet = "" }) {
+  const where = location ? ` in ${location}` : "";
+  const req = str_(strongestKeyword || role || "this role");
+  const evidence = str_(strongestEvidenceSnippet)
+    ? toSentenceFragment_(strongestEvidenceSnippet)
+    : "delivering measurable outcomes across cross-functional initiatives";
+  return [
+    `Dear Hiring Team,`,
+    ``,
+    `I am applying for the ${role} role at ${company}${where}.`,
+    `My experience with ${evidence} aligns directly with your need for ${req}.`,
+    `I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact.`,
+    ``,
+    `Regards,`,
+    `[Your Name]`,
+  ].join("\n");
 }
 
 function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
@@ -495,13 +581,21 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
   const includeSkills = enabledBlocks.has("skills");
   const includeHighlights = enabledBlocks.has("highlights");
   const templateId = str_(opts.templateId || packJson?.controls?.template_id || "balanced") || "balanced";
-  const onePagerStrict = toBoolLike_(opts.onePagerStrict ?? packJson?.controls?.one_pager_strict, true);
-  const experienceOut = includeExperience ? experience.slice(0, onePagerStrict ? 3 : experience.length) : [];
-  const skillsOut = includeSkills ? skills.slice(0, onePagerStrict ? 12 : skills.length) : [];
+  const onePageModeRaw = str_(opts.onePageMode || packJson?.controls?.one_page_mode).toLowerCase();
+  const onePageMode = (onePageModeRaw === "hard" || onePageModeRaw === "soft")
+    ? onePageModeRaw
+    : (toBoolLike_(opts.onePagerStrict ?? packJson?.controls?.one_pager_strict, true) ? "hard" : "soft");
+  const onePagerStrict = onePageMode === "hard";
+  const expLimit = onePagerStrict ? 3 : 6;
+  const skillsLimit = onePagerStrict ? 12 : 20;
+  const highlightsLimit = onePagerStrict ? 4 : Math.max(8, bullets.length);
+  const summaryLimit = onePagerStrict ? 320 : 1200;
+  const experienceOut = includeExperience ? experience.slice(0, expLimit) : [];
+  const skillsOut = includeSkills ? skills.slice(0, skillsLimit) : [];
   const highlightsOut = includeHighlights
-    ? bullets.map((x) => ({ text: str_(x) })).filter((x) => x.text).slice(0, onePagerStrict ? 4 : bullets.length)
+    ? bullets.map((x) => ({ text: str_(x) })).filter((x) => x.text).slice(0, highlightsLimit)
     : [];
-  const summaryOut = includeSummary ? trimTextToMaxChars_(str_(packJson?.tailoring?.summary), onePagerStrict ? 320 : 1200) : "";
+  const summaryOut = includeSummary ? trimTextToMaxChars_(str_(packJson?.tailoring?.summary), summaryLimit) : "";
 
   return {
     metadata: {
@@ -512,6 +606,7 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
       version: 1,
       template_id: templateId,
       renderer: "reactive_resume",
+      one_page_mode: onePageMode,
       one_pager_strict: onePagerStrict,
     },
     basics: {
@@ -532,6 +627,18 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
       company: str_(packJson?.extracted?.company),
       job_url: str_(packJson?.job?.job_url),
     },
+  };
+}
+
+function applyOnePagePolicy_(summary, bullets, mode = "soft") {
+  const softSummaryMax = 320;
+  const softBulletsMax = 4;
+  const summaryOut = trimTextToMaxChars_(summary, softSummaryMax);
+  const bulletsOut = Array.isArray(bullets) ? bullets.slice(0, softBulletsMax).map(str_).filter(Boolean) : [];
+  return {
+    summary: summaryOut,
+    bullets: bulletsOut,
+    mode: (mode === "hard" || mode === "soft") ? mode : "soft",
   };
 }
 
@@ -584,14 +691,19 @@ export function ensureReactiveResumeExportContract_(value, ctx = {}) {
   return out;
 }
 
-async function polishWithAi_(ai, summary, bullets) {
+async function polishWithAi_(ai, summary, bullets, coverLetter = "", strongestKeyword = "") {
   const prompt = `
-Rewrite resume tailoring content in concise professional tone.
+Rewrite resume tailoring content in concise, grounded professional tone.
 Return STRICT JSON only:
-{"summary": "...", "bullets": ["...", "..."]}
-Summary max 90 words. Keep bullets to 3-6 and preserve facts.
+{"summary": "...", "bullets": ["...", "..."], "cover_letter": "..."}
+Constraints:
+- Summary must be 180-250 characters.
+- Summary should begin with the strongest matched keyword: ${strongestKeyword || "best matched keyword"}.
+- Bullets must focus on impact + keyword.
+- Cover letter tone: confident and grounded (avoid "perfect fit").
 INPUT SUMMARY: ${summary}
 INPUT BULLETS: ${JSON.stringify(bullets)}
+INPUT COVER LETTER: ${coverLetter}
   `.trim();
   const result = await ai.run("@cf/meta/llama-3.1-8b-instruct", {
     messages: [{ role: "user", content: prompt }],
@@ -684,6 +796,118 @@ function trimTextToMaxChars_(text, maxChars = 320) {
   const lastSpace = clipped.lastIndexOf(" ");
   if (lastSpace >= 80) return `${clipped.slice(0, lastSpace).trim()}...`;
   return `${clipped.trim()}...`;
+}
+
+function normalizeMatchedEvidenceRows_(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      requirement_text: str_(row?.requirement_text),
+      requirement_type: str_(row?.requirement_type).toLowerCase(),
+      evidence_text: str_(row?.evidence_text),
+      confidence_score: num_(row?.confidence_score) || 0,
+    }))
+    .filter((row) => row.requirement_text);
+}
+
+function pickStrongestMustMatch_(mustKeywords = [], evidenceRows = []) {
+  const rows = (Array.isArray(evidenceRows) ? evidenceRows : [])
+    .filter((r) => str_(r.requirement_type).toLowerCase() === "must");
+  if (!rows.length) return null;
+
+  for (const kw of (Array.isArray(mustKeywords) ? mustKeywords : [])) {
+    const needle = str_(kw).toLowerCase();
+    if (!needle) continue;
+    const exact = rows.find((r) => str_(r.requirement_text).toLowerCase() === needle);
+    if (exact) return exact;
+  }
+  return [...rows].sort((a, b) => Number(b.confidence_score || 0) - Number(a.confidence_score || 0))[0] || null;
+}
+
+function enforceSummaryConstraints_(input, fallback, strongestKeyword = "") {
+  const strongest = str_(strongestKeyword);
+  let out = str_(input || fallback);
+  if (!out) {
+    out = strongest ? `${strongest}: I deliver measurable outcomes through disciplined execution and stakeholder alignment.` : "I deliver measurable outcomes through disciplined execution and stakeholder alignment.";
+  }
+  if (strongest && !out.toLowerCase().startsWith(strongest.toLowerCase())) {
+    out = `${strongest}: ${out}`;
+  }
+  out = out.replace(/\s+/g, " ").trim();
+  if (out.length > 250) {
+    out = trimTextToMaxChars_(out, 250);
+  }
+  if (out.length < 180) {
+    const pad = " I deliver measurable impact with clear ownership, cross-functional collaboration, and data-informed execution.";
+    while (out.length < 180) {
+      const remaining = 180 - out.length;
+      out += remaining >= pad.length ? pad : pad.slice(0, remaining);
+    }
+  }
+  if (out.length > 250) out = out.slice(0, 250).trim();
+  return out;
+}
+
+function enforceImpactKeywordBullets_(bulletsIn, keywordsIn = [], evidenceRows = []) {
+  const keywords = unique_(
+    [
+      ...(Array.isArray(keywordsIn) ? keywordsIn : []),
+      ...((Array.isArray(evidenceRows) ? evidenceRows : []).map((r) => str_(r.requirement_text)).filter(Boolean)),
+    ].map(str_)
+  ).slice(0, 8);
+  const bullets = Array.isArray(bulletsIn) ? bulletsIn.map((x) => str_(x)).filter(Boolean) : [];
+  const out = [];
+
+  for (let i = 0; i < bullets.length && out.length < 6; i += 1) {
+    const raw = bullets[i];
+    const keyword = keywords[i % Math.max(1, keywords.length)] || "core capability";
+    let next = raw.replace(/\s+/g, " ").trim();
+    if (!next) continue;
+    if (!next.toLowerCase().includes(keyword.toLowerCase())) {
+      next = `${next} using ${keyword}`;
+    }
+    if (!/^delivered\b/i.test(next)) {
+      next = `Delivered measurable impact ${toActionPhrase_(next)}.`;
+    }
+    out.push(next.replace(/\.+$/g, "").trim() + ".");
+  }
+
+  while (out.length < 3 && out.length < 6) {
+    const keyword = keywords[out.length % Math.max(1, keywords.length)] || "core capability";
+    out.push(`Delivered measurable impact using ${keyword} through structured execution and stakeholder alignment.`);
+  }
+  return unique_(out).slice(0, 6);
+}
+
+function enforceCoverLetterTone_(input, fallback, strongestKeyword = "") {
+  const keyword = str_(strongestKeyword || "key requirements");
+  const raw = str_(input || fallback).replace(/\s+/g, " ").trim();
+  if (!raw) {
+    return `My experience aligns directly with your need for ${keyword}, and I can contribute quickly with measurable execution.`;
+  }
+  const bad = /perfect fit|best candidate|guarantee|no doubt/gi;
+  const cleaned = raw.replace(bad, "strong match");
+  if (cleaned.toLowerCase().includes("aligns directly with your need for")) return cleaned;
+  return `${cleaned} My experience aligns directly with your need for ${keyword}.`;
+}
+
+function toActionPhrase_(text) {
+  const cleaned = str_(text).replace(/\.+$/g, "");
+  if (!cleaned) return "through structured execution and clear ownership";
+  if (/^by\b/i.test(cleaned)) return cleaned;
+  if (/^using\b/i.test(cleaned)) return cleaned;
+  return `by ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)}`;
+}
+
+function toSentenceFragment_(text) {
+  const clean = str_(text).replace(/\s+/g, " ").replace(/^\.{3}/, "").replace(/\.{3}$/, "");
+  if (!clean) return "";
+  const trimmed = clean.length > 160 ? `${clean.slice(0, 157).trim()}...` : clean;
+  const noTrailing = trimmed.replace(/[.!?]+$/g, "");
+  return `${noTrailing.charAt(0).toLowerCase()}${noTrailing.slice(1)}`;
+}
+
+function roleFallback_(job) {
+  return str_(job?.role_title || "core requirement");
 }
 
 function normalizeRubricProfile_(input) {

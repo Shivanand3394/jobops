@@ -32,6 +32,46 @@ import { diagnoseRssFeedsAndIngest_, pollRssFeedsAndIngest_ } from "./rss.js";
 // Optional env:
 // - ALLOW_ORIGIN = "*" OR exact origin like "https://getjobs....workers.dev"
 
+const SYNONYM_MAP = Object.freeze({
+  // --- LEADERSHIP & STRATEGY ---
+  Leadership: Object.freeze([
+    "managed", "led", "mentored", "supervising", "directed",
+    "steered", "spearheaded", "orchestrated", "head of", "people management",
+  ]),
+  "Business Strategy": Object.freeze([
+    "strategic planning", "roadmap", "go-to-market", "gtm",
+    "growth strategy", "market positioning", "p&l management", "business development",
+  ]),
+  "Cross-functional Collaboration": Object.freeze([
+    "partnered with", "stakeholder management", "aligned",
+    "bridged", "inter-departmental", "matrix organization", "collaborated",
+  ]),
+
+  // --- PRODUCT & OPERATIONS ---
+  "Project Management": Object.freeze([
+    "agile", "scrum", "sdlc", "waterfall", "kanban",
+    "delivery", "milestones", "resource allocation", "sprint planning",
+  ]),
+  "Process Optimization": Object.freeze([
+    "streamlined", "six sigma", "lean", "efficiency",
+    "workflow automation", "operational excellence", "standardization",
+  ]),
+
+  // --- TECHNICAL CLUSTERS (2026 Meta) ---
+  "AI Integration": Object.freeze([
+    "llm", "gpt", "claude", "prompt engineering", "retrieval-augmented generation",
+    "rag", "model fine-tuning", "vector database",
+  ]),
+  "Cloud Infrastructure": Object.freeze([
+    "aws", "azure", "gcp", "serverless", "kubernetes",
+    "docker", "terraform", "iac", "microservices",
+  ]),
+  "Data Analysis": Object.freeze([
+    "sql", "tableau", "power bi", "forecasting",
+    "kpi tracking", "data-driven insights", "predictive modeling",
+  ]),
+});
+
 export default {
   async fetch(request, env) {
     // Always handle CORS preflight first
@@ -47,7 +87,11 @@ export default {
       // Public route
       // ----------------------------
       if (path === "/health" && request.method === "GET") {
-        return json_({ ok: true, ts: Date.now() }, env, 200);
+        return json_({
+          ok: true,
+          ts: Date.now(),
+          worker_version: String(env.WORKER_VERSION || "dev").trim() || "dev",
+        }, env, 200);
       }
 
       // ----------------------------
@@ -84,6 +128,7 @@ export default {
         path === "/extract-jd" ||
         path === "/score-jd" ||
         path === "/score-pending" ||
+        path === "/jobs/evidence/rebuild-archived" ||
         path === "/jobs/recover/missing-fields" ||
         path === "/jobs/recover/rescore-existing-jd" ||
         (path.startsWith("/jobs/") && path.endsWith("/rescore"));
@@ -318,7 +363,18 @@ export default {
       // ============================
       // UI: JOB detail
       // ============================
-      if (path.startsWith("/jobs/") && request.method === "GET" && !path.endsWith("/status") && !path.endsWith("/rescore") && !path.endsWith("/checklist") && !path.endsWith("/resume-payload") && !path.endsWith("/application-pack")) {
+      if (
+        path.startsWith("/jobs/") &&
+        request.method === "GET" &&
+        !path.startsWith("/jobs/evidence/") &&
+        !path.endsWith("/status") &&
+        !path.endsWith("/rescore") &&
+        !path.endsWith("/checklist") &&
+        !path.endsWith("/evidence") &&
+        !path.endsWith("/resume-payload") &&
+        !path.endsWith("/application-pack") &&
+        !path.includes("/application-pack/")
+      ) {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
@@ -327,6 +383,196 @@ export default {
 
         decorateJobRow_(row);
         return json_({ ok: true, data: row }, env, 200);
+      }
+
+      // ============================
+      // UI: Job evidence
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/evidence") && request.method === "GET") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const limit = clampInt_(url.searchParams.get("limit") || 300, 1, 1000);
+
+        const hasEvidenceTable = await hasJobEvidenceTable_(env);
+        if (!hasEvidenceTable) {
+          return json_({ ok: false, error: "Evidence schema not enabled in DB" }, env, 400);
+        }
+
+        const res = await env.DB.prepare(`
+          SELECT
+            id,
+            job_key,
+            requirement_text,
+            requirement_type,
+            evidence_text,
+            evidence_source,
+            confidence_score,
+            matched,
+            notes,
+            created_at,
+            updated_at
+          FROM job_evidence
+          WHERE job_key = ?
+          ORDER BY
+            CASE requirement_type
+              WHEN 'must' THEN 1
+              WHEN 'nice' THEN 2
+              WHEN 'constraint' THEN 3
+              WHEN 'reject' THEN 4
+              ELSE 9
+            END ASC,
+            matched DESC,
+            confidence_score DESC,
+            updated_at DESC
+          LIMIT ?;
+        `.trim()).bind(jobKey, limit).all();
+
+        const rows = (res.results || []).map((r) => ({
+          ...r,
+          matched: toBool_(r.matched, false),
+          confidence_score: clampInt_(r.confidence_score, 0, 100),
+        }));
+        if (!rows.length) {
+          return json_({ ok: false, error: "Evidence not found" }, env, 404);
+        }
+
+        return json_({
+          ok: true,
+          data: rows,
+          meta: {
+            job_key: jobKey,
+            count: rows.length,
+            matched_count: rows.filter((x) => x.matched).length,
+            unmatched_count: rows.filter((x) => !x.matched).length,
+          },
+        }, env, 200);
+      }
+
+      // ============================
+      // UI: Rebuild job evidence
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/evidence/rebuild") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const hasEvidenceTable = await hasJobEvidenceTable_(env);
+        if (!hasEvidenceTable) {
+          return json_({ ok: false, error: "Evidence schema not enabled in DB" }, env, 400);
+        }
+
+        const job = await env.DB.prepare(`
+          SELECT
+            job_key,
+            jd_text_clean,
+            must_have_keywords_json,
+            nice_to_have_keywords_json,
+            reject_keywords_json
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const now = Date.now();
+        const extractedJd = {
+          must_have_keywords: safeJsonParseArray_(job.must_have_keywords_json),
+          nice_to_have_keywords: safeJsonParseArray_(job.nice_to_have_keywords_json),
+          reject_keywords: safeJsonParseArray_(job.reject_keywords_json),
+          constraints: [],
+          jd_text: String(job.jd_text_clean || "").trim(),
+        };
+
+        const totalRequirements =
+          extractedJd.must_have_keywords.length +
+          extractedJd.nice_to_have_keywords.length +
+          extractedJd.reject_keywords.length;
+        if (!totalRequirements) {
+          return json_({ ok: false, error: "No extracted requirements available. Rescore first." }, env, 400);
+        }
+
+        try {
+          const resumeTailoring = await loadLatestResumeTailoringForEvidence_(env, jobKey);
+          const evidenceRows = buildEvidenceRows_({
+            jobKey,
+            extractedJd,
+            resumeJson: resumeTailoring,
+            now,
+          });
+          const result = await upsertJobEvidence_(env, jobKey, evidenceRows);
+          await logEvent_(env, "EVIDENCE_REBUILT", jobKey, {
+            ...result,
+            requirement_count: evidenceRows.length,
+            ts: now,
+          });
+          return json_({
+            ok: true,
+            data: {
+              job_key: jobKey,
+              ...result,
+              requirement_count: evidenceRows.length,
+            },
+          }, env, 200);
+        } catch (e) {
+          await logEvent_(env, "EVIDENCE_UPSERT_FAILED", jobKey, {
+            route: "evidence-rebuild",
+            error: String(e?.message || e || "unknown").slice(0, 300),
+            ts: now,
+          });
+          return json_({
+            ok: false,
+            error: "Evidence rebuild failed",
+            detail: String(e?.message || e || "unknown"),
+          }, env, 500);
+        }
+      }
+
+      // ============================
+      // API: Bulk rebuild evidence for ARCHIVED jobs (one-time maintenance)
+      // ============================
+      if (path === "/jobs/evidence/rebuild-archived" && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        const modeRaw = String(body.mode || "retry_failed").trim().toLowerCase();
+        const mode = (modeRaw === "all_archived" || modeRaw === "retry_failed") ? modeRaw : "retry_failed";
+        const limit = clampInt_(body.limit || 3, 1, 10);
+        const delayMs = clampInt_(body.delay_ms || 2000, 0, 2000);
+        const force = toBool_(body.force, false);
+        const profileId = String(body.profile_id || "primary").trim() || "primary";
+        const profileOnly = body.profile_only === undefined ? true : toBool_(body.profile_only, true);
+        const maxTokens = clampInt_(body.max_tokens || 500, 128, 700);
+        const cursorJobKey = String(body.cursor_job_key || "").trim();
+
+        const data = await bulkRebuildArchivedEvidence_(env, ai, {
+          mode,
+          limit,
+          delayMs,
+          force,
+          profileId,
+          profileOnly,
+          maxTokens,
+          cursorJobKey,
+        });
+        await logEvent_(env, "EVIDENCE_BULK_REBUILD_ARCHIVED", null, {
+          ...data,
+          mode,
+          cursor_job_key: cursorJobKey || null,
+          max_tokens: maxTokens,
+          delay_ms: delayMs,
+          ts: Date.now(),
+        });
+        return json_({ ok: true, data }, env, 200);
+      }
+
+      // ============================
+      // API: Evidence gap report (read-only)
+      // ============================
+      if (path === "/jobs/evidence/gap-report" && request.method === "GET") {
+        const status = String(url.searchParams.get("status") || "ARCHIVED").trim().toUpperCase() || "ARCHIVED";
+        const top = clampInt_(url.searchParams.get("top") || 5, 1, 20);
+        const minMissed = clampInt_(url.searchParams.get("min_missed") || 1, 1, 1000);
+        const profileId = String(url.searchParams.get("profile_id") || "primary").trim() || "primary";
+
+        const report = await getEvidenceGapReport_(env, { status, top, minMissed, profileId });
+        return json_({ ok: true, data: report }, env, 200);
       }
 
       // ============================
@@ -704,6 +950,29 @@ export default {
           jobKey
         ).run();
 
+        try {
+          const resumeTailoring = await loadLatestResumeTailoringForEvidence_(env, jobKey);
+          const evidenceRows = buildEvidenceRows_({
+            jobKey,
+            extractedJd: {
+              must_have_keywords: Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : [],
+              nice_to_have_keywords: Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [],
+              reject_keywords: Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [],
+              constraints: [],
+              jd_text: jdText,
+            },
+            resumeJson: resumeTailoring,
+            now,
+          });
+          await upsertJobEvidence_(env, jobKey, evidenceRows);
+        } catch (e) {
+          await logEvent_(env, "EVIDENCE_UPSERT_FAILED", jobKey, {
+            route: "manual-jd",
+            error: String(e?.message || e || "unknown").slice(0, 300),
+            ts: Date.now(),
+          });
+        }
+
         await logEvent_(env, "MANUAL_JD_RESCORED", jobKey, { status: transition.status, final_score: finalScore, ts: now });
         return json_({
           ok: true,
@@ -839,6 +1108,35 @@ export default {
           now,
           jobKey
         ).run();
+
+        try {
+          const resumeTailoring = await loadLatestResumeTailoringForEvidence_(env, jobKey);
+          const evidenceRows = buildEvidenceRows_({
+            jobKey,
+            extractedJd: {
+              must_have_keywords: Array.isArray(extracted?.must_have_keywords)
+                ? extracted.must_have_keywords
+                : safeJsonParseArray_(job.must_have_keywords_json),
+              nice_to_have_keywords: Array.isArray(extracted?.nice_to_have_keywords)
+                ? extracted.nice_to_have_keywords
+                : safeJsonParseArray_(job.nice_to_have_keywords_json),
+              reject_keywords: Array.isArray(extracted?.reject_keywords)
+                ? extracted.reject_keywords
+                : safeJsonParseArray_(job.reject_keywords_json),
+              constraints: [],
+              jd_text: jdClean,
+            },
+            resumeJson: resumeTailoring,
+            now,
+          });
+          await upsertJobEvidence_(env, jobKey, evidenceRows);
+        } catch (e) {
+          await logEvent_(env, "EVIDENCE_UPSERT_FAILED", jobKey, {
+            route: "rescore",
+            error: String(e?.message || e || "unknown").slice(0, 300),
+            ts: Date.now(),
+          });
+        }
 
         await logEvent_(env, "RESCORED_ONE", jobKey, { final_score: finalScore, status: transition.status, ts: now });
 
@@ -990,7 +1288,11 @@ export default {
       // ============================
       // UI: Generate application pack
       // ============================
-      if (path.startsWith("/jobs/") && path.endsWith("/generate-application-pack") && request.method === "POST") {
+      if (
+        path.startsWith("/jobs/") &&
+        (path.endsWith("/generate-application-pack") || path.endsWith("/generate-pack")) &&
+        request.method === "POST"
+      ) {
         const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
@@ -998,6 +1300,7 @@ export default {
         const force = Boolean(body.force);
         const renderer = String(body.renderer || "reactive_resume").trim().toLowerCase();
         const rendererSafe = (renderer === "html_simple" || renderer === "reactive_resume") ? renderer : "reactive_resume";
+        const legacyOnePagerProvided = (body.one_pager_strict !== undefined || body.onePagerStrict !== undefined);
         const controls = {
           template_id: String(body.template_id || body.templateId || "").trim().slice(0, 80),
           enabled_blocks: Array.isArray(body.enabled_blocks)
@@ -1007,11 +1310,19 @@ export default {
             ? body.selected_keywords
             : (Array.isArray(body.selectedKeywords) ? body.selectedKeywords : []),
           ats_target_mode: String(body.ats_target_mode || body.atsTargetMode || "").trim().toLowerCase(),
+          one_page_mode: normalizeOnePageMode_(body.one_page_mode ?? body.onePageMode),
           one_pager_strict: toBool_(body.one_pager_strict ?? body.onePagerStrict, true),
+          content_review_required: true,
         };
 
         const job = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
         if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const resolvedOnePageMode = controls.one_page_mode || resolveDefaultOnePageMode_(job);
+        controls.one_page_mode = resolvedOnePageMode;
+        controls.one_pager_strict = legacyOnePagerProvided
+          ? toBool_(body.one_pager_strict ?? body.onePagerStrict, true)
+          : (resolvedOnePageMode === "hard");
 
         let profile = null;
         const profileIdIn = String(body.profile_id || "").trim();
@@ -1023,9 +1334,14 @@ export default {
         const targets = await loadTargets_(env);
         const target = targets.find((t) => t.id === String(job.primary_target_id || "")) || null;
         const aiForPack = getAi_(env);
+        const evidenceFirst = body.evidence_first === undefined ? true : toBool_(body.evidence_first, true);
+        const evidenceLimit = clampInt_(body.evidence_limit || 12, 1, 30);
 
         let packData = null;
         try {
+          const matchedEvidence = evidenceFirst
+            ? await loadMatchedEvidenceForPack_(env, job.job_key, evidenceLimit)
+            : [];
           packData = await generateApplicationPack_({
             env,
             ai: aiForPack || null,
@@ -1034,6 +1350,7 @@ export default {
             profile,
             renderer: rendererSafe,
             controls,
+            matchedEvidence,
           });
         } catch (e) {
           packData = {
@@ -1043,7 +1360,13 @@ export default {
               job: { job_key: job.job_key, job_url: job.job_url, source_domain: job.source_domain, status: job.status },
               target: target || null,
               extracted: { role_title: job.role_title, company: job.company, location: job.location, seniority: job.seniority, final_score: job.final_score },
-              tailoring: { summary: "", bullets: [], must_keywords: safeJsonParseArray_(job.must_have_keywords_json), nice_keywords: safeJsonParseArray_(job.nice_to_have_keywords_json) },
+              tailoring: {
+                summary: "",
+                bullets: [],
+                cover_letter: "",
+                must_keywords: safeJsonParseArray_(job.must_have_keywords_json),
+                nice_keywords: safeJsonParseArray_(job.nice_to_have_keywords_json),
+              },
               renderer: rendererSafe,
             },
             ats_json: {
@@ -1082,11 +1405,22 @@ export default {
           pack: packData,
           force,
         });
+        await createResumeDraftVersionFromLatest_(env, {
+          draftId: saved.draft_id,
+          jobKey: job.job_key,
+          profileId: profile.id,
+          sourceAction: force ? "regenerate" : "generate",
+          controls,
+        });
 
         await logEvent_(env, "APPLICATION_PACK_GENERATED", jobKey, {
           profile_id: profile.id,
           status: packData.status,
           ats_score: packData.ats_score,
+          evidence_first: evidenceFirst,
+          evidence_match_count: Array.isArray(packData?.pack_json?.tailoring?.evidence_matches)
+            ? packData.pack_json.tailoring.evidence_matches.length
+            : 0,
           rr_export_contract_id: RR_EXPORT_CONTRACT_ID,
           rr_export_schema_version: RR_EXPORT_SCHEMA_VERSION,
           rr_export_import_ready: Boolean(packData?.rr_export_json?.metadata?.import_ready),
@@ -1104,7 +1438,13 @@ export default {
             template_id: controls.template_id || "",
             enabled_blocks_count: Array.isArray(controls.enabled_blocks) ? controls.enabled_blocks.length : 0,
             selected_keywords_count: Array.isArray(controls.selected_keywords) ? controls.selected_keywords.length : 0,
+            one_page_mode: controls.one_page_mode,
             one_pager_strict: Boolean(controls.one_pager_strict),
+            content_review_required: true,
+            evidence_first: evidenceFirst,
+            evidence_match_count: Array.isArray(packData?.pack_json?.tailoring?.evidence_matches)
+              ? packData.pack_json.tailoring.evidence_matches.length
+              : 0,
             rr_export_contract: {
               id: RR_EXPORT_CONTRACT_ID,
               schema_version: RR_EXPORT_SCHEMA_VERSION,
@@ -1187,6 +1527,18 @@ export default {
         const rrPdfLastExportError = draftSchema.hasRrPdfFields
           ? String(row.rr_pdf_last_export_error || "").trim()
           : "";
+        const versionsEnabled = await hasResumeDraftVersions_(env);
+        const latestVersion = versionsEnabled
+          ? await env.DB.prepare(`
+              SELECT id, version_no, source_action, created_at
+              FROM resume_draft_versions
+              WHERE draft_id = ?
+              ORDER BY version_no DESC
+              LIMIT 1;
+            `.trim()).bind(row.id).first()
+          : null;
+        const onePageMode = normalizeOnePageMode_(packJson?.controls?.one_page_mode) || null;
+        const contentReviewRequired = toBool_(packJson?.controls?.content_review_required, true);
 
         return json_({
           ok: true,
@@ -1216,9 +1568,245 @@ export default {
             rr_pdf_last_export_status: rrPdfLastExportStatus,
             rr_pdf_last_export_error: rrPdfLastExportError,
             pdf_readiness: pdfReadiness,
+            one_page_mode: onePageMode,
+            content_review_required: contentReviewRequired,
+            latest_version: latestVersion
+              ? {
+                id: latestVersion.id,
+                version_no: numOrNull_(latestVersion.version_no),
+                source_action: String(latestVersion.source_action || "").trim(),
+                created_at: numOrNull_(latestVersion.created_at),
+              }
+              : null,
+            version_history_enabled: versionsEnabled,
             rr_base_url: getReactiveResumeBaseUrl_(env),
             updated_at: row.updated_at,
           }
+        }, env, 200);
+      }
+
+      // ============================
+      // UI: Application pack versions
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/application-pack/versions") && request.method === "GET") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const profileId = String(url.searchParams.get("profile_id") || "").trim();
+        const limit = clampInt_(url.searchParams.get("limit") || 20, 1, 100);
+        const rows = await listDraftVersions_(env, { jobKey, profileId, limit });
+        return json_({
+          ok: true,
+          data: rows,
+          meta: {
+            job_key: jobKey,
+            profile_id: profileId || null,
+            limit,
+            versions_enabled: await hasResumeDraftVersions_(env),
+          },
+        }, env, 200);
+      }
+
+      if (path.startsWith("/jobs/") && path.endsWith("/application-pack/review") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const body = await request.json().catch(() => ({}));
+        const profileId = String(body.profile_id || body.profileId || "").trim();
+        const summaryRaw = String(body.summary || "").trim();
+        const bulletsInput = Array.isArray(body.bullets)
+          ? body.bullets
+          : String(body.bullets_text || body.bulletsText || "")
+            .split(/\r?\n+/g)
+            .map((x) => x.trim())
+            .filter(Boolean);
+        const bulletsRaw = Array.isArray(bulletsInput)
+          ? bulletsInput.map((x) => String(x || "").trim()).filter(Boolean)
+          : [];
+        if (!summaryRaw) {
+          return json_({ ok: false, error: "summary is required" }, env, 400);
+        }
+        if (!bulletsRaw.length) {
+          return json_({ ok: false, error: "bullets are required" }, env, 400);
+        }
+
+        const row = profileId
+          ? await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ? AND profile_id = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey, profileId).first()
+          : await env.DB.prepare(`
+              SELECT * FROM resume_drafts
+              WHERE job_key = ?
+              ORDER BY updated_at DESC
+              LIMIT 1;
+            `.trim()).bind(jobKey).first();
+
+        if (!row) {
+          return json_({ ok: false, error: "Application pack not found. Generate pack first." }, env, 404);
+        }
+
+        const packJson = safeJsonParse_(row.pack_json) || {};
+        const atsJsonPrev = safeJsonParse_(row.ats_json) || {};
+        const rrJsonPrev = safeJsonParse_(row.rr_export_json) || {};
+        const controlsPrev = (packJson?.controls && typeof packJson.controls === "object") ? packJson.controls : {};
+        const selectedKeywords = Array.isArray(body.selected_keywords)
+          ? body.selected_keywords.map((x) => String(x || "").trim()).filter(Boolean)
+          : (Array.isArray(controlsPrev.selected_keywords) ? controlsPrev.selected_keywords : []);
+        const enabledBlocks = Array.isArray(body.enabled_blocks)
+          ? body.enabled_blocks.map((x) => String(x || "").trim().toLowerCase()).filter(Boolean)
+          : (Array.isArray(controlsPrev.enabled_blocks) ? controlsPrev.enabled_blocks : ["summary", "experience", "skills", "highlights", "bullets"]);
+        const templateId = String(body.template_id || body.templateId || controlsPrev.template_id || "balanced").trim().slice(0, 80) || "balanced";
+        const atsTargetMode = String(body.ats_target_mode || body.atsTargetMode || controlsPrev.ats_target_mode || "all").trim().toLowerCase() || "all";
+        const onePageMode = normalizeOnePageMode_(body.one_page_mode ?? body.onePageMode)
+          || normalizeOnePageMode_(controlsPrev.one_page_mode)
+          || resolveDefaultOnePageMode_(packJson?.job || {});
+        const onePagerStrict = (body.one_pager_strict !== undefined || body.onePagerStrict !== undefined)
+          ? toBool_(body.one_pager_strict ?? body.onePagerStrict, onePageMode === "hard")
+          : (onePageMode === "hard");
+        const capped = applyOnePageCaps_(summaryRaw, bulletsRaw);
+
+        packJson.tailoring = {
+          ...(packJson.tailoring && typeof packJson.tailoring === "object" ? packJson.tailoring : {}),
+          summary: enabledBlocks.includes("summary") ? capped.summary : "",
+          bullets: enabledBlocks.includes("bullets") ? capped.bullets : [],
+        };
+        packJson.controls = {
+          ...controlsPrev,
+          template_id: templateId,
+          enabled_blocks: enabledBlocks,
+          selected_keywords: selectedKeywords,
+          ats_target_mode: atsTargetMode,
+          one_page_mode: onePageMode,
+          one_pager_strict: onePagerStrict,
+          content_review_required: true,
+        };
+
+        let rrExport = ensureReactiveResumeExportContract_(rrJsonPrev, {
+          jobKey: row.job_key,
+          templateId,
+        });
+        rrExport.basics = {
+          ...(rrExport.basics && typeof rrExport.basics === "object" ? rrExport.basics : {}),
+          summary: String(packJson.tailoring.summary || ""),
+        };
+        rrExport.sections = {
+          ...(rrExport.sections && typeof rrExport.sections === "object" ? rrExport.sections : {}),
+          highlights: Array.isArray(packJson.tailoring.bullets)
+            ? packJson.tailoring.bullets.map((x) => ({ text: String(x || "").trim() })).filter((x) => x.text).slice(0, onePagerStrict ? 4 : 8)
+            : [],
+        };
+        rrExport.metadata = {
+          ...(rrExport.metadata && typeof rrExport.metadata === "object" ? rrExport.metadata : {}),
+          template_id: templateId,
+          one_page_mode: onePageMode,
+          one_pager_strict: onePagerStrict,
+        };
+        rrExport = ensureReactiveResumeExportContract_(rrExport, {
+          jobKey: row.job_key,
+          templateId,
+        });
+
+        const atsJson = recomputeReviewedAts_(packJson, atsJsonPrev);
+        const jobRow = await env.DB.prepare(`
+          SELECT job_key, role_title, company, status, system_status, jd_text_clean, fetch_debug_json
+          FROM jobs
+          WHERE job_key = ?
+          LIMIT 1;
+        `.trim()).bind(row.job_key).first();
+        const pdfReadiness = evaluatePdfReadiness_(env, {
+          job: jobRow || {},
+          packJson,
+          atsJson,
+          rrExportJson: rrExport,
+        });
+        const reviewedStatus = (pdfReadiness.ready || !pdfReadiness.hard_gate_applied)
+          ? "READY_FOR_EXPORT"
+          : "CONTENT_REVIEW_REQUIRED";
+        const now = Date.now();
+
+        await env.DB.prepare(`
+          UPDATE resume_drafts
+          SET pack_json = ?, ats_json = ?, rr_export_json = ?, status = ?, error_text = NULL, updated_at = ?
+          WHERE id = ?;
+        `.trim()).bind(
+          JSON.stringify(packJson),
+          JSON.stringify(atsJson),
+          JSON.stringify(rrExport),
+          reviewedStatus,
+          now,
+          row.id
+        ).run();
+
+        const versionMeta = await insertDraftVersion_(env, {
+          jobKey: row.job_key,
+          profileId: row.profile_id,
+          draftId: row.id,
+          sourceAction: "manual_edit",
+          packJson,
+          atsJson,
+          rrExportJson: rrExport,
+          controlsJson: packJson.controls || {},
+          status: reviewedStatus,
+          errorText: "",
+          createdAt: now,
+        });
+
+        await logEvent_(env, "APPLICATION_PACK_REVIEWED", jobKey, {
+          profile_id: row.profile_id,
+          draft_id: row.id,
+          version_id: versionMeta?.id || null,
+          version_no: versionMeta?.version_no || null,
+          one_page_mode: onePageMode,
+          hard_gate_applied: Boolean(pdfReadiness?.hard_gate_applied),
+          ats_score: numOrNull_(atsJson?.score),
+          ts: now,
+        });
+
+        return json_({
+          ok: true,
+          data: {
+            job_key: row.job_key,
+            profile_id: row.profile_id,
+            draft_id: row.id,
+            status: reviewedStatus,
+            ats_score: numOrNull_(atsJson?.score),
+            pdf_readiness: pdfReadiness,
+            version_id: versionMeta?.id || null,
+            version_no: versionMeta?.version_no || null,
+          },
+        }, env, 200);
+      }
+
+      if (path.startsWith("/jobs/") && path.endsWith("/application-pack/revert") && request.method === "POST") {
+        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const body = await request.json().catch(() => ({}));
+        const profileId = String(body.profile_id || body.profileId || "").trim();
+        const versionId = String(body.version_id || body.versionId || "").trim();
+        if (!versionId) return json_({ ok: false, error: "Missing version_id" }, env, 400);
+
+        const restored = await restoreDraftVersion_(env, {
+          jobKey,
+          profileId,
+          versionId,
+        });
+        if (!restored) {
+          return json_({ ok: false, error: "Version not found" }, env, 404);
+        }
+
+        await logEvent_(env, "APPLICATION_PACK_REVERTED", jobKey, {
+          profile_id: restored.profile_id,
+          draft_id: restored.draft_id,
+          version_id: restored.version_id,
+          restored_version_no: restored.version_no,
+          ts: Date.now(),
+        });
+
+        return json_({
+          ok: true,
+          data: restored,
         }, env, 200);
       }
 
@@ -1535,6 +2123,12 @@ export default {
             row.id
           ).run();
         }
+        await createResumeDraftVersionFromLatest_(env, {
+          draftId: row.id,
+          jobKey: row.job_key,
+          profileId: row.profile_id,
+          sourceAction: "pdf_export",
+        });
 
         await logEvent_(env, "RR_PDF_EXPORTED", jobKey, {
           profile_id: row.profile_id,
@@ -2085,6 +2679,20 @@ async function getJobsSchema_(env) {
   }
 }
 
+async function hasJobEvidenceTable_(env) {
+  try {
+    const row = await env.DB.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name = 'job_evidence'
+      LIMIT 1;
+    `.trim()).first();
+    return Boolean(row?.name);
+  } catch {
+    return false;
+  }
+}
+
 async function getResumeDraftSchema_(env) {
   try {
     const rows = await env.DB.prepare(`PRAGMA table_info(resume_drafts);`).all();
@@ -2104,6 +2712,273 @@ async function getResumeDraftSchema_(env) {
   } catch {
     return { hasRrPushFields: false, hasRrPdfFields: false };
   }
+}
+
+async function hasResumeDraftVersions_(env) {
+  try {
+    const row = await env.DB.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name = 'resume_draft_versions'
+      LIMIT 1;
+    `.trim()).first();
+    return Boolean(row?.name);
+  } catch {
+    return false;
+  }
+}
+
+async function listDraftVersions_(env, { jobKey, profileId = "", limit = 20 } = {}) {
+  if (!await hasResumeDraftVersions_(env)) return [];
+  const lim = clampInt_(limit || 20, 1, 100);
+  const rows = profileId
+    ? await env.DB.prepare(`
+        SELECT id, version_no, source_action, status, created_at, ats_json
+        FROM resume_draft_versions
+        WHERE job_key = ? AND profile_id = ?
+        ORDER BY created_at DESC
+        LIMIT ?;
+      `.trim()).bind(jobKey, profileId, lim).all()
+    : await env.DB.prepare(`
+        SELECT id, version_no, source_action, status, created_at, ats_json
+        FROM resume_draft_versions
+        WHERE job_key = ?
+        ORDER BY created_at DESC
+        LIMIT ?;
+      `.trim()).bind(jobKey, lim).all();
+
+  return (rows.results || []).map((r) => {
+    const ats = safeJsonParse_(r.ats_json) || {};
+    return {
+      id: r.id,
+      version_no: numOrNull_(r.version_no),
+      source_action: String(r.source_action || "").trim(),
+      status: String(r.status || "").trim(),
+      created_at: numOrNull_(r.created_at),
+      ats_score: numOrNull_(ats.score),
+    };
+  });
+}
+
+async function insertDraftVersion_(env, {
+  jobKey,
+  profileId,
+  draftId,
+  sourceAction,
+  packJson,
+  atsJson,
+  rrExportJson,
+  controlsJson,
+  status,
+  errorText = "",
+  createdAt = Date.now(),
+} = {}) {
+  if (!await hasResumeDraftVersions_(env)) return null;
+  const versionId = crypto.randomUUID();
+  const created = numOrNull_(createdAt) || Date.now();
+  const versionRow = await env.DB.prepare(`
+    SELECT COALESCE(MAX(version_no), 0) + 1 AS next_version
+    FROM resume_draft_versions
+    WHERE draft_id = ?;
+  `.trim()).bind(draftId).first();
+  const versionNo = numOr_(versionRow?.next_version, 1);
+
+  await env.DB.prepare(`
+    INSERT INTO resume_draft_versions (
+      id, job_key, profile_id, draft_id, version_no, source_action,
+      pack_json, ats_json, rr_export_json, controls_json, status, error_text, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  `.trim()).bind(
+    versionId,
+    String(jobKey || "").trim(),
+    String(profileId || "").trim(),
+    String(draftId || "").trim(),
+    versionNo,
+    String(sourceAction || "generate").trim().slice(0, 40) || "generate",
+    JSON.stringify(packJson || {}),
+    JSON.stringify(atsJson || {}),
+    JSON.stringify(rrExportJson || {}),
+    JSON.stringify(controlsJson || {}),
+    String(status || "CONTENT_REVIEW_REQUIRED").trim().slice(0, 40) || "CONTENT_REVIEW_REQUIRED",
+    String(errorText || "").slice(0, 1000),
+    created
+  ).run();
+
+  return { id: versionId, version_no: versionNo };
+}
+
+async function createResumeDraftVersionFromLatest_(env, {
+  draftId,
+  jobKey,
+  profileId,
+  sourceAction = "generate",
+  controls = {},
+} = {}) {
+  if (!await hasResumeDraftVersions_(env)) return null;
+  const row = await env.DB.prepare(`
+    SELECT id, job_key, profile_id, pack_json, ats_json, rr_export_json, status, error_text
+    FROM resume_drafts
+    WHERE id = ?
+    LIMIT 1;
+  `.trim()).bind(draftId).first();
+  if (!row) return null;
+  const packJson = safeJsonParse_(row.pack_json) || {};
+  const atsJson = safeJsonParse_(row.ats_json) || {};
+  const rrExportJson = safeJsonParse_(row.rr_export_json) || {};
+  const controlsJson = (controls && Object.keys(controls).length)
+    ? controls
+    : ((packJson?.controls && typeof packJson.controls === "object") ? packJson.controls : {});
+  return insertDraftVersion_(env, {
+    jobKey: String(jobKey || row.job_key || "").trim(),
+    profileId: String(profileId || row.profile_id || "").trim(),
+    draftId: row.id,
+    sourceAction,
+    packJson,
+    atsJson,
+    rrExportJson,
+    controlsJson,
+    status: row.status,
+    errorText: row.error_text || "",
+    createdAt: Date.now(),
+  });
+}
+
+async function restoreDraftVersion_(env, {
+  jobKey,
+  profileId = "",
+  versionId,
+} = {}) {
+  if (!await hasResumeDraftVersions_(env)) return null;
+  const row = profileId
+    ? await env.DB.prepare(`
+        SELECT *
+        FROM resume_draft_versions
+        WHERE id = ? AND job_key = ? AND profile_id = ?
+        LIMIT 1;
+      `.trim()).bind(versionId, jobKey, profileId).first()
+    : await env.DB.prepare(`
+        SELECT *
+        FROM resume_draft_versions
+        WHERE id = ? AND job_key = ?
+        LIMIT 1;
+      `.trim()).bind(versionId, jobKey).first();
+  if (!row) return null;
+
+  const now = Date.now();
+  const draft = await env.DB.prepare(`
+    SELECT id
+    FROM resume_drafts
+    WHERE id = ?
+    LIMIT 1;
+  `.trim()).bind(row.draft_id).first();
+  if (!draft?.id) return null;
+
+  await env.DB.prepare(`
+    UPDATE resume_drafts
+    SET pack_json = ?, ats_json = ?, rr_export_json = ?, status = ?, error_text = ?, updated_at = ?
+    WHERE id = ?;
+  `.trim()).bind(
+    row.pack_json,
+    row.ats_json,
+    row.rr_export_json,
+    String(row.status || "CONTENT_REVIEW_REQUIRED"),
+    String(row.error_text || "").slice(0, 1000),
+    now,
+    row.draft_id
+  ).run();
+
+  const controls = safeJsonParse_(row.controls_json) || {};
+  controls.reverted_from_version_id = versionId;
+  const inserted = await insertDraftVersion_(env, {
+    jobKey: row.job_key,
+    profileId: row.profile_id,
+    draftId: row.draft_id,
+    sourceAction: "revert",
+    packJson: safeJsonParse_(row.pack_json) || {},
+    atsJson: safeJsonParse_(row.ats_json) || {},
+    rrExportJson: safeJsonParse_(row.rr_export_json) || {},
+    controlsJson: controls,
+    status: String(row.status || "CONTENT_REVIEW_REQUIRED"),
+    errorText: String(row.error_text || ""),
+    createdAt: now,
+  });
+
+  return {
+    job_key: row.job_key,
+    profile_id: row.profile_id,
+    draft_id: row.draft_id,
+    restored_from_version_id: versionId,
+    status: String(row.status || "CONTENT_REVIEW_REQUIRED"),
+    version_id: inserted?.id || null,
+    version_no: inserted?.version_no || null,
+  };
+}
+
+function applyOnePageCaps_(summaryIn, bulletsIn) {
+  const summary = trimTextToMaxChars_(String(summaryIn || "").trim(), 320);
+  const bullets = (Array.isArray(bulletsIn) ? bulletsIn : [])
+    .map((x) => String(x || "").trim())
+    .filter(Boolean)
+    .slice(0, 4);
+  return { summary, bullets };
+}
+
+function recomputeReviewedAts_(packJson, prevAts) {
+  const pack = packJson && typeof packJson === "object" ? packJson : {};
+  const atsPrev = prevAts && typeof prevAts === "object" ? prevAts : {};
+  const must = normalizeKeywordArray_(pack?.tailoring?.must_keywords || []);
+  const nice = normalizeKeywordArray_(pack?.tailoring?.nice_keywords || []);
+  const summary = String(pack?.tailoring?.summary || "").trim();
+  const bullets = Array.isArray(pack?.tailoring?.bullets) ? pack.tailoring.bullets.map((x) => String(x || "").trim()).filter(Boolean) : [];
+  const coverage = computeCoverageFromText_(must, nice, `${summary}\n${bullets.join("\n")}`);
+  return {
+    ...atsPrev,
+    score: coverage.score,
+    missing_keywords: coverage.missing,
+    coverage: coverage.coverage,
+    notes: coverage.notes,
+  };
+}
+
+function computeCoverageFromText_(mustList, niceList, text) {
+  const must = normalizeKeywordArray_(mustList);
+  const nice = normalizeKeywordArray_(niceList);
+  const low = String(text || "").toLowerCase();
+  const mustHit = must.filter((k) => low.includes(k.toLowerCase()));
+  const niceHit = nice.filter((k) => low.includes(k.toLowerCase()));
+  const missing = must.filter((k) => !mustHit.includes(k));
+  const mustScore = must.length ? Math.round((mustHit.length / must.length) * 100) : 100;
+  const niceScore = nice.length ? Math.round((niceHit.length / nice.length) * 100) : 60;
+  const score = clampInt_(Math.round((mustScore * 0.7) + (niceScore * 0.3)), 0, 100);
+  return {
+    score,
+    missing,
+    coverage: {
+      must_total: must.length,
+      must_hit: mustHit.length,
+      nice_total: nice.length,
+      nice_hit: niceHit.length,
+    },
+    notes: missing.length ? `Add evidence for: ${missing.slice(0, 8).join(", ")}` : "Good keyword coverage",
+  };
+}
+
+function normalizeKeywordArray_(v) {
+  return unique_((Array.isArray(v) ? v : []).map((x) => String(x || "").trim()).filter(Boolean));
+}
+
+function normalizeOnePageMode_(v) {
+  const raw = String(v || "").trim().toLowerCase();
+  if (raw === "hard" || raw === "soft") return raw;
+  return "";
+}
+
+function resolveDefaultOnePageMode_(job) {
+  const status = String(job?.status || "").trim().toUpperCase();
+  const score = Number(job?.final_score);
+  if (status === "SHORTLISTED" || status === "APPLIED") return "hard";
+  if (Number.isFinite(score) && score >= 75) return "hard";
+  return "soft";
 }
 
 async function loadTargets_(env) {
@@ -2150,6 +3025,791 @@ async function loadSysCfg_(env) {
   } catch {
     return defaults;
   }
+}
+
+async function loadLatestResumeTailoringForEvidence_(env, jobKey) {
+  try {
+    const row = await env.DB.prepare(`
+      SELECT pack_json
+      FROM resume_drafts
+      WHERE job_key = ?
+      ORDER BY updated_at DESC
+      LIMIT 1;
+    `.trim()).bind(jobKey).first();
+    const pack = safeJsonParse_(row?.pack_json) || {};
+    const tailoring = (pack?.tailoring && typeof pack.tailoring === "object") ? pack.tailoring : {};
+    return {
+      summary: String(tailoring.summary || "").trim(),
+      bullets: Array.isArray(tailoring.bullets)
+        ? tailoring.bullets.map((x) => String(x || "").trim()).filter(Boolean)
+        : [],
+    };
+  } catch {
+    return { summary: "", bullets: [] };
+  }
+}
+
+async function loadMatchedEvidenceForPack_(env, jobKey, limitIn = 12) {
+  const jobKeySafe = String(jobKey || "").trim();
+  if (!jobKeySafe) return [];
+  const limit = clampInt_(limitIn || 12, 1, 30);
+  try {
+    const hasEvidenceTable = await hasJobEvidenceTable_(env);
+    if (!hasEvidenceTable) return [];
+    const res = await env.DB.prepare(`
+      SELECT
+        requirement_text,
+        requirement_type,
+        evidence_text,
+        confidence_score,
+        updated_at
+      FROM job_evidence
+      WHERE job_key = ? AND matched = 1
+      ORDER BY
+        CASE requirement_type
+          WHEN 'must' THEN 1
+          WHEN 'nice' THEN 2
+          WHEN 'constraint' THEN 3
+          WHEN 'reject' THEN 4
+          ELSE 9
+        END ASC,
+        confidence_score DESC,
+        updated_at DESC
+      LIMIT ?;
+    `.trim()).bind(jobKeySafe, limit).all();
+    return (res.results || []).map((row) => ({
+      requirement_text: String(row.requirement_text || "").trim(),
+      requirement_type: String(row.requirement_type || "").trim().toLowerCase(),
+      evidence_text: String(row.evidence_text || "").trim(),
+      confidence_score: clampInt_(row.confidence_score, 0, 100),
+      updated_at: numOrNull_(row.updated_at) || null,
+    })).filter((row) => row.requirement_text);
+  } catch {
+    return [];
+  }
+}
+
+function collectEvidenceBulletsFromProfile_(profileObj) {
+  const p = profileObj && typeof profileObj === "object" ? profileObj : {};
+  const out = [];
+  const pushText = (v) => {
+    const s = String(v || "").trim();
+    if (s) out.push(s);
+  };
+  const pushMany = (arr) => {
+    for (const x of (Array.isArray(arr) ? arr : [])) pushText(x);
+  };
+
+  pushMany(p.highlights);
+  pushMany(p.bullets);
+
+  for (const exp of (Array.isArray(p.experience) ? p.experience : [])) {
+    if (!exp || typeof exp !== "object") continue;
+    pushText(exp.title);
+    pushText(exp.company);
+    pushText(exp.summary || exp.description);
+    pushMany(exp.bullets);
+    pushMany(exp.highlights);
+    pushMany(exp.responsibilities);
+    pushMany(exp.accomplishments);
+  }
+
+  for (const proj of (Array.isArray(p.projects) ? p.projects : [])) {
+    if (!proj || typeof proj !== "object") continue;
+    pushText(proj.name);
+    pushText(proj.summary || proj.description);
+    pushMany(proj.highlights);
+    pushMany(proj.bullets);
+  }
+
+  return unique_(out).slice(0, 120);
+}
+
+function resumeProfileToEvidenceInput_(profileObj) {
+  const p = profileObj && typeof profileObj === "object" ? profileObj : {};
+  const summary =
+    String(
+      p.summary ||
+      p?.basics?.summary ||
+      p?.basics?.headline ||
+      ""
+    ).trim();
+
+  return {
+    summary,
+    bullets: collectEvidenceBulletsFromProfile_(p),
+  };
+}
+
+async function loadResumeProfileForEvidence_(env, profileId = "primary") {
+  const pid = String(profileId || "primary").trim() || "primary";
+  try {
+    let row = await env.DB.prepare(`
+      SELECT id, profile_json
+      FROM resume_profiles
+      WHERE id = ?
+      LIMIT 1;
+    `.trim()).bind(pid).first();
+
+    if (!row) {
+      row = await env.DB.prepare(`
+        SELECT id, profile_json
+        FROM resume_profiles
+        ORDER BY updated_at DESC
+        LIMIT 1;
+      `.trim()).first();
+    }
+
+    if (!row) return { profile_id: null, summary: "", bullets: [] };
+    const profileJson = safeJsonParse_(row.profile_json) || {};
+    const evidenceInput = resumeProfileToEvidenceInput_(profileJson);
+    return {
+      profile_id: String(row.id || "").trim() || null,
+      summary: evidenceInput.summary,
+      bullets: evidenceInput.bullets,
+    };
+  } catch {
+    return { profile_id: null, summary: "", bullets: [] };
+  }
+}
+
+async function fetchExistingEvidenceJobKeys_(env, jobKeys) {
+  const keys = unique_((Array.isArray(jobKeys) ? jobKeys : []).map((k) => String(k || "").trim()).filter(Boolean));
+  if (!keys.length) return new Set();
+
+  const placeholders = keys.map(() => "?").join(", ");
+  const res = await env.DB.prepare(`
+    SELECT DISTINCT job_key
+    FROM job_evidence
+    WHERE job_key IN (${placeholders});
+  `.trim()).bind(...keys).all();
+
+  return new Set((res.results || []).map((r) => String(r.job_key || "").trim()).filter(Boolean));
+}
+
+async function bulkRebuildArchivedEvidence_(env, ai, opts = {}) {
+  const modeRaw = String(opts.mode || "retry_failed").trim().toLowerCase();
+  const mode = (modeRaw === "all_archived" || modeRaw === "retry_failed") ? modeRaw : "retry_failed";
+  const limit = clampInt_(opts.limit || 3, 1, 10);
+  const delayMs = mode === "retry_failed" ? 2000 : clampInt_(opts.delayMs || 2000, 0, 2000);
+  const force = toBool_(opts.force, false);
+  const profileId = String(opts.profileId || "primary").trim() || "primary";
+  const profileOnly = opts.profileOnly === undefined ? true : toBool_(opts.profileOnly, true);
+  const maxTokens = clampInt_(opts.maxTokens || 500, 128, 700);
+  const cursorJobKey = String(opts.cursorJobKey || "").trim();
+
+  if (!ai) throw new Error("Missing Workers AI binding (env.AI or AI_BINDING)");
+  const hasEvidenceTable = await hasJobEvidenceTable_(env);
+  if (!hasEvidenceTable) throw new Error("Evidence schema not enabled in DB");
+
+  let cursorUpdatedAt = null;
+  if (cursorJobKey) {
+    const cursorRow = await env.DB.prepare(`
+      SELECT updated_at
+      FROM jobs
+      WHERE job_key = ?
+      LIMIT 1;
+    `.trim()).bind(cursorJobKey).first();
+    cursorUpdatedAt = numOrNull_(cursorRow?.updated_at);
+  }
+
+  const whereParts = [`UPPER(COALESCE(j.status, '')) = 'ARCHIVED'`];
+  const binds = [];
+  if (mode === "retry_failed") {
+    whereParts.push(`NOT EXISTS (SELECT 1 FROM job_evidence e WHERE e.job_key = j.job_key)`);
+  }
+  if (cursorJobKey && cursorUpdatedAt !== null) {
+    whereParts.push(`(j.updated_at < ? OR (j.updated_at = ? AND j.job_key < ?))`);
+    binds.push(cursorUpdatedAt, cursorUpdatedAt, cursorJobKey);
+  }
+
+  const sql = `
+    SELECT j.job_key, j.job_url, j.source_domain, j.jd_text_clean, j.updated_at
+    FROM jobs j
+    WHERE ${whereParts.join(" AND ")}
+    ORDER BY j.updated_at DESC, j.job_key DESC
+    LIMIT ?;
+  `.trim();
+
+  const candidatesRes = await env.DB.prepare(sql).bind(...binds, limit + 1).all();
+  const candidateRows = (candidatesRes.results || []).map((r) => ({
+    job_key: String(r.job_key || "").trim(),
+    job_url: String(r.job_url || "").trim(),
+    source_domain: String(r.source_domain || "").trim(),
+    jd_text_clean: String(r.jd_text_clean || "").trim(),
+    updated_at: numOrNull_(r.updated_at) || 0,
+  })).filter((r) => r.job_key);
+
+  const hasMore = candidateRows.length > limit;
+  const targetJobs = hasMore ? candidateRows.slice(0, limit) : candidateRows;
+  const nextCursorJobKey = hasMore && targetJobs.length ? String(targetJobs[targetJobs.length - 1].job_key || "").trim() : null;
+
+  const archivedTotalRow = await env.DB.prepare(`
+    SELECT COUNT(*) AS n
+    FROM jobs
+    WHERE UPPER(COALESCE(status, '')) = 'ARCHIVED';
+  `.trim()).first();
+  const archivedTotal = Number(archivedTotalRow?.n || 0);
+
+  if (!targetJobs.length) {
+    return {
+      archived_total: archivedTotal,
+      attempted: 0,
+      succeeded: 0,
+      failed: 0,
+      skipped_existing: 0,
+      skipped_no_jd: 0,
+      rows_created: 0,
+      matched_count: 0,
+      unmatched_count: 0,
+      next_cursor_job_key: null,
+      has_more: false,
+      max_tokens_used: maxTokens,
+      delay_ms_used: delayMs,
+      profile_id: null,
+      mode,
+      forced: force,
+      profile_only: profileOnly,
+      jobs_processed: 0,
+      jobs_skipped_existing: 0,
+      jobs_skipped_no_jd: 0,
+      jobs_ai_failed: 0,
+    };
+  }
+
+  const existingEvidenceKeys = (force || mode === "retry_failed")
+    ? new Set()
+    : await fetchExistingEvidenceJobKeys_(env, targetJobs.map((j) => j.job_key));
+
+  const resumeInput = await loadResumeProfileForEvidence_(env, profileId);
+  let attempted = 0;
+  let succeeded = 0;
+  let failed = 0;
+  let skippedExisting = 0;
+  let skippedNoJd = 0;
+  const allEvidenceRows = [];
+
+  for (const job of targetJobs) {
+    const jobKey = String(job.job_key || "").trim();
+    if (!jobKey) continue;
+
+    if (!force && mode !== "retry_failed" && existingEvidenceKeys.has(jobKey)) {
+      skippedExisting++;
+      continue;
+    }
+
+    const jdText = cleanJdText_(job.jd_text_clean);
+    if (jdText.length < 120) {
+      skippedNoJd++;
+      continue;
+    }
+
+    if (attempted > 0 && delayMs > 0) {
+      await sleepMs_(delayMs);
+    }
+    attempted++;
+
+    try {
+      const extracted = sanitizeExtracted_(
+        await extractJdWithModel_(ai, jdText, { maxTokens }),
+        jdText,
+        {
+          job_url: job.job_url,
+          source_domain: job.source_domain,
+          email_subject: "",
+        }
+      );
+
+      const evidenceRows = buildEvidenceRows_({
+        jobKey,
+        extractedJd: {
+          must_have_keywords: Array.isArray(extracted?.must_have_keywords) ? extracted.must_have_keywords : [],
+          nice_to_have_keywords: Array.isArray(extracted?.nice_to_have_keywords) ? extracted.nice_to_have_keywords : [],
+          reject_keywords: Array.isArray(extracted?.reject_keywords) ? extracted.reject_keywords : [],
+          constraints: [],
+          jd_text: profileOnly ? "" : jdText,
+        },
+        resumeJson: resumeInput,
+        now: Date.now(),
+      });
+
+      if (evidenceRows.length) allEvidenceRows.push(...evidenceRows);
+      succeeded++;
+    } catch (e) {
+      failed++;
+      await logEvent_(env, "AI_FAILED", jobKey, {
+        route: "bulk-evidence-rebuild-archived-retry",
+        error: String(e?.message || e || "unknown").slice(0, 300),
+        max_tokens: maxTokens,
+        ts: Date.now(),
+      });
+    }
+  }
+
+  const writeResult = allEvidenceRows.length
+    ? await upsertJobEvidence_(env, "", allEvidenceRows)
+    : { rows_written: 0, matched_count: 0, unmatched_count: 0 };
+
+  return {
+    archived_total: archivedTotal,
+    attempted,
+    succeeded,
+    failed,
+    skipped_existing: skippedExisting,
+    skipped_no_jd: skippedNoJd,
+    rows_created: writeResult.rows_written,
+    matched_count: writeResult.matched_count,
+    unmatched_count: writeResult.unmatched_count,
+    next_cursor_job_key: nextCursorJobKey,
+    has_more: hasMore,
+    max_tokens_used: maxTokens,
+    delay_ms_used: delayMs,
+    profile_id: resumeInput.profile_id,
+    mode,
+    forced: force,
+    profile_only: profileOnly,
+    jobs_processed: succeeded,
+    jobs_skipped_existing: skippedExisting,
+    jobs_skipped_no_jd: skippedNoJd,
+    jobs_ai_failed: failed,
+  };
+}
+
+function normalizeGapToken_(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[-_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function synonymsForRequirement_(requirementText) {
+  const req = normalizeGapToken_(requirementText);
+  if (!req) return [];
+
+  // Prefer exact map key first.
+  for (const [key, values] of Object.entries(SYNONYM_MAP)) {
+    if (normalizeGapToken_(key) === req) {
+      return unique_((values || []).map((x) => String(x || "").trim()).filter(Boolean));
+    }
+  }
+
+  // Fallback: fuzzy bucket by overlapping key terms.
+  const out = [];
+  for (const [key, values] of Object.entries(SYNONYM_MAP)) {
+    const keyNorm = normalizeGapToken_(key);
+    if (!keyNorm) continue;
+    const keyWords = keyNorm.split(" ").filter(Boolean);
+    const overlap = keyWords.some((w) => req.includes(w));
+    if (overlap) out.push(...values);
+  }
+
+  if (req.includes("cross functional")) out.push(...(SYNONYM_MAP["Cross-functional Collaboration"] || []));
+  if (req.includes("lead")) out.push(...(SYNONYM_MAP["Leadership"] || []));
+  if (req.includes("strategy")) out.push(...(SYNONYM_MAP["Business Strategy"] || []));
+  if (req.includes("project")) out.push(...(SYNONYM_MAP["Project Management"] || []));
+  if (req.includes("process")) out.push(...(SYNONYM_MAP["Process Optimization"] || []));
+  if (req.includes("cloud")) out.push(...(SYNONYM_MAP["Cloud Infrastructure"] || []));
+  if (req.includes("data")) out.push(...(SYNONYM_MAP["Data Analysis"] || []));
+  if (req.includes("ai")) out.push(...(SYNONYM_MAP["AI Integration"] || []));
+
+  return unique_(out.map((x) => String(x || "").trim()).filter(Boolean));
+}
+
+function tokenInCorpus_(corpusText, token) {
+  const corpus = String(corpusText || "").trim();
+  const q = String(token || "").trim();
+  if (!corpus || !q) return false;
+  const escaped = escapeRegex_(q);
+  const useWordBoundary = /^[A-Za-z0-9_][A-Za-z0-9_ ]*[A-Za-z0-9_]$/.test(q);
+  const pattern = useWordBoundary ? `\\b${escaped}\\b` : escaped;
+  return new RegExp(pattern, "i").test(corpus);
+}
+
+function buildSuggestedRewrite_(requirementText, synonymHits, classification) {
+  const req = String(requirementText || "").trim();
+  if (!req) return "";
+
+  const key = normalizeGapToken_(req);
+  if (classification === "vocabulary_gap") {
+    const found = Array.isArray(synonymHits) && synonymHits.length ? synonymHits[0] : "";
+    if (key === normalizeGapToken_("Leadership")) {
+      return `Exercised Leadership by managing a high-performing team of 5 developers and delivering measurable outcomes.${found ? ` Replace "${found}" with "Leadership" where relevant.` : ""}`;
+    }
+    if (key === normalizeGapToken_("Business Strategy")) {
+      return `Defined and executed the Business Strategy and product roadmap for a priority business area.${found ? ` Replace "${found}" with "Business Strategy" where relevant.` : ""}`;
+    }
+    if (key === normalizeGapToken_("Cross-functional Collaboration")) {
+      return `Drove Cross-functional Collaboration with Sales and Engineering to achieve shared delivery goals.${found ? ` Replace "${found}" with "Cross-functional Collaboration" where relevant.` : ""}`;
+    }
+    return found
+      ? `Replace "${found}" with "${req}" in your profile to trigger the ATS filter.`
+      : `Use the exact keyword "${req}" in a quantified bullet to trigger ATS matching.`;
+  }
+  if (classification === "true_gap") {
+    return `Acquire or document "${req}" experience. This is a recurring bottleneck in your archive.`;
+  }
+  return `Keep "${req}" explicit in summary/bullets where relevant.`;
+}
+
+function classifyGap_(requirementText, profileCorpusText) {
+  const requirement = String(requirementText || "").trim();
+  const corpus = String(profileCorpusText || "").trim();
+  if (!requirement || !corpus) {
+    return {
+      status: "true_gap",
+      synonym_hits: [],
+      suggestion: `Acquire or document "${requirement}" experience. This is a recurring bottleneck in your archive.`,
+    };
+  }
+
+  const exactHit = tokenInCorpus_(corpus, requirement);
+  if (exactHit) {
+    return { status: "matched", synonym_hits: [], suggestion: null };
+  }
+
+  const synonyms = synonymsForRequirement_(requirement);
+  const synonymHits = synonyms.filter((s) => tokenInCorpus_(corpus, s));
+  if (synonymHits.length > 0) {
+    return {
+      status: "vocabulary_gap",
+      synonym_hits: synonymHits,
+      suggestion: buildSuggestedRewrite_(requirement, synonymHits, "vocabulary_gap"),
+    };
+  }
+
+  return {
+    status: "true_gap",
+    synonym_hits: [],
+    suggestion: buildSuggestedRewrite_(requirement, [], "true_gap"),
+  };
+}
+
+async function loadProfileCorpusForGap_(env, profileId = "primary") {
+  const pid = String(profileId || "primary").trim() || "primary";
+  const tableOrder = ["profiles", "resume_profiles"];
+
+  for (const table of tableOrder) {
+    for (const strategy of ["by_id", "latest"]) {
+      try {
+        const row = strategy === "by_id"
+          ? await env.DB.prepare(`SELECT * FROM ${table} WHERE id = ? LIMIT 1;`).bind(pid).first()
+          : await env.DB.prepare(`SELECT * FROM ${table} ORDER BY updated_at DESC LIMIT 1;`).first();
+        if (!row) continue;
+
+        const rawProfileJson =
+          row.profile_json ??
+          row.resume_json ??
+          row.profile ??
+          row.data_json ??
+          row.data ??
+          "";
+
+        const parsed = safeJsonParse_(rawProfileJson);
+        const evidenceInput = resumeProfileToEvidenceInput_(parsed && typeof parsed === "object" ? parsed : {});
+
+        const rawStrings = Object.entries(row)
+          .filter(([k, v]) => typeof v === "string" && !["id", "name", "created_at", "updated_at"].includes(k))
+          .map(([, v]) => String(v || "").trim())
+          .filter(Boolean);
+
+        const corpus = unique_([
+          evidenceInput.summary,
+          ...(Array.isArray(evidenceInput.bullets) ? evidenceInput.bullets : []),
+          ...rawStrings,
+        ].map((x) => String(x || "").trim()).filter(Boolean)).join("\n");
+
+        return {
+          profile_id: String(row.id || pid).trim() || pid,
+          source_table: table,
+          corpus: normalizeEvidenceText_(corpus),
+        };
+      } catch {
+        // Table may not exist in this environment; continue.
+      }
+    }
+  }
+
+  return { profile_id: null, source_table: null, corpus: "" };
+}
+
+async function getEvidenceGapReport_(env, opts = {}) {
+  const status = String(opts.status || "ARCHIVED").trim().toUpperCase() || "ARCHIVED";
+  const top = clampInt_(opts.top || 5, 1, 20);
+  const minMissed = clampInt_(opts.minMissed || 1, 1, 1000);
+  const profileId = String(opts.profileId || "primary").trim() || "primary";
+
+  const topRes = await env.DB.prepare(`
+    SELECT requirement_text, COUNT(*) AS missed_count
+    FROM job_evidence
+    WHERE matched = 0
+      AND LOWER(COALESCE(requirement_type, '')) = 'must'
+      AND job_key IN (
+        SELECT job_key
+        FROM jobs
+        WHERE UPPER(COALESCE(status, '')) = ?
+      )
+      AND TRIM(COALESCE(requirement_text, '')) <> ''
+    GROUP BY requirement_text
+    HAVING COUNT(*) >= ?
+    ORDER BY missed_count DESC, requirement_text ASC
+    LIMIT ?;
+  `.trim()).bind(status, minMissed, top).all();
+  const topMissing = (topRes.results || []).map((r) => ({
+    requirement_text: String(r.requirement_text || "").trim(),
+    missed_count: Number(r.missed_count || 0),
+  })).filter((r) => r.requirement_text && r.missed_count > 0);
+
+  const profileCorpus = await loadProfileCorpusForGap_(env, profileId);
+  const corpus = String(profileCorpus.corpus || "");
+
+  const vocabularyGapCandidates = topMissing.map((row) => {
+    const requirement = row.requirement_text;
+    const gap = classifyGap_(requirement, corpus);
+
+    return {
+      requirement_text: requirement,
+      missed_count: row.missed_count,
+      synonym_hits: Array.isArray(gap.synonym_hits) ? gap.synonym_hits : [],
+      suggested_rewrite: gap.suggestion,
+      classification: String(gap.status || "unknown"),
+    };
+  });
+
+  const totalRow = await env.DB.prepare(`
+    SELECT COUNT(*) AS n
+    FROM jobs
+    WHERE UPPER(COALESCE(status, '')) = ?;
+  `.trim()).bind(status).first();
+
+  const withEvidenceRow = await env.DB.prepare(`
+    SELECT COUNT(DISTINCT j.job_key) AS n
+    FROM jobs j
+    JOIN job_evidence e ON e.job_key = j.job_key
+    WHERE UPPER(COALESCE(j.status, '')) = ?;
+  `.trim()).bind(status).first();
+
+  const analyzedJobsRow = await env.DB.prepare(`
+    SELECT COUNT(DISTINCT e.job_key) AS n
+    FROM job_evidence e
+    JOIN jobs j ON j.job_key = e.job_key
+    WHERE UPPER(COALESCE(j.status, '')) = ?
+      AND LOWER(COALESCE(e.requirement_type, '')) = 'must';
+  `.trim()).bind(status).first();
+
+  return {
+    top_missing_must: topMissing,
+    vocabulary_gap_candidates: vocabularyGapCandidates,
+    coverage_meta: {
+      archived_total: Number(totalRow?.n || 0),
+      archived_with_evidence: Number(withEvidenceRow?.n || 0),
+      analyzed_jobs: Number(analyzedJobsRow?.n || 0),
+    },
+    status,
+    top,
+    min_missed: minMissed,
+    profile_id: profileCorpus.profile_id,
+    profile_source_table: profileCorpus.source_table,
+  };
+}
+
+function buildEvidenceRows_({ jobKey, extractedJd, resumeJson, now } = {}) {
+  const ts = numOrNull_(now) || Date.now();
+  const ej = extractedJd && typeof extractedJd === "object" ? extractedJd : {};
+  const rj = resumeJson && typeof resumeJson === "object" ? resumeJson : {};
+
+  const summary = String(rj.summary || "").trim();
+  const bullets = Array.isArray(rj.bullets) ? rj.bullets.map((x) => String(x || "").trim()).filter(Boolean) : [];
+  const jdText = String(ej.jd_text || ej.jd_clean || "").trim();
+
+  const groups = [
+    { type: "must", items: normalizeKeywords_(ej.must_have_keywords || []) },
+    { type: "nice", items: normalizeKeywords_(ej.nice_to_have_keywords || []) },
+    { type: "reject", items: normalizeKeywords_(ej.reject_keywords || []) },
+    { type: "constraint", items: normalizeKeywords_(ej.constraints || []) },
+  ];
+
+  const rows = [];
+  const seen = new Set();
+  for (const g of groups) {
+    for (const req of (g.items || [])) {
+      const requirementText = String(req || "").trim();
+      if (!requirementText) continue;
+      const dedupeKey = `${g.type}::${requirementText.toLowerCase()}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+
+      const reqNorm = normalizeEvidenceText_(requirementText);
+      let matched = 0;
+      let confidence = 0;
+      let source = "none";
+      let evidenceText = "";
+
+      const summaryHit = findEvidence_(summary, requirementText, 220);
+      if (summaryHit) {
+        matched = 1;
+        confidence = 95;
+        source = "resume_summary";
+        evidenceText = summaryHit;
+      } else {
+        const bulletHit = bullets.find((b) => findEvidence_(b, requirementText, 220));
+        const bulletSnippet = bulletHit ? findEvidence_(bulletHit, requirementText, 220) : null;
+        if (bulletSnippet) {
+          matched = 1;
+          confidence = 88;
+          source = "resume_bullets";
+          evidenceText = bulletSnippet;
+        }
+      }
+
+      if (!matched) {
+        const jdHit = findEvidence_(jdText, requirementText, 220);
+        if (jdHit) {
+          matched = 1;
+          confidence = 70;
+          source = "jd_text";
+          evidenceText = jdHit;
+        }
+      }
+
+      // Fallback for special keyword/token edge cases after regex pass.
+      if (!matched && reqNorm) {
+        const summaryNorm = normalizeEvidenceText_(summary);
+        const bulletsNorm = normalizeEvidenceText_(bullets.join("\n"));
+        const jdNorm = normalizeEvidenceText_(jdText);
+        if (summaryNorm.includes(reqNorm)) {
+          matched = 1;
+          confidence = 95;
+          source = "resume_summary";
+          evidenceText = cappedEvidenceSnippet_(summary, requirementText, 220);
+        } else if (bulletsNorm.includes(reqNorm)) {
+          matched = 1;
+          confidence = 88;
+          source = "resume_bullets";
+          const bulletFallback = bullets.find((b) => normalizeEvidenceText_(b).includes(reqNorm)) || "";
+          evidenceText = cappedEvidenceSnippet_(bulletFallback, requirementText, 220);
+        } else if (jdNorm.includes(reqNorm)) {
+          matched = 1;
+          confidence = 70;
+          source = "jd_text";
+          evidenceText = cappedEvidenceSnippet_(jdText, requirementText, 220);
+        }
+      }
+
+      rows.push({
+        id: crypto.randomUUID(),
+        job_key: String(jobKey || "").trim(),
+        requirement_text: requirementText,
+        requirement_type: g.type,
+        evidence_text: String(evidenceText || "").slice(0, 220),
+        evidence_source: source,
+        confidence_score: confidence,
+        matched,
+        notes: matched ? "" : "No deterministic match in summary/bullets/JD",
+        created_at: ts,
+        updated_at: ts,
+      });
+    }
+  }
+
+  return rows;
+}
+
+async function upsertJobEvidence_(env, jobKey, evidenceRows) {
+  const rows = Array.isArray(evidenceRows) ? evidenceRows : [];
+  if (!rows.length) {
+    return { rows_written: 0, matched_count: 0, unmatched_count: 0 };
+  }
+
+  const statements = rows.map((row) => env.DB.prepare(`
+    INSERT INTO job_evidence (
+      id, job_key, requirement_text, requirement_type,
+      evidence_text, evidence_source, confidence_score, matched,
+      notes, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(job_key, requirement_text, requirement_type) DO UPDATE SET
+      evidence_text = excluded.evidence_text,
+      evidence_source = excluded.evidence_source,
+      confidence_score = excluded.confidence_score,
+      matched = excluded.matched,
+      notes = excluded.notes,
+      updated_at = excluded.updated_at;
+  `.trim()).bind(
+    String(row.id || crypto.randomUUID()),
+    String(jobKey || row.job_key || "").trim(),
+    String(row.requirement_text || "").trim(),
+    String(row.requirement_type || "").trim(),
+    String(row.evidence_text || "").slice(0, 220),
+    String(row.evidence_source || "none"),
+    clampInt_(row.confidence_score, 0, 100),
+    toBool_(row.matched, false) ? 1 : 0,
+    String(row.notes || "").slice(0, 500),
+    numOrNull_(row.created_at) || Date.now(),
+    numOrNull_(row.updated_at) || Date.now()
+  ));
+
+  await env.DB.batch(statements);
+  const matchedCount = rows.filter((x) => toBool_(x.matched, false)).length;
+  return {
+    rows_written: rows.length,
+    matched_count: matchedCount,
+    unmatched_count: rows.length - matchedCount,
+  };
+}
+
+function normalizeEvidenceText_(v) {
+  return String(v || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function findEvidence_(text, keyword, maxLen = 220) {
+  const hay = String(text || "").replace(/\s+/g, " ").trim();
+  const q = String(keyword || "").trim();
+  if (!hay || !q) return null;
+
+  const escaped = escapeRegex_(q);
+  const useWordBoundary = /^[A-Za-z0-9_][A-Za-z0-9_ ]*[A-Za-z0-9_]$/.test(q);
+  const pattern = useWordBoundary ? `\\b${escaped}\\b` : escaped;
+  const regex = new RegExp(pattern, "i");
+  const match = regex.exec(hay);
+  if (!match) return null;
+
+  const idx = Number(match.index || 0);
+  const len = Math.max(1, String(match[0] || q).length);
+  return snippetWindow_(hay, idx, len, maxLen);
+}
+
+function escapeRegex_(keyword) {
+  return String(keyword || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function snippetWindow_(text, index, matchLen, maxLen = 220) {
+  const src = String(text || "");
+  const max = clampInt_(maxLen, 40, 1000);
+  const idx = clampInt_(index, 0, src.length);
+  const mlen = clampInt_(matchLen, 1, max);
+  const left = Math.max(0, idx - Math.floor((max - mlen) / 2));
+  const right = Math.min(src.length, left + max);
+  const snippet = src.substring(left, right).trim();
+  if (!snippet) return "";
+  const prefix = left > 0 ? "..." : "";
+  const suffix = right < src.length ? "..." : "";
+  return `${prefix}${snippet}${suffix}`;
+}
+
+function cappedEvidenceSnippet_(text, needle, maxLen = 220) {
+  const src = String(text || "").replace(/\s+/g, " ").trim();
+  const max = clampInt_(maxLen, 40, 1000);
+  if (!src) return "";
+  if (!needle) return src.slice(0, max);
+
+  const low = src.toLowerCase();
+  const q = String(needle || "").toLowerCase().trim();
+  const idx = low.indexOf(q);
+  if (idx < 0) return src.slice(0, max);
+
+  const left = Math.max(0, idx - Math.floor((max - q.length) / 2));
+  const right = Math.min(src.length, left + max);
+  return src.slice(left, right);
 }
 
 function decorateJobRow_(row) {
@@ -2478,7 +4138,9 @@ function isLikelyCompanyName_(value) {
  * AI helpers
  * ========================================================= */
 
-async function extractJdWithModel_(ai, text) {
+async function extractJdWithModel_(ai, text, opts = {}) {
+  // Governance: JD extraction is pinned to deterministic runtime controls.
+  const maxTokens = 500;
   const prompt = `
 You are an information extraction engine.
 Return STRICT JSON only. No markdown. No commentary.
@@ -2513,6 +4175,7 @@ ${text}
   const result = await ai.run("@cf/meta/llama-3.1-8b-instruct", {
     messages: [{ role: "user", content: prompt }],
     temperature: 0,
+    max_tokens: maxTokens,
   });
 
   const raw = pickModelText_(result);
@@ -4641,6 +6304,20 @@ function evaluatePdfReadiness_(env, { job, packJson, atsJson, rrExportJson } = {
   const mustHit = Math.max(0, Number(coverage.must_hit || 0));
   const mustCoveragePct = mustTotal > 0 ? Math.round((mustHit / mustTotal) * 100) : 100;
   const rrImportReady = Boolean(rrSafe?.metadata?.import_ready);
+  const onePageMode = normalizeOnePageMode_(packSafe?.controls?.one_page_mode) || "soft";
+  const hardGateApplied = onePageMode === "hard";
+  const onePageEstimate = {
+    summary_chars: summary.length,
+    bullets_count: bullets.length,
+    experience_items: Array.isArray(rrSafe?.sections?.experience) ? rrSafe.sections.experience.length : 0,
+    skills_items: Array.isArray(rrSafe?.sections?.skills) ? rrSafe.sections.skills.length : 0,
+    estimated_density: estimateOnePageDensity_({
+      summaryChars: summary.length,
+      bulletsCount: bullets.length,
+      experienceItems: Array.isArray(rrSafe?.sections?.experience) ? rrSafe.sections.experience.length : 0,
+      skillsItems: Array.isArray(rrSafe?.sections?.skills) ? rrSafe.sections.skills.length : 0,
+    }),
+  };
 
   const checks = [
     {
@@ -4648,65 +6325,91 @@ function evaluatePdfReadiness_(env, { job, packJson, atsJson, rrExportJson } = {
       label: "Role title present",
       ok: roleTitle.length >= 3,
       detail: roleTitle ? `role: ${roleTitle}` : "Missing role title",
+      enforced: hardGateApplied,
     },
     {
       id: "company",
       label: "Company present",
       ok: company.length >= 2,
       detail: company ? `company: ${company}` : "Missing company",
+      enforced: hardGateApplied,
     },
     {
       id: "jd_quality",
       label: "JD quality usable",
       ok: jdTextLen >= 200 || jdConfidence === "medium" || jdConfidence === "high",
       detail: `jd_len=${jdTextLen}, jd_confidence=${jdConfidence || "-"}`,
+      enforced: hardGateApplied,
     },
     {
       id: "summary_length",
       label: "Tailored summary length",
       ok: summary.length >= minSummaryChars,
       detail: `summary_chars=${summary.length}/${minSummaryChars}`,
+      enforced: hardGateApplied,
     },
     {
       id: "bullets_count",
       label: "Tailored bullets count",
       ok: bullets.length >= minBullets,
       detail: `bullets=${bullets.length}/${minBullets}`,
+      enforced: hardGateApplied,
     },
     {
       id: "ats_score",
       label: "ATS score threshold",
       ok: atsScore !== null && atsScore >= minAtsScore,
       detail: `ats_score=${atsScore ?? "-"} / ${minAtsScore}`,
+      enforced: hardGateApplied,
     },
     {
       id: "must_coverage",
       label: "Must-keyword coverage",
       ok: mustCoveragePct >= minMustCoveragePct,
       detail: `must_coverage=${mustCoveragePct}% (${mustHit}/${mustTotal})`,
+      enforced: hardGateApplied,
     },
     {
       id: "rr_import_ready",
       label: "RR import contract ready",
       ok: rrImportReady,
       detail: rrImportReady ? "ready" : "not import-ready",
+      enforced: true,
     },
   ];
 
-  const failedChecks = checks.filter((c) => !c.ok);
+  const failedChecks = checks.filter((c) => c.enforced && !c.ok);
+  const warningChecks = checks.filter((c) => !c.enforced && !c.ok);
   return {
-    gate_version: "pdf_readiness_v1",
+    gate_version: "pdf_readiness_v2",
     ready: failedChecks.length === 0,
     failed_count: failedChecks.length,
     checks,
     failed_checks: failedChecks,
+    warning_checks: warningChecks,
     thresholds: {
       min_summary_chars: minSummaryChars,
       min_bullets: minBullets,
       min_ats_score: minAtsScore,
       min_must_coverage_pct: minMustCoveragePct,
     },
+    one_page_mode: onePageMode,
+    one_page_estimate: onePageEstimate,
+    hard_gate_applied: hardGateApplied,
   };
+}
+
+function estimateOnePageDensity_({ summaryChars = 0, bulletsCount = 0, experienceItems = 0, skillsItems = 0 } = {}) {
+  const summary = clampInt_(summaryChars || 0, 0, 5000);
+  const bullets = clampInt_(bulletsCount || 0, 0, 100);
+  const exp = clampInt_(experienceItems || 0, 0, 50);
+  const skills = clampInt_(skillsItems || 0, 0, 200);
+
+  const high = summary > 280 || bullets > 4 || exp > 3 || skills > 12;
+  if (high) return "high";
+  const medium = summary > 220 || bullets > 3 || exp > 2 || skills > 8;
+  if (medium) return "medium";
+  return "low";
 }
 
 async function exportReactiveResumePdf_(env, { resumeId } = {}) {
@@ -5168,8 +6871,16 @@ async function fetchWithTimeout_(url, init, timeoutMs) {
   }
 }
 
+function sleepMs_(ms) {
+  const wait = clampInt_(ms, 0, 60000);
+  if (!wait) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, wait));
+}
+
 function routeModeFor_(path) {
   if (path === "/health" || path === "/") return "public";
+  if (path === "/jobs/evidence/rebuild-archived") return "api";
+  if (path === "/jobs/evidence/gap-report") return "api";
 
   if (
     path === "/gmail/auth" ||
