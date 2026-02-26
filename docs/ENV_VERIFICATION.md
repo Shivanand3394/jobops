@@ -79,6 +79,9 @@ Source files:
 | `RECOVERY_ENABLED` | Var | Enables/disables cron recovery sequence (backfill + rescore-existing-jd) | No periodic recovery events/counters if disabled |
 | `RECOVER_BACKFILL_LIMIT` | Var | Cron limit for `/jobs/backfill-missing` equivalent | Too few/too many jobs retried per run |
 | `RECOVER_RESCORE_LIMIT` | Var | Cron limit for `/jobs/recover/rescore-existing-jd` equivalent | Too few/too many rescored jobs per run |
+| `WHATSAPP_VONAGE_KEY` | Secret | Public webhook gate for `POST /ingest/whatsapp/vonage` | `401 Unauthorized` on webhook calls |
+| `WHATSAPP_VONAGE_SIGNATURE_SECRET` | Secret | Optional Vonage bearer JWT verification for webhook | `401` with missing/invalid bearer token |
+| `WHATSAPP_VONAGE_ALLOWED_SENDERS` | Secret/Var | Optional sender allowlist (`from` IDs, comma/newline list) | `403 Forbidden sender` for non-allowlisted senders |
 | `ALLOW_ORIGIN` | Var | CORS response header | Browser CORS failures |
 | `DB` | Binding (D1) | Jobs/targets/events and Gmail state persistence | `Missing D1 binding env.DB (bind your D1 as DB)` |
 | `AI` or `AI_BINDING` | Binding/Var indirection | Extraction/scoring routes (`getAi_`) | `Missing Workers AI binding (env.AI or AI_BINDING)` |
@@ -123,12 +126,16 @@ Set placeholders:
 $BASE_URL = "https://get-job.shivanand-shah94.workers.dev"
 $UI_KEY = "<ui-key>"
 $API_KEY = "<api-key>"
+$WHATSAPP_VONAGE_KEY = "<optional-webhook-key>"
+$WHATSAPP_VONAGE_SIGNATURE_SECRET = "<optional-signature-secret>"
 ```
 
 ```bash
 BASE_URL="https://get-job.shivanand-shah94.workers.dev"
 UI_KEY="<ui-key>"
 API_KEY="<api-key>"
+WHATSAPP_VONAGE_KEY="<optional-webhook-key>"
+WHATSAPP_VONAGE_SIGNATURE_SECRET="<optional-signature-secret>"
 ```
 
 ### 1) Health
@@ -213,11 +220,27 @@ Expected:
   - `unreachable`
   - `missing_config`
 
+### 8) WhatsApp Vonage webhook (optional)
+```powershell
+$waBody = @{ from = "+14155550100"; text = "Smoke webhook https://example.com/jobs/123"; message_uuid = "smoke-wa-1" } | ConvertTo-Json
+Invoke-WebRequest -Uri "$BASE_URL/ingest/whatsapp/vonage?key=$WHATSAPP_VONAGE_KEY" -Method POST -ContentType "application/json" -Body $waBody
+```
+```bash
+curl -i -X POST "$BASE_URL/ingest/whatsapp/vonage?key=$WHATSAPP_VONAGE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"from":"+14155550100","text":"Smoke webhook https://example.com/jobs/123","message_uuid":"smoke-wa-1"}'
+```
+Expected:
+- `200` with `ok:true` when key/signature checks pass
+- `401` if signature secret is enabled but bearer JWT is missing/invalid
+- `403` if `WHATSAPP_VONAGE_ALLOWED_SENDERS` is enabled and sender is not allowlisted
+
 ## E) Troubleshooting table
 
 | Failure symptom | Likely cause | How to confirm | Fix |
 |---|---|---|---|
 | `Unauthorized` | Wrong/missing key type or value | Retry endpoint with correct header (`x-ui-key` vs `x-api-key`) | Set correct secret in Worker settings and send correct header |
+| `Forbidden sender` on `/ingest/whatsapp/vonage` | Sender is not in `WHATSAPP_VONAGE_ALLOWED_SENDERS` | Check webhook body `from` and allowlist values | Add sender to allowlist (normalized format) or remove allowlist var |
 | `Missing Workers AI binding (env.AI or AI_BINDING)` | AI binding not configured | Call scoring endpoint (`/score-pending` or `/jobs/:job_key/rescore`) | Add AI binding `AI` or set `AI_BINDING` to valid binding name |
 | Gmail OAuth redirect/callback failures | `GMAIL_CLIENT_ID`/`GMAIL_CLIENT_SECRET` mismatch or redirect URI mismatch | Inspect `/gmail/auth` redirect and Google OAuth client config | Correct vars/secrets and exact callback URI `/gmail/callback` |
 | Cron not firing or `/gmail/poll` not ingesting | Trigger missing or poll runtime error | Check `wrangler.jsonc` cron and use `wrangler tail` around schedule | Ensure cron exists, deploy latest Worker, fix poll errors |

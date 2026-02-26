@@ -25,13 +25,13 @@ DB schema baseline:
 
 ## Auth Model
 - Public: `GET /health`
-- Public: `POST /ingest/whatsapp/vonage` (requires webhook key; if `WHATSAPP_VONAGE_SIGNATURE_SECRET` is set, also requires valid `Authorization: Bearer <jwt>` from Vonage)
+- Public: `POST /ingest/whatsapp/vonage` (requires webhook key; if `WHATSAPP_VONAGE_SIGNATURE_SECRET` is set, also requires valid `Authorization: Bearer <jwt>` from Vonage; optional sender allowlist via `WHATSAPP_VONAGE_ALLOWED_SENDERS`)
 - UI endpoints: require `x-ui-key == env.UI_KEY`
 - Admin/AI endpoints: require `x-api-key == env.API_KEY`
 
 From current Worker routing:
 - UI-auth group includes `/jobs*`, `/ingest`, `/score-pending`, `/targets*`
-- Public ingest webhook: `/ingest/whatsapp/vonage` (gated by `WHATSAPP_VONAGE_KEY`; optionally JWT-verified with `WHATSAPP_VONAGE_SIGNATURE_SECRET`)
+- Public ingest webhook: `/ingest/whatsapp/vonage` (gated by `WHATSAPP_VONAGE_KEY`; optionally JWT-verified with `WHATSAPP_VONAGE_SIGNATURE_SECRET`; optional sender allowlist via `WHATSAPP_VONAGE_ALLOWED_SENDERS`)
 - Admin-auth group includes `/normalize-job`, `/resolve-jd`, `/extract-jd`, `/score-jd`
 - `/score-pending` is implemented to accept either valid UI key or API key
 
@@ -59,7 +59,7 @@ From current Worker routing:
 - `POST /jobs/:job_key/profile-preference` (UI key)
 - `POST /jobs/:job_key/status` (UI key)
 - `POST /ingest` (UI key)
-- `POST /ingest/whatsapp/vonage` (public route; requires `key` query/header matching `WHATSAPP_VONAGE_KEY`; if signature secret is set, requires valid Vonage bearer JWT signature)
+- `POST /ingest/whatsapp/vonage` (public route; requires `key` query/header matching `WHATSAPP_VONAGE_KEY`; if signature secret is set, requires valid Vonage bearer JWT signature; optional sender allowlist via `WHATSAPP_VONAGE_ALLOWED_SENDERS`)
 - `POST /score-pending` (UI key or API key)
 - `POST /jobs/:job_key/rescore` (UI key)
 - `POST /jobs/:job_key/manual-jd` (UI key)
@@ -132,6 +132,12 @@ Configure Vonage signature secret (recommended):
 wrangler secret put WHATSAPP_VONAGE_SIGNATURE_SECRET
 ```
 
+Optional: restrict webhook to known sender IDs (comma/newline list):
+
+```bash
+wrangler secret put WHATSAPP_VONAGE_ALLOWED_SENDERS
+```
+
 ### UI
 Static UI files live in [`ui/`](/c:/Users/dell/Documents/GitHub/jobops/ui).
 Local preview options:
@@ -159,6 +165,9 @@ BASE_URL="https://get-job.shivanand-shah94.workers.dev"
 UI_KEY="<your-ui-key>"
 API_KEY="<your-api-key>"
 JOB_KEY="<job_key>"
+WHATSAPP_VONAGE_KEY="<optional-webhook-key>"
+WHATSAPP_VONAGE_SIGNATURE_SECRET="<optional-signature-secret>"
+WHATSAPP_TEST_SENDER="+14155550100"
 ```
 
 ```powershell
@@ -166,6 +175,9 @@ $BASE_URL = "https://get-job.shivanand-shah94.workers.dev"
 $UI_KEY = "<your-ui-key>"
 $API_KEY = "<your-api-key>"
 $JOB_KEY = "<job_key>"
+$WHATSAPP_VONAGE_KEY = "<optional-webhook-key>"
+$WHATSAPP_VONAGE_SIGNATURE_SECRET = "<optional-signature-secret>"
+$WHATSAPP_TEST_SENDER = "+14155550100"
 ```
 
 ### 1) /health

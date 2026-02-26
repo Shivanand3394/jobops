@@ -552,6 +552,7 @@ function isNeedsAttentionJob(j) {
   if (status === "LINK_ONLY") return true;
   if (systemStatus === "NEEDS_MANUAL_JD" || systemStatus === "AI_UNAVAILABLE") return true;
   if (jdConfidence === "low") return true;
+  if (isStaleFollowupJob(j)) return true;
   return false;
 }
 
@@ -565,10 +566,29 @@ function isMissingDetailsJob(j) {
   return !role || !company;
 }
 
+function getStaleFollowupDays_() {
+  const raw = Number(state.triage?.stale_days || $("trackingTriageDays")?.value || 3);
+  if (!Number.isFinite(raw)) return 3;
+  return Math.max(1, Math.min(21, Math.round(raw)));
+}
+
+function isStaleFollowupJob(j, staleDays = getStaleFollowupDays_()) {
+  const jobStatus = String(j?.status || "").trim().toUpperCase();
+  const touchStatus = String(j?.last_touchpoint_status || "").trim().toUpperCase();
+  const rawDays = Number(j?.days_since_touchpoint);
+  const days = Number.isFinite(rawDays) ? Math.max(0, Math.round(rawDays)) : null;
+  const minDays = Math.max(1, Number.isFinite(Number(staleDays)) ? Math.round(Number(staleDays)) : 3);
+  if (jobStatus !== "APPLIED") return false;
+  if (touchStatus !== "SENT") return false;
+  if (days === null) return false;
+  return days >= minDays;
+}
+
 function filterJobs(jobs, status, q, queue) {
   let out = jobs;
   if (status) out = out.filter((j) => String(j.status || "").toUpperCase() === status);
   if (queue === "needs_attention") out = out.filter(isNeedsAttentionJob);
+  if (queue === "stale_followups") out = out.filter((j) => isStaleFollowupJob(j));
   if (q) {
     out = out.filter((j) => {
       const s = `${getDisplayTitle(j)} ${j.company || ""} ${j.location || ""} ${j.source_domain || ""}`.toLowerCase();
@@ -609,6 +629,7 @@ function renderListMeta() {
   const parts = [`${filtered.length} job(s)`];
   if (status) parts.push(status);
   if (queue === "needs_attention") parts.push("Needs Attention");
+  if (queue === "stale_followups") parts.push(`Stale Follow-ups (${getStaleFollowupDays_()}d+)`);
   $("listHint").textContent = parts.join(" - ");
 }
 
@@ -703,19 +724,31 @@ function trackingCard(j) {
   const status = String(j.status || "").toUpperCase();
   const ingestChannelLabel = getIngestChannelLabel(j);
   const needsAttention = isNeedsAttentionJob(j);
+  const staleFollowup = isStaleFollowupJob(j);
+  const touchpointStatus = String(j.last_touchpoint_status || "").trim().toUpperCase();
+  const touchpointChannel = String(j.last_touchpoint_channel || "").trim().toUpperCase();
+  const touchpointDaysRaw = Number(j.days_since_touchpoint);
+  const touchpointDays = Number.isFinite(touchpointDaysRaw) ? Math.max(0, Math.round(touchpointDaysRaw)) : null;
+  const touchpointPieces = [];
+  if (touchpointStatus) touchpointPieces.push(touchpointStatus);
+  if (touchpointChannel) touchpointPieces.push(touchpointChannel);
+  if (touchpointDays !== null) touchpointPieces.push(fmtDaysAgo_(touchpointDays));
+  const touchpointLabel = touchpointPieces.length ? touchpointPieces.join(" / ") : "none";
 
   return `
-    <div class="track-card" data-track-key="${escapeHtml(j.job_key)}">
+    <div class="track-card ${staleFollowup ? "track-card-stale" : ""}" data-track-key="${escapeHtml(j.job_key)}">
       <div class="track-row">
         <div class="track-title">${escapeHtml(title)}</div>
         <div class="track-score">${escapeHtml(String(score))}</div>
       </div>
       <div class="track-sub">${escapeHtml(company)} - ${escapeHtml(j.source_domain || "-")}</div>
       <div class="track-sub tiny">Updated: <span title="${escapeHtml(updatedAbs)}">${escapeHtml(updated)}</span></div>
+      <div class="track-sub tiny">Last touchpoint: ${escapeHtml(touchpointLabel)}</div>
       <div class="track-meta">
         <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
         ${ingestChannelLabel ? `<span class="chip chip-ingest">${escapeHtml(ingestChannelLabel)}</span>` : ""}
         ${needsAttention ? `<span class="chip">Needs Attention</span>` : ""}
+        ${staleFollowup ? `<span class="chip chip-priority-stale">Stale Follow-up</span>` : ""}
       </div>
       <div class="track-actions">
         <button class="btn btn-ghost btn-xs" data-track-action="open" data-track-key="${escapeHtml(j.job_key)}">Open</button>
@@ -1035,6 +1068,7 @@ function renderTracking() {
   let filtered = sortJobs(filterJobs(scoped, "", q, ""), sort);
   if (queue === "needs_attention") filtered = filtered.filter(isNeedsAttentionJob);
   if (queue === "missing_details") filtered = filtered.filter(isMissingDetailsJob);
+  if (queue === "stale_followups") filtered = filtered.filter((j) => isStaleFollowupJob(j));
 
   const needsAttentionAll = filtered.filter(isNeedsAttentionJob);
   const missingDetailsAll = filtered.filter(isMissingDetailsJob);
@@ -1080,6 +1114,7 @@ function renderTracking() {
   const queueLabel =
     queue === "needs_attention" ? "needs attention only" :
     queue === "missing_details" ? "missing details only" :
+    queue === "stale_followups" ? `stale follow-ups only (${getStaleFollowupDays_()}d+)` :
     "all queues";
   $("trackingHint").textContent = `${filtered.length} jobs on board (${scopeLabel}, ${queueLabel}, window ${windowLabel}, cap ${perColumn}/column)`;
   renderTrackingRecoverySummary_();

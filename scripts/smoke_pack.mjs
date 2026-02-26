@@ -8,6 +8,7 @@ const DEFAULT_BASE_URL = "https://get-job.shivanand-shah94.workers.dev";
 const DEFAULT_OUTPUT_FILE = "docs/artifacts/smoke_pack_latest.json";
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_PROFILE_ID = "primary";
+const DEFAULT_WHATSAPP_WEBHOOK_PATH = "/ingest/whatsapp/vonage";
 
 function asString(value, maxLen = 4000) {
   return String(value ?? "").trim().slice(0, maxLen);
@@ -44,6 +45,11 @@ const cfg = {
   profileId: asString(process.env.PROFILE_ID || DEFAULT_PROFILE_ID, 80),
   timeoutMs: clampInt(process.env.SMOKE_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, 5_000, 180_000),
   outFileRaw: asString(process.env.SMOKE_OUT_FILE || DEFAULT_OUTPUT_FILE, 2000),
+  whatsappWebhookPath: asString(process.env.WHATSAPP_WEBHOOK_PATH || DEFAULT_WHATSAPP_WEBHOOK_PATH, 300) || DEFAULT_WHATSAPP_WEBHOOK_PATH,
+  whatsappWebhookKey: asString(process.env.WHATSAPP_VONAGE_KEY || process.env.WHATSAPP_WEBHOOK_KEY, 500),
+  whatsappSignatureSecret: asString(process.env.WHATSAPP_VONAGE_SIGNATURE_SECRET, 1000),
+  whatsappJwt: asString(process.env.WHATSAPP_VONAGE_JWT, 8000),
+  whatsappSender: asString(process.env.WHATSAPP_TEST_SENDER || "+14155550100", 120),
 };
 
 const outFile = resolve(process.cwd(), cfg.outFileRaw);
@@ -57,6 +63,8 @@ const runLog = {
     profile_id: cfg.profileId,
     job_key_input: cfg.jobKey || null,
     output_file: cfg.outFileRaw,
+    whatsapp_sim_enabled: Boolean(cfg.whatsappWebhookKey),
+    whatsapp_webhook_path: cfg.whatsappWebhookPath,
   },
   steps: [],
   result: "RUNNING",
@@ -77,12 +85,61 @@ function pushStep(step) {
   printStep(step);
 }
 
+function pushSkippedStep(name, reason) {
+  pushStep({
+    name,
+    method: "SKIP",
+    path: "-",
+    auth: "none",
+    request_body: null,
+    expected_status: [],
+    http_status: null,
+    duration_ms: 0,
+    ok: true,
+    error: null,
+    response_json: { skipped: true, reason: asString(reason || "Skipped", 500) },
+    response_text: null,
+  });
+}
+
+function toBase64Url(input) {
+  const s = Buffer.from(String(input ?? ""), "utf8").toString("base64");
+  return s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function buildVonageHs256Jwt(secret, rawBody) {
+  const now = Math.floor(Date.now() / 1000);
+  const safeSecret = asString(secret, 2000);
+  if (!safeSecret) return "";
+  const payloadHash = crypto.createHash("sha256").update(String(rawBody || ""), "utf8").digest("hex");
+  const header = { alg: "HS256", typ: "JWT" };
+  const payload = {
+    iss: "jobops-smoke-pack",
+    sub: "whatsapp-vonage-sim",
+    iat: now,
+    exp: now + 300,
+    payload_hash: payloadHash,
+  };
+  const headerPart = toBase64Url(JSON.stringify(header));
+  const payloadPart = toBase64Url(JSON.stringify(payload));
+  const signingInput = `${headerPart}.${payloadPart}`;
+  const sig = crypto
+    .createHmac("sha256", safeSecret)
+    .update(signingInput, "utf8")
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+  return `${signingInput}.${sig}`;
+}
+
 async function runStep({
   name,
   method,
   path,
   auth = "none",
   body = null,
+  extraHeaders = null,
   expectedStatus = [200],
   validate = null,
 }) {
@@ -93,6 +150,14 @@ async function runStep({
   if (auth === "ui") headers["x-ui-key"] = cfg.uiKey;
   if (auth === "api") headers["x-api-key"] = cfg.apiKey;
   if (body !== null) headers["content-type"] = "application/json";
+  if (extraHeaders && typeof extraHeaders === "object") {
+    for (const [k, v] of Object.entries(extraHeaders)) {
+      const key = asString(k, 200);
+      const value = asString(v, 8000);
+      if (!key || !value) continue;
+      headers[key] = value;
+    }
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), cfg.timeoutMs);
@@ -202,6 +267,49 @@ async function main() {
     path: "/health",
     validate: ({ json }) => (json?.ok === true ? true : "Expected { ok: true }"),
   });
+
+  if (!cfg.whatsappWebhookKey) {
+    pushSkippedStep(
+      "whatsapp.vonage.sim",
+      "Set WHATSAPP_VONAGE_KEY (or WHATSAPP_WEBHOOK_KEY) to enable this step."
+    );
+  } else {
+    const webhookBody = {
+      from: cfg.whatsappSender,
+      text: `Smoke test lead ${cfg.baseUrl}/health`,
+      message_uuid: `smoke-wa-${Date.now()}`,
+    };
+    const webhookRaw = JSON.stringify(webhookBody);
+    const signedJwt = cfg.whatsappJwt || buildVonageHs256Jwt(cfg.whatsappSignatureSecret, webhookRaw);
+    const webhookPath = `${cfg.whatsappWebhookPath}?key=${encodeURIComponent(cfg.whatsappWebhookKey)}`;
+    const webhookStep = await runStep({
+      name: "whatsapp.vonage.sim",
+      method: "POST",
+      path: webhookPath,
+      auth: "none",
+      body: webhookBody,
+      extraHeaders: signedJwt ? { authorization: `Bearer ${signedJwt}` } : null,
+      expectedStatus: [200, 401],
+      validate: ({ status, json, text }) => {
+        if (status === 200) {
+          if (json?.ok !== true) return "Expected { ok: true }";
+          const provider = asString(json?.data?.provider, 40).toLowerCase();
+          return provider === "vonage"
+            ? true
+            : `Expected provider=vonage, got "${provider || "EMPTY"}"`;
+        }
+        const err = asString(json?.error || text, 500).toLowerCase();
+        if (err.includes("authorization bearer token")) {
+          return true;
+        }
+        if (err.includes("invalid vonage signature token")) {
+          return true;
+        }
+        return `Unexpected webhook auth failure: ${asString(json?.error || text, 200)}`;
+      },
+    });
+    runLog.config.whatsapp_sim_http_status = webhookStep.status;
+  }
 
   const jobs = await runStep({
     name: "jobs.list.limit1",

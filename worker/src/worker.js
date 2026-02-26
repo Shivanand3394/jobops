@@ -358,11 +358,21 @@ export default {
         args.push(limit, offset);
 
         const res = await env.DB.prepare(sql).bind(...args).all();
+        const touchpointByJobKey = await loadLatestTouchpointsByJobKey_(
+          env,
+          (res.results || []).map((r) => String(r?.job_key || "").trim())
+        );
+        const nowMs = Date.now();
         const rows = (res.results || []).map((row) => {
           const fetchDebug = safeJsonParse_(row.fetch_debug_json) || {};
           row.fetch_debug = fetchDebug;
           row.ingest_channel = normalizeIngestChannel_(fetchDebug.ingest_channel) || null;
           row.jd_confidence = String(fetchDebug.jd_confidence || "").trim().toLowerCase() || null;
+          applyLatestTouchpointToJobRow_(
+            row,
+            touchpointByJobKey[String(row.job_key || "").trim()] || null,
+            nowMs
+          );
           const display = computeDisplayFields_(row);
           return { ...row, ...display };
         });
@@ -527,6 +537,8 @@ export default {
         if (!row) return json_({ ok: false, error: "Not found" }, env, 404);
 
         decorateJobRow_(row);
+        const touchpointByJobKey = await loadLatestTouchpointsByJobKey_(env, [jobKey]);
+        applyLatestTouchpointToJobRow_(row, touchpointByJobKey[jobKey] || null, Date.now());
         return json_({ ok: true, data: row }, env, 200);
       }
 
@@ -3300,6 +3312,21 @@ export default {
         if (!signatureCheck.ok) {
           return json_({ ok: false, error: signatureCheck.error || "Invalid Vonage signature" }, env, signatureCheck.status || 401);
         }
+        const sender = pickVonageWebhookSender_(body);
+        const senderNorm = normalizeVonageSenderForAllowList_(sender);
+        const allowedSenders = getVonageAllowedSenders_(env);
+        if (allowedSenders.length && (!senderNorm || !allowedSenders.includes(senderNorm))) {
+          await logEvent_(env, "WHATSAPP_VONAGE_INGEST_REJECTED_SENDER", null, {
+            route: "/ingest/whatsapp/vonage",
+            sender: sender || null,
+            sender_normalized: senderNorm || null,
+            allowed_senders_count: allowedSenders.length,
+            signature_verified: Boolean(signatureCheck.enabled),
+            signature_mode: signatureCheck.mode || "disabled",
+            ts: Date.now(),
+          });
+          return json_({ ok: false, error: "Forbidden sender" }, env, 403);
+        }
 
         const messageId = String(
           body?.message_uuid ||
@@ -3342,6 +3369,7 @@ export default {
             signature_verified: Boolean(signatureCheck.enabled),
             signature_mode: signatureCheck.mode || "disabled",
             signature_issuer: String(signatureCheck?.claims?.iss || "").trim() || null,
+            sender: sender || null,
             source_summary: Array.isArray(data?.source_summary) ? data.source_summary : [],
             ts: Date.now(),
           });
@@ -3356,6 +3384,8 @@ export default {
             provider: "vonage",
             message_id: messageId,
             count_in: rawUrls.length,
+            sender: sender || null,
+            sender_whitelist_enabled: allowedSenders.length > 0,
             signature_verified: Boolean(signatureCheck.enabled),
             source_health: sourceHealth,
           },
@@ -3384,6 +3414,8 @@ export default {
             provider: "vonage",
             message_id: messageId,
             count_in: rawUrls.length,
+            sender: sender || null,
+            sender_whitelist_enabled: allowedSenders.length > 0,
             signature_verified: Boolean(signatureCheck.enabled),
             source_health: sourceHealth,
             ingest: data,
@@ -5422,6 +5454,73 @@ function decorateJobRow_(row) {
   const display = computeDisplayFields_(row);
   row.display_title = display.display_title;
   row.display_company = display.display_company;
+}
+
+function applyLatestTouchpointToJobRow_(row, touchpoint, nowMs = Date.now()) {
+  const r = (row && typeof row === "object") ? row : {};
+  const tp = (touchpoint && typeof touchpoint === "object") ? touchpoint : {};
+  const touchAt = normalizeEpochMs_(tp.last_touchpoint_at);
+  const touchStatus = String(tp.last_touchpoint_status || "").trim().toUpperCase() || null;
+  const touchChannel = String(tp.last_touchpoint_channel || "").trim().toUpperCase() || null;
+  let daysSince = null;
+  if (touchAt && Number.isFinite(nowMs) && nowMs >= touchAt) {
+    daysSince = Math.floor((nowMs - touchAt) / (24 * 60 * 60 * 1000));
+  }
+  r.last_touchpoint_at = touchAt;
+  r.last_touchpoint_status = touchStatus;
+  r.last_touchpoint_channel = touchChannel;
+  r.days_since_touchpoint = Number.isFinite(daysSince) ? Math.max(0, daysSince) : null;
+  return r;
+}
+
+async function loadLatestTouchpointsByJobKey_(env, jobKeys = []) {
+  const keys = unique_((jobKeys || []).map((x) => String(x || "").trim()).filter(Boolean)).slice(0, 500);
+  if (!keys.length) return {};
+
+  const storage = await hasContactsStorage_(env);
+  if (!storage?.enabled) return {};
+
+  const placeholders = keys.map(() => "?").join(", ");
+  const rowTsExpr = "COALESCE(ct.updated_at, ct.created_at, 0)";
+  const sql = `
+    SELECT
+      ct.job_key,
+      upper(COALESCE(ct.status, 'DRAFT')) AS status,
+      upper(COALESCE(ct.channel, 'OTHER')) AS channel,
+      CASE
+        WHEN ${rowTsExpr} < 100000000000 THEN ${rowTsExpr} * 1000
+        ELSE ${rowTsExpr}
+      END AS updated_at_ms
+    FROM contact_touchpoints ct
+    INNER JOIN (
+      SELECT
+        job_key,
+        MAX(COALESCE(updated_at, created_at, 0)) AS latest_ts
+      FROM contact_touchpoints
+      WHERE job_key IN (${placeholders})
+      GROUP BY job_key
+    ) latest
+      ON latest.job_key = ct.job_key
+      AND COALESCE(ct.updated_at, ct.created_at, 0) = latest.latest_ts
+    ORDER BY ct.job_key ASC, ct.id DESC;
+  `.trim();
+
+  try {
+    const res = await env.DB.prepare(sql).bind(...keys).all();
+    const out = {};
+    for (const row of (res.results || [])) {
+      const jobKey = String(row?.job_key || "").trim();
+      if (!jobKey || out[jobKey]) continue;
+      out[jobKey] = {
+        last_touchpoint_at: normalizeEpochMs_(row?.updated_at_ms),
+        last_touchpoint_status: String(row?.status || "").trim().toUpperCase() || null,
+        last_touchpoint_channel: String(row?.channel || "").trim().toUpperCase() || null,
+      };
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 async function loadUiMetrics_(env) {
@@ -9672,6 +9771,40 @@ function getBearerToken_(request) {
   const auth = String(request?.headers?.get("authorization") || "").trim();
   const m = auth.match(/^Bearer\s+(.+)$/i);
   return String(m?.[1] || "").trim();
+}
+
+function pickVonageWebhookSender_(payload = {}) {
+  const p = (payload && typeof payload === "object") ? payload : {};
+  return String(
+    p.from ||
+    p.sender ||
+    p.msisdn ||
+    p.phone ||
+    p.message?.from ||
+    p.whatsapp?.from ||
+    ""
+  ).trim().slice(0, 500);
+}
+
+function normalizeVonageSenderForAllowList_(input) {
+  let s = String(input || "").trim().toLowerCase();
+  if (!s) return "";
+  if (s.startsWith("whatsapp:")) s = s.slice("whatsapp:".length);
+  return s.replace(/[^a-z0-9+]/g, "");
+}
+
+function getVonageAllowedSenders_(env) {
+  const raw = String(
+    env?.WHATSAPP_VONAGE_ALLOWED_SENDERS ||
+    env?.WHATSAPP_ALLOWED_SENDERS ||
+    ""
+  ).trim();
+  if (!raw) return [];
+  const list = raw
+    .split(/[\r\n,]+/g)
+    .map((x) => normalizeVonageSenderForAllowList_(x))
+    .filter(Boolean);
+  return unique_(list).slice(0, 200);
 }
 
 async function verifyVonageJwtHs256_(token, secret) {
