@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-27-advanced-zones-v1";
+const UI_BUILD_ID = "2026-02-27-cta-zen-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -834,7 +834,7 @@ function getPrimaryActionForJob_(job) {
     return { id: "score", label: "Score Job" };
   }
   if (status === "SCORED" || status === "SHORTLISTED") {
-    return { id: "generate_pack", label: "Generate Pack" };
+    return { id: "generate_pack", label: "Create Draft" };
   }
   if (status === "READY_TO_APPLY" || status === "APPLIED") {
     return { id: "copy_apply", label: "Copy & Apply" };
@@ -1459,10 +1459,10 @@ function updateNextActionCard_(job, { hasPack = false } = {}) {
   if (!titleEl || !noteEl || !btnEl) return;
 
   const needsManual = String(job?.system_status || "").toUpperCase() === "NEEDS_MANUAL_JD";
-  let title = "Auto-tailor this job";
-  let note = "Score + generate ATS/resume outputs in one step.";
+  let title = "Create tailored draft";
+  let note = "Build the role-matched draft in one step.";
   let action = "auto_pilot";
-  let btnLabel = "Auto Tailor";
+  let btnLabel = "Create Draft";
 
   if (needsManual) {
     title = "Paste JD and rescore";
@@ -1470,10 +1470,10 @@ function updateNextActionCard_(job, { hasPack = false } = {}) {
     action = "go_jd";
     btnLabel = "Go to JD step";
   } else if (hasPack) {
-    title = "Copy & Apply";
-    note = "Review the pitch, approve, and copy the final letter.";
+    title = "Continue application";
+    note = "Move through Matches -> Pitch -> Finish and copy the final letter.";
     action = "copy_apply";
-    btnLabel = "Copy & Apply";
+    btnLabel = "Continue";
   }
 
   section.dataset.nextAction = action;
@@ -1588,28 +1588,25 @@ function syncWizardStickyCta_() {
   primary.classList.remove("btn-success");
   primary.disabled = false;
   secondary.disabled = false;
+  secondary.classList.add("hidden");
+  secondary.textContent = "";
+  secondary.onclick = null;
 
   if (step === "matches") {
     const needsManual = String(state.activeJob?.system_status || "").trim().toUpperCase() === "NEEDS_MANUAL_JD";
     if (needsManual) {
       primary.textContent = "Fix JD First";
       primary.onclick = () => openWizardAdvancedDrawer_({ focusJd: true });
-      secondary.textContent = "Rescore";
-      secondary.onclick = () => rescoreOne(jobKey);
       return;
     }
-    primary.textContent = "Generate Pitch";
+    primary.textContent = "Create Tailored Draft";
     primary.onclick = () => autoPilotJob(jobKey, { force: false });
-    secondary.textContent = "Open Advanced";
-    secondary.onclick = () => openWizardAdvancedDrawer_({ focusJd: false });
     return;
   }
 
   if (step === "pitch") {
-    primary.textContent = "Approve";
+    primary.textContent = "Approve Draft";
     primary.onclick = () => approveWizardPack();
-    secondary.textContent = "Save Draft";
-    secondary.onclick = () => saveWizardDraft();
     return;
   }
 
@@ -1617,16 +1614,11 @@ function syncWizardStickyCta_() {
     primary.textContent = "Needs content review";
     primary.onclick = null;
     primary.disabled = true;
-    secondary.textContent = "Mark Applied";
-    secondary.onclick = null;
-    secondary.disabled = true;
     return;
   }
 
   primary.textContent = "Copy Cover Letter";
   primary.onclick = () => copyWizardCoverLetter(primary);
-  secondary.textContent = "Mark Applied";
-  secondary.onclick = () => updateStatus(jobKey, "APPLIED");
 }
 
 function renderDetail(j) {
@@ -1714,10 +1706,10 @@ function renderDetail(j) {
     <div id="appPackSection" class="workspace-shell">
       <div class="next-action-card">
         <div>
-          <div id="wsNextActionTitle" class="h3">Generate application pack</div>
-          <div id="wsNextActionNote" class="muted tiny">Build ATS + resume outputs for this job.</div>
+          <div id="wsNextActionTitle" class="h3">Create tailored draft</div>
+          <div id="wsNextActionNote" class="muted tiny">Build role-matched content in one step.</div>
         </div>
-        <button id="wsNextActionBtn" class="btn" type="button" onclick="runNextAction()">Generate pack</button>
+        <button id="wsNextActionBtn" class="btn" type="button" onclick="runNextAction()">Create Draft</button>
       </div>
       <div class="wizard-progress">
         <div class="wizard-node active" data-wizard-node="matches" data-wizard-order="1">1 Matches</div>
@@ -1728,7 +1720,7 @@ function renderDetail(j) {
       <div class="workspace-pane" data-wizard-pane="matches">
         <div class="workspace-pane-head">
           <div class="h3">Matches</div>
-          <div class="muted tiny">Use the fastest path: Generate Pitch, then approve and copy.</div>
+          <div class="muted tiny">One-path flow: Create Draft -> Approve Draft -> Copy Cover Letter.</div>
         </div>
         <div id="appMatchSummary" class="muted tiny">Loading match summary...</div>
         <div id="appMatchChips" class="meta"></div>
@@ -1758,7 +1750,7 @@ function renderDetail(j) {
 
       <div class="workspace-pane hidden" data-wizard-pane="finish">
         <div class="h3">Finish</div>
-        <div class="muted tiny" style="margin-top:4px;">Copy and apply. Use PDF-ready when you want print output.</div>
+        <div class="muted tiny" style="margin-top:4px;">Copy and apply. Advanced export tools are in the drawer below.</div>
         <div id="wizardQualityReview" class="chip hidden" style="margin-top:8px;"></div>
         <div class="kv" style="margin-top:10px;">
           <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="10" readonly placeholder="Final letter appears here"></textarea></div>
@@ -1766,25 +1758,16 @@ function renderDetail(j) {
         </div>
         <div id="wizardNetworkingCard" class="hidden" style="margin-top:10px;">
           <div class="h3">Networking</div>
-          <div id="wizardOutreachHint" class="muted tiny" style="margin-top:4px;">Draft targeted outreach for a recruiter or hiring manager.</div>
+          <div id="wizardOutreachHint" class="muted tiny" style="margin-top:4px;">Draft a short outreach message for the selected contact.</div>
           <div class="row" style="justify-content:flex-start; margin-top:8px; gap:8px; flex-wrap:wrap;">
             <select id="wizardOutreachContact" class="hidden" style="min-width:220px;"></select>
-            <button class="btn btn-secondary" id="btnDraftOutreachLinkedin" onclick="draftWizardOutreach('LINKEDIN')" disabled>Draft LinkedIn DM</button>
-            <button class="btn btn-ghost" id="btnDraftOutreachEmail" onclick="draftWizardOutreach('EMAIL')" disabled>Draft Email</button>
+            <button class="btn btn-secondary" id="btnDraftOutreachLinkedin" onclick="draftWizardOutreach('LINKEDIN')" disabled>Draft Outreach</button>
             <button class="btn btn-ghost" id="btnCopyOutreach" onclick="copyWizardOutreach(this)" disabled>Copy Draft</button>
           </div>
           <div class="row" style="justify-content:flex-start; margin-top:8px; gap:8px; flex-wrap:wrap;">
             <span id="wizardOutreachStatus" class="chip">Status: -</span>
-            <button class="btn btn-ghost" id="btnOutreachStatusDraft" onclick="markWizardOutreachStatus('DRAFT')" disabled>Mark Draft</button>
-            <button class="btn btn-ghost" id="btnOutreachStatusSent" onclick="markWizardOutreachStatus('SENT')" disabled>Mark Sent</button>
-            <button class="btn btn-ghost" id="btnOutreachStatusReplied" onclick="markWizardOutreachStatus('REPLIED')" disabled>Mark Replied</button>
           </div>
           <textarea id="wizardOutreachDraft" rows="7" style="margin-top:8px;" placeholder="Outreach draft appears here"></textarea>
-        </div>
-        <div class="actions-grid wizard-finish-actions" style="margin-top:10px;">
-          <button class="btn btn-secondary" id="btnViewTailoredResume" onclick="openTailoredResumeHtml('${escapeHtml(j.job_key)}')">View Tailored Resume</button>
-          <button class="btn btn-ghost" id="btnPdfReadyToggle" onclick="togglePdfReadyMode()">PDF-ready view</button>
-          <button class="btn btn-ghost" id="btnPrintPdfReady" onclick="printPdfReadyView()">Print / Save PDF</button>
         </div>
       </div>
 
@@ -1911,8 +1894,8 @@ function renderDetail(j) {
       </details>
 
       <div id="wizardStickyBar" class="wizard-sticky-bar hidden">
-        <button id="wizardStickySecondary" class="btn btn-ghost" type="button">Save Draft</button>
-        <button id="wizardStickyPrimary" class="btn" type="button">Generate Pitch</button>
+        <button id="wizardStickySecondary" class="btn btn-ghost hidden" type="button"></button>
+        <button id="wizardStickyPrimary" class="btn" type="button">Create Tailored Draft</button>
       </div>
   `;
   if (window.location.hostname.includes("workers.dev")) {
