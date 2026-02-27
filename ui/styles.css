@@ -78,6 +78,10 @@ body{
 
 .right{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 
+body.simple-mode .simple-advanced{
+  display:none !important;
+}
+
 .btn{
   border:none;
   border-radius:10px;
@@ -340,6 +344,48 @@ body{
   background: rgba(16,42,95,.35);
   padding:10px;
   margin-bottom:10px;
+}
+
+.finish-checklist{
+  border:1px solid var(--line);
+  border-radius:12px;
+  background: rgba(12, 22, 40, .55);
+  padding:10px;
+}
+
+.finish-check-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:8px;
+}
+
+.finish-check-row .btn{
+  flex:1;
+  justify-content:flex-start;
+  text-align:left;
+}
+
+.finish-check-state{
+  min-width:78px;
+  text-align:center;
+  font-size:12px;
+  font-weight:700;
+  padding:5px 8px;
+  border-radius:999px;
+  border:1px solid var(--line);
+}
+
+.finish-check-state.pending{
+  color: var(--muted);
+  background: rgba(148,163,184,.12);
+}
+
+.finish-check-state.done{
+  color:#dcfce7;
+  border-color: rgba(34,197,94,.55);
+  background: rgba(34,197,94,.2);
 }
 
 .workspace-pane{
@@ -1278,6 +1324,13 @@ textarea, input{
   }
   .pitch-hero{
     min-height:260px;
+  }
+  .finish-check-row{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .finish-check-state{
+    width:100%;
   }
   .mobile-quick-actions{
     position: fixed;

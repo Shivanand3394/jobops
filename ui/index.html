@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- ui-version: 2026-02-27T13:40:00Z resume-lane-v1 -->
+<!-- ui-version: 2026-02-27T23:59:00Z simple-mode-checklist-v1 -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -17,13 +17,13 @@
     <div class="right">
       <button class="btn btn-ghost" id="btnTabJobs">Jobs</button>
       <button class="btn btn-ghost" id="btnTabTracking">Tracking</button>
-      <button class="btn btn-ghost" id="btnTabTargets">Targets</button>
-      <button class="btn btn-ghost" id="btnTabMetrics">Metrics</button>
+      <button class="btn btn-ghost simple-advanced" id="btnTabTargets">Targets</button>
+      <button class="btn btn-ghost simple-advanced" id="btnTabMetrics">Metrics</button>
       <button class="btn btn-ghost" id="btnProfiles" title="Profiles">Profiles</button>
       <button class="btn btn-ghost hidden" id="btnShowAiNotice" title="Show AI notice">Show AI notice</button>
       <button class="btn btn-ghost" id="btnSettings" title="Settings">Settings</button>
       <button class="btn" id="btnAdd">+ Add job URL</button>
-      <button class="btn btn-secondary" id="btnRescore">Rescore NEW</button>
+      <button class="btn btn-secondary simple-advanced" id="btnRescore">Rescore NEW</button>
     </div>
   </header>
 
@@ -57,7 +57,7 @@
           <input id="search" type="search" placeholder="Role, company, location..." />
         </div>
 
-        <div class="field">
+        <div class="field simple-advanced">
           <label>Sort</label>
           <select id="sortBy">
             <option value="updated_desc">Updated (Newest)</option>
@@ -70,7 +70,7 @@
           </select>
         </div>
 
-        <div class="field">
+        <div class="field simple-advanced">
           <label>Queue</label>
           <select id="queueFilter">
             <option value="">All</option>
@@ -80,7 +80,7 @@
         </div>
 
         <button class="btn btn-ghost" id="btnRefresh" title="Refresh">Refresh</button>
-        <button class="btn btn-ghost" id="btnBatchOps" title="Batch operations">Batch Ops</button>
+        <button class="btn btn-ghost simple-advanced" id="btnBatchOps" title="Batch operations">Batch Ops</button>
       </div>
 
       <div class="list-meta">
@@ -98,7 +98,7 @@
         </div>
         <div class="detail-actions">
           <a id="dOpen" class="btn btn-ghost" href="#" target="_blank" rel="noopener">Open</a>
-          <button class="btn btn-ghost" id="btnCopyKey">Copy Key</button>
+          <button class="btn btn-ghost simple-advanced" id="btnCopyKey">Copy Key</button>
         </div>
       </div>
 
@@ -119,11 +119,11 @@
           <label>Search</label>
           <input id="trackingSearch" type="search" placeholder="Role, company, location..." />
         </div>
-        <button class="btn btn-secondary btn-xs" id="btnTrackingRecover" type="button" title="Quick recovery: retry missing JD fetch and rescore (limited batch)">Recover Missing Details</button>
-        <button class="btn btn-ghost btn-xs" id="btnTrackingRecoverFields" type="button" title="Fill missing role/company from existing JD">Fill Missing Fields</button>
-        <button class="btn btn-ghost btn-xs" id="btnTrackingCanonicalizeTitles" type="button" title="Fix noisy/missing role titles from canonical URL slugs">Canonicalize Titles</button>
+        <button class="btn btn-secondary btn-xs simple-advanced" id="btnTrackingRecover" type="button" title="Quick recovery: retry missing JD fetch and rescore (limited batch)">Recover Missing Details</button>
+        <button class="btn btn-ghost btn-xs simple-advanced" id="btnTrackingRecoverFields" type="button" title="Fill missing role/company from existing JD">Fill Missing Fields</button>
+        <button class="btn btn-ghost btn-xs simple-advanced" id="btnTrackingCanonicalizeTitles" type="button" title="Fix noisy/missing role titles from canonical URL slugs">Canonicalize Titles</button>
         <button class="btn btn-ghost btn-xs hidden" id="btnTrackingFiltersToggle" type="button">Filters</button>
-        <div id="trackingControlsExtras" class="tracking-controls-extras">
+        <div id="trackingControlsExtras" class="tracking-controls-extras simple-advanced">
           <div class="field">
             <label>Queue</label>
             <select id="trackingQueue">
@@ -345,6 +345,10 @@
           <input type="checkbox" id="setUiKeyRemember" />
           Remember on this device (less secure)
         </label>
+        <label class="tiny settings-ui-key-mode">
+          <input type="checkbox" id="setSimpleMode" />
+          Simple applicant mode (recommended)
+        </label>
         <div class="row">
           <button class="btn" id="btnSaveSettings">Save</button>
           <button class="btn btn-ghost" id="btnCancelSettings">Cancel</button>
@@ -525,7 +529,7 @@
     <button class="btn btn-ghost" id="btnMobileTracking">Tracking</button>
     <button class="btn btn-ghost" id="btnMobileProfiles">Profiles</button>
     <button class="btn" id="btnMobileAdd">Add</button>
-    <button class="btn btn-secondary" id="btnMobileRescore">Rescore</button>
+    <button class="btn btn-secondary simple-advanced" id="btnMobileRescore">Rescore</button>
   </nav>
 
   <script src="app.js"></script>

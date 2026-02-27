@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-27-resume-lane-v1";
+const UI_BUILD_ID = "2026-02-27-simple-mode-checklist-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -7,6 +7,8 @@ const ONE_PAGER_STRICT_KEY = "jobops_one_pager_strict_v1";
 const WIZARD_STEP_KEY = "jobops_resume_wizard_step_v1";
 const PDF_READY_MODE_KEY = "jobops_pdf_ready_mode_v1";
 const UI_KEY_STORAGE_MODE_KEY = "jobops_ui_key_mode_v1";
+const SIMPLE_MODE_KEY = "jobops_simple_mode_v1";
+const FINISH_CHECKLIST_KEY = "jobops_finish_checklist_v1";
 const DEFAULT_EVIDENCE_SOURCE_POLICY = "resume_only";
 const QUALITY_BLOCKING_FLAGS = new Set(["NULL_SKILLS", "ROLE_COMPANY_DRIFT"]);
 const PROFILE_MANAGER_KEYS_ = [
@@ -176,6 +178,35 @@ function setCfg({ apiBase, uiKey, uiKeyMode }) {
   }
 }
 
+function getSimpleModePref_() {
+  const raw = String(localStorage.getItem(SIMPLE_MODE_KEY) || "").trim().toLowerCase();
+  if (!raw) return true;
+  return ["1", "true", "yes", "on", "y"].includes(raw);
+}
+
+function setSimpleModePref_(on) {
+  localStorage.setItem(SIMPLE_MODE_KEY, on ? "1" : "0");
+}
+
+function loadFinishChecklistMap_() {
+  try {
+    const raw = localStorage.getItem(FINISH_CHECKLIST_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === "object") ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFinishChecklistMap_(mapObj) {
+  try {
+    localStorage.setItem(FINISH_CHECKLIST_KEY, JSON.stringify(mapObj || {}));
+  } catch {
+    // ignore local storage write failure
+  }
+}
+
 const $ = (id) => document.getElementById(id);
 
 function getOnePagerStrictPref_() {
@@ -271,6 +302,7 @@ function saveLastRecoveryRun_(snapshot) {
 
 const state = {
   view: "jobs",
+  simpleMode: getSimpleModePref_(),
   jobs: [],
   activeKey: null,
   targets: [],
@@ -304,6 +336,7 @@ const state = {
     activeId: "",
     baseProfileJson: {},
   },
+  finishChecklistByJob: loadFinishChecklistMap_(),
 };
 const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "READY_TO_APPLY", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
 
@@ -547,6 +580,9 @@ function markReturningUser_() {
 }
 
 function showView(view) {
+  if (state.simpleMode && (view === "targets" || view === "metrics")) {
+    view = "tracking";
+  }
   state.view = view;
   document.body.dataset.view = view;
   if (view !== "jobs" && document.body.classList.contains("pdf-ready-mode")) {
@@ -587,6 +623,20 @@ function showView(view) {
   if (view === "metrics") loadMetrics();
 }
 
+function applySimpleModeUi_() {
+  document.body.classList.toggle("simple-mode", Boolean(state.simpleMode));
+  if (state.simpleMode && (state.view === "targets" || state.view === "metrics")) {
+    showView("tracking");
+  }
+  syncTrackingControlsUi_();
+}
+
+function setSimpleMode_(on, { persist = true } = {}) {
+  state.simpleMode = Boolean(on);
+  if (persist) setSimpleModePref_(state.simpleMode);
+  applySimpleModeUi_();
+}
+
 function isSmallMobile_() {
   return window.matchMedia("(max-width: 640px)").matches;
 }
@@ -595,6 +645,12 @@ function syncTrackingControlsUi_() {
   const extras = $("trackingControlsExtras");
   const toggleBtn = $("btnTrackingFiltersToggle");
   if (!extras || !toggleBtn) return;
+
+  if (state.simpleMode) {
+    toggleBtn.classList.add("hidden");
+    extras.classList.add("hidden");
+    return;
+  }
 
   if (!isSmallMobile_()) {
     toggleBtn.classList.add("hidden");
@@ -1569,6 +1625,8 @@ function syncWizardQualityGate_() {
   if ($("btnPrintPdfReady")) $("btnPrintPdfReady").disabled = blockFinal;
   if ($("btnOpenTailoredResumeFinish")) $("btnOpenTailoredResumeFinish").disabled = blockFinal;
   if ($("btnCopyCoverLetterFinish")) $("btnCopyCoverLetterFinish").disabled = blockFinal;
+  if ($("btnFinishChecklistResume")) $("btnFinishChecklistResume").disabled = blockFinal;
+  if ($("btnFinishChecklistCopy")) $("btnFinishChecklistCopy").disabled = blockFinal;
 }
 
 function syncWizardStickyCta_() {
@@ -1621,6 +1679,92 @@ function syncWizardStickyCta_() {
 
   primary.textContent = "Open Tailored Resume";
   primary.onclick = () => openTailoredResumeHtml(jobKey);
+}
+
+function normalizeFinishChecklist_(input = {}) {
+  const src = (input && typeof input === "object") ? input : {};
+  return {
+    resume_opened: Boolean(src.resume_opened),
+    cover_copied: Boolean(src.cover_copied),
+    marked_applied: Boolean(src.marked_applied),
+  };
+}
+
+function getFinishChecklist_(jobKey) {
+  const key = String(jobKey || "").trim();
+  if (!key) return normalizeFinishChecklist_();
+  const row = (state.finishChecklistByJob && typeof state.finishChecklistByJob === "object")
+    ? state.finishChecklistByJob[key]
+    : null;
+  return normalizeFinishChecklist_(row);
+}
+
+function setFinishChecklist_(jobKey, patch = {}) {
+  const key = String(jobKey || "").trim();
+  if (!key) return normalizeFinishChecklist_();
+  const prev = getFinishChecklist_(key);
+  const next = normalizeFinishChecklist_({ ...prev, ...(patch || {}) });
+  state.finishChecklistByJob = {
+    ...(state.finishChecklistByJob && typeof state.finishChecklistByJob === "object" ? state.finishChecklistByJob : {}),
+    [key]: next,
+  };
+  saveFinishChecklistMap_(state.finishChecklistByJob);
+  return next;
+}
+
+function syncFinishChecklistFromStatus_(jobKey, status) {
+  const key = String(jobKey || "").trim();
+  const st = String(status || "").trim().toUpperCase();
+  if (!key || st !== "APPLIED") return;
+  setFinishChecklist_(key, { marked_applied: true });
+}
+
+function updateFinishChecklistStepUi_(stateEl, done) {
+  if (!stateEl) return;
+  stateEl.textContent = done ? "Done" : "Pending";
+  stateEl.classList.toggle("done", done);
+  stateEl.classList.toggle("pending", !done);
+}
+
+function renderFinishChecklist_(jobKey) {
+  const key = String(jobKey || state.activeJob?.job_key || "").trim();
+  if (!key) return;
+  const steps = getFinishChecklist_(key);
+  updateFinishChecklistStepUi_($("finishChecklistResumeState"), steps.resume_opened);
+  updateFinishChecklistStepUi_($("finishChecklistCoverState"), steps.cover_copied);
+  updateFinishChecklistStepUi_($("finishChecklistAppliedState"), steps.marked_applied);
+  const appliedBtn = $("btnFinishChecklistApplied");
+  if (appliedBtn) appliedBtn.disabled = steps.marked_applied;
+}
+
+async function runFinishChecklistAction(action, sourceBtn = null) {
+  const key = String(state.activeJob?.job_key || "").trim();
+  if (!key) return toast("Select a job first", { kind: "error" });
+  const act = String(action || "").trim().toLowerCase();
+  if (!act) return;
+
+  if (act === "resume") {
+    const opened = await openTailoredResumeHtml(key);
+    if (opened) {
+      setFinishChecklist_(key, { resume_opened: true });
+      renderFinishChecklist_(key);
+    }
+    return;
+  }
+  if (act === "copy") {
+    const copied = await copyWizardCoverLetter(sourceBtn);
+    if (copied) {
+      setFinishChecklist_(key, { cover_copied: true });
+      renderFinishChecklist_(key);
+    }
+    return;
+  }
+  if (act === "applied") {
+    await updateStatus(key, "APPLIED");
+    setFinishChecklist_(key, { marked_applied: true });
+    renderFinishChecklist_(key);
+    showView("tracking");
+  }
 }
 
 function renderDetail(j) {
@@ -1756,8 +1900,24 @@ function renderDetail(j) {
             <div class="muted tiny">Open tailored resume, save as PDF, then copy your cover letter.</div>
           </div>
           <div class="row" style="justify-content:flex-start; margin-top:0;">
-            <button class="btn btn-secondary" id="btnOpenTailoredResumeFinish" onclick="openTailoredResumeHtml('${escapeHtml(j.job_key)}')">Open Tailored Resume</button>
-            <button class="btn btn-ghost" id="btnCopyCoverLetterFinish" onclick="copyWizardCoverLetter(this)">Copy Cover Letter</button>
+            <button class="btn btn-secondary" id="btnOpenTailoredResumeFinish" onclick="runFinishChecklistAction('resume', this)">Open Tailored Resume</button>
+            <button class="btn btn-ghost" id="btnCopyCoverLetterFinish" onclick="runFinishChecklistAction('copy', this)">Copy Cover Letter</button>
+          </div>
+        </div>
+        <div class="finish-checklist" style="margin-top:10px;">
+          <div class="h3">Apply Checklist</div>
+          <div class="muted tiny" style="margin-top:4px;">Complete these in order for a clean handoff.</div>
+          <div class="finish-check-row">
+            <button class="btn btn-ghost" id="btnFinishChecklistResume" onclick="runFinishChecklistAction('resume', this)">1. Open Tailored Resume</button>
+            <span id="finishChecklistResumeState" class="finish-check-state pending">Pending</span>
+          </div>
+          <div class="finish-check-row">
+            <button class="btn btn-ghost" id="btnFinishChecklistCopy" onclick="runFinishChecklistAction('copy', this)">2. Copy Cover Letter</button>
+            <span id="finishChecklistCoverState" class="finish-check-state pending">Pending</span>
+          </div>
+          <div class="finish-check-row">
+            <button class="btn btn-secondary" id="btnFinishChecklistApplied" onclick="runFinishChecklistAction('applied', this)">3. Mark Applied</button>
+            <span id="finishChecklistAppliedState" class="finish-check-state pending">Pending</span>
           </div>
         </div>
         <div class="kv" style="margin-top:10px;">
@@ -1912,6 +2072,7 @@ function renderDetail(j) {
   updateNextActionCard_(j, { hasPack: false });
   setPdfReadyMode_(false);
   setWizardStep_(resolveWizardStep_(j, ""));
+  renderFinishChecklist_(j.job_key);
   resetWizardOutreachUi_({ hideCard: true });
   hydrateApplicationPack(j);
   updateRoleContextUi_(j);
@@ -3302,6 +3463,7 @@ async function hydrateApplicationPack(jobOrKey) {
     }
     const controls = d?.pack_json?.controls || {};
     const status = String(d.status || "-");
+    syncFinishChecklistFromStatus_(jobKey, status);
     const ats = d.ats_json || {};
     const missing = Array.isArray(ats.missing_keywords) ? ats.missing_keywords : [];
     const targetRubric = (ats?.target_rubric && typeof ats.target_rubric === "object")
@@ -3451,6 +3613,7 @@ async function hydrateApplicationPack(jobOrKey) {
     syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: true });
     setWizardStep_(resolveWizardStep_(currentJob, status));
+    renderFinishChecklist_(jobKey);
     updateRoleContextUi_(currentJob);
   } catch (e) {
     $("appPackStatus").innerHTML = statusBadgeHtml_("-");
@@ -3505,6 +3668,7 @@ async function hydrateApplicationPack(jobOrKey) {
     syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: false });
     setWizardStep_(resolveWizardStep_(currentJob, ""));
+    renderFinishChecklist_(jobKey);
     updateRoleContextUi_(currentJob);
   }
 }
@@ -3787,16 +3951,21 @@ async function copyWizardCoverLetter(sourceBtn = null) {
   const quality = getPackQualityState_();
   if (quality.blocked) {
     toast("Needs content review before final copy/print.", { kind: "error" });
-    return;
+    return false;
   }
   const letter = String($("wizardFinalLetter")?.value || $("wizardCoverLetter")?.value || $("appPackSection")?.dataset?.packCoverLetter || "").trim();
-  if (!letter) return toast("No cover letter available", { kind: "error" });
+  if (!letter) {
+    toast("No cover letter available", { kind: "error" });
+    return false;
+  }
   try {
     await navigator.clipboard.writeText(letter);
     toast("Cover letter copied");
     flashCopiedState_(sourceBtn || $("wizardStickyPrimary"));
+    return true;
   } catch {
     toast("Copy failed", { kind: "error" });
+    return false;
   }
 }
 
@@ -4086,18 +4255,18 @@ async function openTailoredResumeHtml(jobKey) {
   const key = String(jobKey || state.activeJob?.job_key || "").trim();
   if (!key) {
     toast("Select a job first.", { kind: "error" });
-    return;
+    return false;
   }
   const quality = getPackQualityState_();
   if (quality.blocked) {
     toast("Needs content review before final resume export.", { kind: "error" });
-    return;
+    return false;
   }
 
   const cfg = getCfg();
   if (!cfg.uiKey) {
     toast("Missing UI_KEY. Open Settings and set UI key.", { kind: "error" });
-    return;
+    return false;
   }
 
   const previewWindow = window.open("about:blank", "_blank");
@@ -4139,9 +4308,11 @@ async function openTailoredResumeHtml(jobKey) {
     else window.open(blobUrl, "_blank", "noopener");
     setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
     toast("Tailored resume opened");
+    return true;
   } catch (e) {
     if (previewWindow) previewWindow.close();
     toast("Resume preview failed: " + e.message, { kind: "error" });
+    return false;
   } finally {
     spin(false);
   }
@@ -4318,6 +4489,10 @@ async function updateStatus(jobKey, status) {
   try {
     spin(true);
     await api(`/jobs/${encodeURIComponent(jobKey)}/status`, { method: "POST", body: { status } });
+    syncFinishChecklistFromStatus_(jobKey, status);
+    if (String(state.activeJob?.job_key || "") === String(jobKey || "")) {
+      renderFinishChecklist_(jobKey);
+    }
     toast("Status updated: " + statusLabel_(status));
     await loadJobs();
     await setActive(jobKey);
@@ -4651,6 +4826,9 @@ function openSettings() {
     const hasKey = Boolean(String(cfg.uiKey || "").trim());
     $("setUiKeyRemember").checked = hasKey ? String(cfg.uiKeyMode || "session") === "local" : false;
   }
+  if ($("setSimpleMode")) {
+    $("setSimpleMode").checked = Boolean(state.simpleMode);
+  }
   if ($("setUiKey")) $("setUiKey").type = "password";
   if ($("btnToggleUiKeyVisibility")) $("btnToggleUiKeyVisibility").textContent = "Show";
   openModal("modalSettings");
@@ -4660,6 +4838,7 @@ async function saveSettings() {
   const apiBase = $("setApiBase").value.trim();
   const uiKey = $("setUiKey").value.trim();
   const remember = Boolean($("setUiKeyRemember")?.checked);
+  const simpleMode = ($("setSimpleMode") ? Boolean($("setSimpleMode").checked) : Boolean(state.simpleMode));
   const uiKeyMode = remember ? "local" : "session";
   if (!apiBase.startsWith("http")) {
     toast("API base must start with http(s)");
@@ -4670,6 +4849,7 @@ async function saveSettings() {
     return;
   }
   setCfg({ apiBase, uiKey, uiKeyMode });
+  setSimpleMode_(simpleMode, { persist: true });
   closeModal("modalSettings");
   hydrateSettingsUI();
   toast(`Saved settings (${remember ? "remembered on device" : "session only"})`);
@@ -4765,6 +4945,7 @@ async function saveSettings() {
   syncAddModeUi();
   loadResumeProfiles();
   loadResumeTemplates_();
+  applySimpleModeUi_();
   syncTrackingControlsUi_();
   const initialView = getInitialHomeView_();
   showView(initialView);
@@ -4784,6 +4965,7 @@ window.saveResumeTemplateFromUi = saveResumeTemplateFromUi;
 window.deleteResumeTemplateFromUi = deleteResumeTemplateFromUi;
 window.selectAtsKeywords = selectAtsKeywords;
 window.runNextAction = runNextAction;
+window.runFinishChecklistAction = runFinishChecklistAction;
 window.runJobPrimaryAction = runJobPrimaryAction;
 window.autoPilotJob = autoPilotJob;
 window.generateApplicationPack = generateApplicationPack;
