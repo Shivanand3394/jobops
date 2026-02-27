@@ -1,22 +1,179 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-26-resume-html-v1";
+const UI_BUILD_ID = "2026-02-27-advanced-zones-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
 const ONE_PAGER_STRICT_KEY = "jobops_one_pager_strict_v1";
 const WIZARD_STEP_KEY = "jobops_resume_wizard_step_v1";
 const PDF_READY_MODE_KEY = "jobops_pdf_ready_mode_v1";
+const UI_KEY_STORAGE_MODE_KEY = "jobops_ui_key_mode_v1";
+const DEFAULT_EVIDENCE_SOURCE_POLICY = "resume_only";
+const QUALITY_BLOCKING_FLAGS = new Set(["NULL_SKILLS", "ROLE_COMPANY_DRIFT"]);
+const PROFILE_MANAGER_KEYS_ = [
+  "basics",
+  "summary",
+  "experience",
+  "education",
+  "projects",
+  "skills",
+  "certifications",
+  "awards",
+  "hobbies",
+];
+const PROFILE_PRIMARY_PREFILL_ONCE_KEY = "jobops_primary_prefill_2026_02_26_v1";
+const RETURNING_HOME_KEY = "jobops_returning_user_v1";
+const STATUS_LABELS_ = Object.freeze({
+  NEW: "To Review",
+  SCORED: "Scored",
+  SHORTLISTED: "Shortlisted",
+  READY_TO_APPLY: "Ready to Apply",
+  APPLIED: "Applied",
+  REJECTED: "Not a Fit",
+  ARCHIVED: "Archived",
+  LINK_ONLY: "Needs Details",
+});
+const SHIVANAND_PRIMARY_BASELINE_ = {
+  id: "primary",
+  name: "Shivanand Shah",
+  profile_json: {
+    basics: {
+      name: "Shivanand Shah",
+      headline: "Product Consultant",
+      email: "career.shivanand@gmail.com",
+      phone: "+91-9873724226",
+      location: "Gurugram, IN",
+      profiles: [
+        {
+          network: "LinkedIn",
+          url: "https://www.linkedin.com/in/shivanand-shah-2a2192114",
+        },
+      ],
+    },
+    summary: "Product Consultant with hands-on experience across consulting, entrepreneurship, and field operations. I translate business goals into executable plans, align cross-functional stakeholders, and drive measurable outcomes through structured delivery, reporting, and continuous process improvement.",
+    experience: [
+      {
+        company: "Deloitte USI",
+        role: "Consultant",
+        date_range: "[Add dates]",
+        bullets: [
+          "Led cross-functional workstreams to deliver business and product outcomes against defined timelines.",
+          "Built operating rhythms with stakeholders using status cadences, risk tracking, and clear ownership.",
+          "Translated ambiguous requirements into actionable plans and measurable execution milestones.",
+        ],
+      },
+      {
+        company: "The Good Time Co.",
+        role: "Founder",
+        date_range: "[Add dates]",
+        bullets: [
+          "Built and operated the business end-to-end, including strategy, execution, and performance tracking.",
+          "Owned growth planning, vendor/stakeholder coordination, and day-to-day operational decision making.",
+          "Improved process reliability by introducing structured workflows and accountability mechanisms.",
+        ],
+      },
+      {
+        company: "Synergy Teletech Pvt. Ltd.",
+        role: "Field Executive",
+        date_range: "[Add dates]",
+        bullets: [
+          "Managed field execution tasks with a focus on service quality, speed, and issue resolution.",
+          "Coordinated with internal teams to close operational gaps and improve customer-facing outcomes.",
+          "Maintained accurate ground-level reporting to support planning and escalation decisions.",
+        ],
+      },
+      {
+        company: "InstaCure",
+        role: "Business Associate",
+        date_range: "[Add dates]",
+        bullets: [
+          "Supported business operations and cross-team coordination to improve delivery consistency.",
+          "Tracked key business metrics and contributed insights for process and performance improvements.",
+          "Worked with stakeholders to prioritize actions and maintain execution momentum.",
+        ],
+      },
+    ],
+    education: [
+      {
+        degree: "MBA",
+        specialization: "Marketing/Analytics",
+        institution: "Indian Institute of Management Rohtak",
+        date_range: "[Add dates]",
+      },
+      {
+        degree: "B.Tech",
+        institution: "Delhi Technological University (formerly DCE)",
+        date_range: "[Add dates]",
+      },
+    ],
+    projects: [
+      {
+        name: "Clearstate",
+        description: "Product/operations initiative focused on structured execution and measurable outcomes.",
+        bullets: [
+          "Defined project scope, execution milestones, and stakeholder communication rhythm.",
+          "Established reporting discipline to improve visibility, risk control, and follow-through.",
+        ],
+        date_range: "[Add dates]",
+      },
+    ],
+    skills: [
+      "Product Consulting",
+      "Program Management",
+      "Stakeholder Management",
+      "Cross-functional Collaboration",
+      "Business Operations",
+      "Execution Planning",
+      "KPI Tracking",
+      "Process Improvement",
+      "Reporting and Communication",
+      "Problem Solving",
+    ],
+    certifications: [
+      "IBM AI Product Manager - Coursera",
+      "Google Data Analytics - Coursera",
+    ],
+    awards: [
+      "[Add award/achievement 1]",
+      "[Add award/achievement 2]",
+    ],
+    hobbies: [
+      "Cooking",
+      "Playing guitar",
+      "Singing",
+      "Travelling",
+    ],
+  },
+};
 
 function getCfg() {
+  const localKey = String(localStorage.getItem("jobops_ui_key") || "");
+  const sessionKey = String(sessionStorage.getItem("jobops_ui_key") || "");
+  const modeRaw = String(localStorage.getItem(UI_KEY_STORAGE_MODE_KEY) || "").trim().toLowerCase();
+  const uiKeyMode = (modeRaw === "session" || modeRaw === "local")
+    ? modeRaw
+    : (sessionKey && !localKey ? "session" : "local");
+  const uiKey = sessionKey || localKey;
   return {
     apiBase: (localStorage.getItem("jobops_api_base") || DEFAULT_API_BASE).replace(/\/+$/, ""),
-    uiKey: localStorage.getItem("jobops_ui_key") || "",
+    uiKey,
+    uiKeyMode,
   };
 }
 
-function setCfg({ apiBase, uiKey }) {
+function setCfg({ apiBase, uiKey, uiKeyMode }) {
   if (apiBase) localStorage.setItem("jobops_api_base", apiBase.replace(/\/+$/, ""));
-  if (uiKey !== undefined) localStorage.setItem("jobops_ui_key", uiKey);
+  if (uiKey !== undefined) {
+    const mode = String(uiKeyMode || "session").trim().toLowerCase() === "local" ? "local" : "session";
+    const value = String(uiKey || "");
+    if (mode === "local") {
+      localStorage.setItem("jobops_ui_key", value);
+      sessionStorage.removeItem("jobops_ui_key");
+    } else {
+      sessionStorage.setItem("jobops_ui_key", value);
+      localStorage.removeItem("jobops_ui_key");
+    }
+    localStorage.setItem(UI_KEY_STORAGE_MODE_KEY, mode);
+  }
 }
 
 const $ = (id) => document.getElementById(id);
@@ -142,6 +299,10 @@ const state = {
     loading: false,
     error: "",
     last_fetched_at: 0,
+  },
+  profileManager: {
+    activeId: "",
+    baseProfileJson: {},
   },
 };
 const TRACKING_COLUMNS = ["NEW", "SCORED", "SHORTLISTED", "READY_TO_APPLY", "APPLIED", "REJECTED", "ARCHIVED", "LINK_ONLY"];
@@ -278,6 +439,28 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
+function humanizeStatus_(status) {
+  return String(status || "")
+    .trim()
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(" ");
+}
+
+function statusLabel_(status) {
+  const raw = String(status || "").trim().toUpperCase();
+  if (!raw) return "-";
+  return STATUS_LABELS_[raw] || humanizeStatus_(raw);
+}
+
+function statusBadgeHtml_(status) {
+  const raw = String(status || "").trim().toUpperCase();
+  if (!raw) return `<span class="badge">-</span>`;
+  return `<span class="badge ${escapeHtml(raw)}" title="${escapeHtml(raw)}">${escapeHtml(statusLabel_(raw))}</span>`;
+}
+
 function renderIngestResultBox(data) {
   const results = Array.isArray(data?.results) ? data.results : [];
   const inserted = Number.isFinite(data?.inserted_count)
@@ -352,6 +535,17 @@ function getIngestChannelLabel(j) {
   return ch.toUpperCase();
 }
 
+function getInitialHomeView_() {
+  const cfg = getCfg();
+  const returning = String(localStorage.getItem(RETURNING_HOME_KEY) || "") === "1";
+  if (!cfg.uiKey) return "jobs";
+  return returning ? "tracking" : "jobs";
+}
+
+function markReturningUser_() {
+  localStorage.setItem(RETURNING_HOME_KEY, "1");
+}
+
 function showView(view) {
   state.view = view;
   document.body.dataset.view = view;
@@ -371,6 +565,7 @@ function showView(view) {
   $("btnTabTracking").classList.toggle("active-tab", view === "tracking");
   $("btnTabTargets").classList.toggle("active-tab", view === "targets");
   $("btnTabMetrics").classList.toggle("active-tab", view === "metrics");
+  setProfilesTabActive_(false);
   $("btnMobileJobs")?.classList.toggle("active-tab", view === "jobs");
   $("btnMobileTracking")?.classList.toggle("active-tab", view === "tracking");
 
@@ -506,10 +701,10 @@ function renderMetrics() {
   $("metricsHint").textContent = `Jobs: ${fmtNum(totals.jobs_total)} | Gmail polls (24h): ${fmtNum(gmail24.poll_runs)} | Avg score: ${totals.avg_final_score ?? "-"}`;
 
   $("metricsCards").innerHTML = [
-    metricCard("SHORTLISTED", statuses.SHORTLISTED || 0, "ready-to-apply"),
-    metricCard("REJECTED", statuses.REJECTED || 0, "screened out"),
-    metricCard("ARCHIVED", statuses.ARCHIVED || 0, "parked"),
-    metricCard("LINK_ONLY", statuses.LINK_ONLY || 0, "needs enrichment"),
+    metricCard(statusLabel_("SHORTLISTED"), statuses.SHORTLISTED || 0, "ready-to-apply"),
+    metricCard(statusLabel_("REJECTED"), statuses.REJECTED || 0, "screened out"),
+    metricCard(statusLabel_("ARCHIVED"), statuses.ARCHIVED || 0, "parked"),
+    metricCard(statusLabel_("LINK_ONLY"), statuses.LINK_ONLY || 0, "needs enrichment"),
     metricCard("NEEDS_MANUAL_JD", systems.NEEDS_MANUAL_JD || 0, "manual JD required"),
     metricCard("AI_UNAVAILABLE", systems.AI_UNAVAILABLE || 0, "AI config missing"),
     metricCard("Ingested (24h)", gmail24.inserted_or_updated || 0, "inserted + updated"),
@@ -627,7 +822,7 @@ function renderListMeta() {
   const q = $("search").value.trim().toLowerCase();
   const filtered = sortJobs(filterJobs(state.jobs, status, q, queue), $("sortBy")?.value || "updated_desc");
   const parts = [`${filtered.length} job(s)`];
-  if (status) parts.push(status);
+  if (status) parts.push(statusLabel_(status));
   if (queue === "needs_attention") parts.push("Needs Attention");
   if (queue === "stale_followups") parts.push(`Stale Follow-ups (${getStaleFollowupDays_()}d+)`);
   $("listHint").textContent = parts.join(" - ");
@@ -682,7 +877,7 @@ function jobCard(j) {
         <div class="score" title="Final score">${escapeHtml(String(score))}</div>
       </div>
       <div class="meta">
-        <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
+        ${statusBadgeHtml_(status)}
         ${needsJdBadge}
         ${ingestChannelChip}
         <span class="chip">${escapeHtml(j.source_domain || "-")}</span>
@@ -745,7 +940,7 @@ function trackingCard(j) {
       <div class="track-sub tiny">Updated: <span title="${escapeHtml(updatedAbs)}">${escapeHtml(updated)}</span></div>
       <div class="track-sub tiny">Last touchpoint: ${escapeHtml(touchpointLabel)}</div>
       <div class="track-meta">
-        <span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span>
+        ${statusBadgeHtml_(status)}
         ${ingestChannelLabel ? `<span class="chip chip-ingest">${escapeHtml(ingestChannelLabel)}</span>` : ""}
         ${needsAttention ? `<span class="chip">Needs Attention</span>` : ""}
         ${staleFollowup ? `<span class="chip chip-priority-stale">Stale Follow-up</span>` : ""}
@@ -790,7 +985,7 @@ function triageCard(item) {
       <div class="track-sub tiny">Touchpoint: <span title="${escapeHtml(fmtTsAbs(updatedAt))}">${escapeHtml(fmtTs(updatedAt))}</span> | In stage: ${escapeHtml(daysLabel)}</div>
       <div class="track-card-priority">
         <span class="chip ${escapeHtml(priorityClass)}">${escapeHtml(priority)}</span>
-        <span class="chip">${escapeHtml(status)} / ${escapeHtml(channel)}</span>
+        <span class="chip" title="${escapeHtml(status)} / ${escapeHtml(channel)}">${escapeHtml(statusLabel_(status))} / ${escapeHtml(channel)}</span>
         <span class="chip">${escapeHtml(queueLabel || "GENERAL")}</span>
       </div>
       <div class="track-actions">
@@ -971,7 +1166,7 @@ async function handleTrackingAction(action, jobKey) {
     try {
       spin(true);
       await api(`/jobs/${encodeURIComponent(key)}/status`, { method: "POST", body: { status } });
-      toast(`Status updated: ${status}`);
+      toast(`Status updated: ${statusLabel_(status)}`);
       await loadJobs({ ignoreStatus: true });
     } catch (e) {
       toast("Status failed: " + e.message);
@@ -1098,7 +1293,7 @@ function renderTracking() {
     return `
       <section class="tracking-col">
         <div class="tracking-col-head">
-          <div class="h3">${escapeHtml(status)}</div>
+          <div class="h3" title="${escapeHtml(status)}">${escapeHtml(statusLabel_(status))}</div>
           <span class="chip">${escapeHtml(String(allItems.length))}</span>
         </div>
         <div class="tracking-col-body">
@@ -1234,6 +1429,7 @@ function setWizardStep_(stepName, opts = {}) {
   if (persist && jobKey) {
     saveWizardStepPref_(jobKey, step);
   }
+  syncWizardQualityGate_();
   syncWizardStickyCta_();
 }
 
@@ -1320,6 +1516,59 @@ function openWizardAdvancedDrawer_({ focusJd = false } = {}) {
   if (focusJd) $("jdCurrentText")?.focus();
 }
 
+function parseJsonArraySafe_(raw, fallback = []) {
+  try {
+    const parsed = JSON.parse(String(raw || "").trim() || "[]");
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function getPackQualityState_() {
+  const section = $("appPackSection");
+  const flags = parseJsonArraySafe_(section?.dataset?.qualityFlagsJson || "[]")
+    .map((x) => String(x || "").trim().toUpperCase())
+    .filter(Boolean);
+  const serverBlocking = parseJsonArraySafe_(section?.dataset?.qualityBlockingFlagsJson || "[]")
+    .map((x) => String(x || "").trim().toUpperCase())
+    .filter(Boolean);
+  const blockingFlags = serverBlocking.length
+    ? serverBlocking
+    : flags.filter((flag) => QUALITY_BLOCKING_FLAGS.has(flag));
+  const scoreRaw = Number(section?.dataset?.qualityScore || NaN);
+  const score = Number.isFinite(scoreRaw) ? scoreRaw : null;
+  const blocked = String(section?.dataset?.qualityBlocked || "") === "1" || blockingFlags.length > 0;
+  return { flags, blockingFlags, blocked, score };
+}
+
+function syncWizardQualityGate_() {
+  const section = $("appPackSection");
+  if (!section) return;
+  const quality = getPackQualityState_();
+  const warningEl = $("wizardQualityReview");
+  if (warningEl) {
+    if (quality.blocked) {
+      const scoreText = (quality.score !== null) ? ` (score ${quality.score})` : "";
+      warningEl.textContent = `Needs content review${scoreText}: ${quality.blockingFlags.join(", ")}`;
+      warningEl.classList.remove("hidden");
+      warningEl.classList.add("chip-priority-stale");
+    } else if (quality.flags.length) {
+      const scoreText = (quality.score !== null) ? ` (score ${quality.score})` : "";
+      warningEl.textContent = `Quality warnings${scoreText}: ${quality.flags.join(", ")}`;
+      warningEl.classList.remove("hidden");
+      warningEl.classList.remove("chip-priority-stale");
+    } else {
+      warningEl.textContent = "";
+      warningEl.classList.add("hidden");
+      warningEl.classList.remove("chip-priority-stale");
+    }
+  }
+  const blockFinal = quality.blocked;
+  if ($("btnViewTailoredResume")) $("btnViewTailoredResume").disabled = blockFinal;
+  if ($("btnPrintPdfReady")) $("btnPrintPdfReady").disabled = blockFinal;
+}
+
 function syncWizardStickyCta_() {
   const section = $("appPackSection");
   const bar = $("wizardStickyBar");
@@ -1334,6 +1583,7 @@ function syncWizardStickyCta_() {
   }
 
   const step = normalizeWizardStep_(section.dataset.wizardStep || "matches");
+  const quality = getPackQualityState_();
   bar.classList.remove("hidden");
   primary.classList.remove("btn-success");
   primary.disabled = false;
@@ -1363,9 +1613,19 @@ function syncWizardStickyCta_() {
     return;
   }
 
+  if (quality.blocked) {
+    primary.textContent = "Needs content review";
+    primary.onclick = null;
+    primary.disabled = true;
+    secondary.textContent = "Mark Applied";
+    secondary.onclick = null;
+    secondary.disabled = true;
+    return;
+  }
+
   primary.textContent = "Copy Cover Letter";
   primary.onclick = () => copyWizardCoverLetter(primary);
-  secondary.textContent = "Mark APPLIED";
+  secondary.textContent = "Mark Applied";
   secondary.onclick = () => updateStatus(jobKey, "APPLIED");
 }
 
@@ -1410,10 +1670,16 @@ function renderDetail(j) {
   const jdHint = needsManualJd
     ? "This job needs manual JD to improve extraction/scoring."
     : "Edit JD only if source content is incomplete.";
+  const activeProfileMeta = getProfileRoleMeta_(getActiveProfile());
+  const jobRoleLabel = getJobRoleLabel_(j) || headerTitle || "-";
+  const profileRoleLabel = activeProfileMeta.role || "(set in Profiles tab)";
+  const profileContextLabel = [activeProfileMeta.name, activeProfileMeta.id ? `id: ${activeProfileMeta.id}` : ""]
+    .filter(Boolean)
+    .join(" | ") || "Select applicant profile for this job.";
 
   $("detailBody").innerHTML = `
     <div class="kv">
-      <div class="k">Status</div><div class="v"><span class="badge ${escapeHtml(status)}">${escapeHtml(status || "-")}</span></div>
+      <div class="k">Status</div><div class="v">${statusBadgeHtml_(status)}</div>
       <div class="k">Final score</div><div class="v">${escapeHtml(String(j.final_score ?? "-"))}</div>
       <div class="k">Target</div><div class="v">${escapeHtml(j.primary_target_id || "-")}</div>
       <div class="k">Location</div><div class="v">${escapeHtml(j.location || "-")}</div>
@@ -1422,6 +1688,12 @@ function renderDetail(j) {
       <div class="k">Ingest channel</div><div class="v">${escapeHtml(ingestChannelLabel)}</div>
       <div class="k">Created</div><div class="v">${escapeHtml(fmtTsWithAbs(j.created_at))}</div>
       <div class="k">Updated</div><div class="v">${escapeHtml(fmtTsWithAbs(j.updated_at))}</div>
+    </div>
+
+    <div class="kv role-context-kv">
+      <div class="k">Job Role (JD asks for)</div><div class="v"><b id="appRoleContextJobRole">${escapeHtml(jobRoleLabel)}</b></div>
+      <div class="k">Profile Role (Applicant)</div><div class="v"><b id="appRoleContextProfileRole">${escapeHtml(profileRoleLabel)}</b></div>
+      <div class="k">Active profile</div><div class="v"><span id="appRoleContextProfileMeta">${escapeHtml(profileContextLabel)}</span></div>
     </div>
 
     <div class="kv">
@@ -1435,7 +1707,7 @@ function renderDetail(j) {
       <div class="k">JD source</div><div class="v">${escapeHtml(j.jd_source || "-")}</div>
       <div class="k">Fetch status</div><div class="v">${escapeHtml(j.fetch_status || "-")}</div>
       <div class="k">JD confidence</div><div class="v">${escapeHtml(jdConfidence || "-")}</div>
-      <div class="k">System status</div><div class="v">${escapeHtml(j.system_status || j.next_status || "-")}</div>
+      <div class="k">System status</div><div class="v">${escapeHtml(statusLabel_(j.system_status || j.next_status || "-"))}</div>
       <div class="k">Job URL</div><div class="v"><a class="muted" href="${escapeHtml(j.job_url || "#")}" target="_blank" rel="noopener">${escapeHtml(j.job_url || "-")}</a></div>
     </div>
 
@@ -1487,6 +1759,7 @@ function renderDetail(j) {
       <div class="workspace-pane hidden" data-wizard-pane="finish">
         <div class="h3">Finish</div>
         <div class="muted tiny" style="margin-top:4px;">Copy and apply. Use PDF-ready when you want print output.</div>
+        <div id="wizardQualityReview" class="chip hidden" style="margin-top:8px;"></div>
         <div class="kv" style="margin-top:10px;">
           <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="10" readonly placeholder="Final letter appears here"></textarea></div>
           <div class="k">Pack status</div><div class="v" id="wizardFinishStatus">-</div>
@@ -1509,119 +1782,131 @@ function renderDetail(j) {
           <textarea id="wizardOutreachDraft" rows="7" style="margin-top:8px;" placeholder="Outreach draft appears here"></textarea>
         </div>
         <div class="actions-grid wizard-finish-actions" style="margin-top:10px;">
-          <button class="btn btn-secondary" onclick="openTailoredResumeHtml('${escapeHtml(j.job_key)}')">View Tailored Resume</button>
+          <button class="btn btn-secondary" id="btnViewTailoredResume" onclick="openTailoredResumeHtml('${escapeHtml(j.job_key)}')">View Tailored Resume</button>
           <button class="btn btn-ghost" id="btnPdfReadyToggle" onclick="togglePdfReadyMode()">PDF-ready view</button>
-          <button class="btn btn-ghost" onclick="printPdfReadyView()">Print / Save PDF</button>
+          <button class="btn btn-ghost" id="btnPrintPdfReady" onclick="printPdfReadyView()">Print / Save PDF</button>
         </div>
       </div>
 
       <details id="wizardAdvancedDrawer" class="advanced-drawer">
-        <summary>Advanced diagnostics, profile/template controls, and exports</summary>
+        <summary>Advanced controls</summary>
         <div class="advanced-drawer-body">
-          <div class="resume-step">
-            <div class="h3">Manual JD and recovery</div>
-            <div class="muted tiny">${escapeHtml(jdHint)}</div>
-            <textarea id="jdCurrentText" rows="10" placeholder="Paste JD text here...">${escapeHtml(jdText)}</textarea>
-            <div class="row" style="justify-content:flex-start; margin-top:10px;">
-              <button class="btn btn-secondary" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save JD & Rescore</button>
-              <button class="btn btn-ghost" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
-              <button class="btn btn-ghost" type="button" onclick="rebuildEvidence('${escapeHtml(j.job_key)}')">Rebuild Evidence</button>
-            </div>
-          </div>
+          <details class="advanced-zone diagnostics-zone" open>
+            <summary>Diagnostics</summary>
+            <div class="advanced-zone-body">
+              <div class="resume-step">
+                <div class="h3">Keyword selection</div>
+                <div class="row" style="justify-content:flex-start; margin-top:0;">
+                  <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('all')">Select all</button>
+                  <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('must')">Must</button>
+                  <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('missing')">Missing</button>
+                  <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('none')">Clear</button>
+                </div>
+                <div id="appKeywordPicker" class="kw-grid"></div>
+              </div>
 
-          <div class="resume-step">
-            <div class="h3">Keyword selection</div>
-            <div class="row" style="justify-content:flex-start; margin-top:0;">
-              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('all')">Select all</button>
-              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('must')">Must</button>
-              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('missing')">Missing</button>
-              <button class="btn btn-ghost" type="button" onclick="selectAtsKeywords('none')">Clear</button>
-            </div>
-            <div id="appKeywordPicker" class="kw-grid"></div>
-          </div>
+              <div class="resume-step">
+                <div class="h3">Diagnostics</div>
+                <div class="kv">
+                  <div class="k">Evidence map</div><div class="v"><div id="evidence-container" class="evidence-container"><div class="muted tiny">Loading evidence...</div></div></div>
+                  <div class="k">Target evidence gaps</div><div class="v" id="appTargetRubricGaps">-</div>
+                  <div class="k">RR import issues</div><div class="v" id="appRrImportErrors">-</div>
+                  <div class="k">RR resume id</div><div class="v" id="appRrResumeId">-</div>
+                  <div class="k">RR push status</div><div class="v" id="appRrPushStatus">-</div>
+                  <div class="k">RR last pushed</div><div class="v" id="appRrLastPushed">-</div>
+                  <div class="k">RR dashboard</div><div class="v"><a class="muted" id="appRrDashboardLink" href="#" target="_blank" rel="noopener">-</a></div>
+                  <div class="k">RR PDF status</div><div class="v" id="appRrPdfStatus">-</div>
+                  <div class="k">RR PDF exported</div><div class="v" id="appRrPdfExported">-</div>
+                  <div class="k">PDF blockers</div><div class="v" id="appPdfReadyIssues">-</div>
+                </div>
+              </div>
 
-          <div class="resume-step">
-            <div class="h3">Diagnostics</div>
-            <div class="kv">
-              <div class="k">Evidence map</div><div class="v"><div id="evidence-container" class="evidence-container"><div class="muted tiny">Loading evidence...</div></div></div>
-              <div class="k">Target evidence gaps</div><div class="v" id="appTargetRubricGaps">-</div>
-              <div class="k">RR import issues</div><div class="v" id="appRrImportErrors">-</div>
-              <div class="k">RR resume id</div><div class="v" id="appRrResumeId">-</div>
-              <div class="k">RR push status</div><div class="v" id="appRrPushStatus">-</div>
-              <div class="k">RR last pushed</div><div class="v" id="appRrLastPushed">-</div>
-              <div class="k">RR dashboard</div><div class="v"><a class="muted" id="appRrDashboardLink" href="#" target="_blank" rel="noopener">-</a></div>
-              <div class="k">RR PDF status</div><div class="v" id="appRrPdfStatus">-</div>
-              <div class="k">RR PDF exported</div><div class="v" id="appRrPdfExported">-</div>
-              <div class="k">PDF blockers</div><div class="v" id="appPdfReadyIssues">-</div>
+              <div class="resume-step">
+                <div class="h3">Template and profile controls</div>
+                <div class="muted tiny">Use defaults unless you are tuning output behavior.</div>
+                <label class="muted tiny">Template</label>
+                <select id="appTemplateSelect" style="margin-top:6px;"></select>
+                <input id="appTemplateName" placeholder="Template name" style="margin-top:8px;" />
+                <div class="row" style="justify-content:flex-start; margin-top:8px;">
+                  <button class="btn btn-ghost" type="button" onclick="saveResumeTemplateFromUi()">Save Template</button>
+                  <button class="btn btn-ghost" type="button" onclick="deleteResumeTemplateFromUi()">Delete Template</button>
+                </div>
+                <label class="muted tiny" style="margin-top:8px;">Renderer</label>
+                <select id="appRenderer" style="margin-top:6px;">
+                  <option value="reactive_resume">reactive_resume</option>
+                  <option value="html_simple">html_simple</option>
+                </select>
+                <label class="muted tiny" style="margin-top:8px;">ATS mode</label>
+                <select id="appAtsTargetMode" style="margin-top:6px;">
+                  <option value="all">Use all target keywords</option>
+                  <option value="selected_only">Use selected ATS keywords only</option>
+                </select>
+                <label class="muted tiny" style="margin-top:8px;">Length rule</label>
+                <label class="tiny" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                  <input type="checkbox" id="appOnePagerStrict" ${getOnePagerStrictPref_() ? "checked" : ""} />
+                  Enforce 1-page strict (cap summary/sections/bullets)
+                </label>
+                <label class="muted tiny" style="margin-top:8px;">Resume blocks</label>
+                <div class="block-checks" style="margin-top:6px;">
+                  <label><input type="checkbox" id="blkSummary" checked /> Summary</label>
+                  <label><input type="checkbox" id="blkExperience" checked /> Experience</label>
+                  <label><input type="checkbox" id="blkSkills" checked /> Skills</label>
+                  <label><input type="checkbox" id="blkHighlights" checked /> Highlights</label>
+                  <label><input type="checkbox" id="blkBullets" checked /> Tailored bullets</label>
+                </div>
+                <label class="muted tiny" style="margin-top:8px;">Applicant profile for this job</label>
+                <select id="appProfileSelect" style="margin-top:6px;"></select>
+                <label class="muted tiny" style="margin-top:8px;">Applicant profile ID</label>
+                <input id="appProfileId" placeholder="primary" style="margin-top:6px;" />
+                <label class="muted tiny" style="margin-top:8px;">Applicant profile name</label>
+                <input id="appProfileName" placeholder="Primary" style="margin-top:6px;" />
+                <label class="muted tiny" style="margin-top:8px;">Applicant profile JSON</label>
+                <textarea id="appProfileJson" rows="6" style="margin-top:6px;" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea>
+                <div class="row" style="justify-content:flex-start; margin-top:8px;">
+                  <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
+                </div>
+              </div>
             </div>
-          </div>
+          </details>
 
-          <div class="resume-step">
-            <div class="h3">Template and profile controls</div>
-            <div class="muted tiny">Use defaults unless you are tuning output behavior.</div>
-            <label class="muted tiny">Template</label>
-            <select id="appTemplateSelect" style="margin-top:6px;"></select>
-            <input id="appTemplateName" placeholder="Template name" style="margin-top:8px;" />
-            <div class="row" style="justify-content:flex-start; margin-top:8px;">
-              <button class="btn btn-ghost" type="button" onclick="saveResumeTemplateFromUi()">Save Template</button>
-              <button class="btn btn-ghost" type="button" onclick="deleteResumeTemplateFromUi()">Delete Template</button>
-            </div>
-            <label class="muted tiny" style="margin-top:8px;">Renderer</label>
-            <select id="appRenderer" style="margin-top:6px;">
-              <option value="reactive_resume">reactive_resume</option>
-              <option value="html_simple">html_simple</option>
-            </select>
-            <label class="muted tiny" style="margin-top:8px;">ATS mode</label>
-            <select id="appAtsTargetMode" style="margin-top:6px;">
-              <option value="all">Use all target keywords</option>
-              <option value="selected_only">Use selected ATS keywords only</option>
-            </select>
-            <label class="muted tiny" style="margin-top:8px;">Length rule</label>
-            <label class="tiny" style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-              <input type="checkbox" id="appOnePagerStrict" ${getOnePagerStrictPref_() ? "checked" : ""} />
-              Enforce 1-page strict (cap summary/sections/bullets)
-            </label>
-            <label class="muted tiny" style="margin-top:8px;">Resume blocks</label>
-            <div class="block-checks" style="margin-top:6px;">
-              <label><input type="checkbox" id="blkSummary" checked /> Summary</label>
-              <label><input type="checkbox" id="blkExperience" checked /> Experience</label>
-              <label><input type="checkbox" id="blkSkills" checked /> Skills</label>
-              <label><input type="checkbox" id="blkHighlights" checked /> Highlights</label>
-              <label><input type="checkbox" id="blkBullets" checked /> Tailored bullets</label>
-            </div>
-            <label class="muted tiny" style="margin-top:8px;">Profile</label>
-            <select id="appProfileSelect" style="margin-top:6px;"></select>
-            <label class="muted tiny" style="margin-top:8px;">Profile ID</label>
-            <input id="appProfileId" placeholder="primary" style="margin-top:6px;" />
-            <label class="muted tiny" style="margin-top:8px;">Profile name</label>
-            <input id="appProfileName" placeholder="Primary" style="margin-top:6px;" />
-            <label class="muted tiny" style="margin-top:8px;">Profile JSON</label>
-            <textarea id="appProfileJson" rows="6" style="margin-top:6px;" placeholder='{"basics":{},"summary":"","experience":[],"skills":[]}'></textarea>
-            <div class="row" style="justify-content:flex-start; margin-top:8px;">
-              <button class="btn btn-secondary" onclick="saveResumeProfileFromUi()">Save Profile</button>
-            </div>
-          </div>
+          <details class="advanced-zone danger-zone">
+            <summary>Danger Zone</summary>
+            <div class="advanced-zone-body">
+              <div class="muted tiny">These actions can overwrite drafts, change job state, or force reprocessing.</div>
 
-          <div class="resume-step">
-            <div class="h3">Generation, export, and status shortcuts</div>
-            <div class="row" style="justify-content:flex-start; margin-top:8px;">
-              <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
-              <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
-              <button class="btn btn-secondary" onclick="openReviewModal('${escapeHtml(j.job_key)}')">Review & Approve</button>
-              <button class="btn btn-secondary" id="btnDownloadRrJson" onclick="downloadRrJson()">Download RR JSON</button>
-              <button class="btn btn-secondary" id="btnPushRr" onclick="pushToReactiveResume('${escapeHtml(j.job_key)}')">Push to Reactive Resume</button>
-              <button class="btn btn-secondary" id="btnGenerateRrPdf" onclick="exportReactiveResumePdf('${escapeHtml(j.job_key)}', false)">Generate PDF</button>
-              <button class="btn btn-secondary" id="btnDownloadRrPdf" onclick="downloadLatestRrPdf()">Download latest PDF</button>
+              <div class="resume-step">
+                <div class="h3">Manual JD and recovery</div>
+                <div class="muted tiny">${escapeHtml(jdHint)}</div>
+                <textarea id="jdCurrentText" rows="10" placeholder="Paste JD text here...">${escapeHtml(jdText)}</textarea>
+                <div class="row" style="justify-content:flex-start; margin-top:10px;">
+                  <button class="btn btn-secondary" onclick="saveAndRescoreManualJd('${escapeHtml(j.job_key)}')">Save JD & Rescore</button>
+                  <button class="btn btn-ghost" onclick="rescoreOne('${escapeHtml(j.job_key)}')">Rescore this job</button>
+                  <button class="btn btn-ghost" type="button" onclick="rebuildEvidence('${escapeHtml(j.job_key)}')">Rebuild Evidence</button>
+                </div>
+              </div>
+
+              <div class="resume-step">
+                <div class="h3">Generation, export, and status shortcuts</div>
+                <div class="row" style="justify-content:flex-start; margin-top:8px;">
+                  <button class="btn" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', false)">Generate</button>
+                  <button class="btn btn-secondary" onclick="generateApplicationPack('${escapeHtml(j.job_key)}', true)">Regenerate</button>
+                  <button class="btn btn-secondary" onclick="openReviewModal('${escapeHtml(j.job_key)}')">Review & Approve</button>
+                  <button class="btn btn-secondary" id="btnDownloadRrJson" onclick="downloadRrJson()">Download RR JSON</button>
+                  <button class="btn btn-secondary" id="btnPushRr" onclick="pushToReactiveResume('${escapeHtml(j.job_key)}')">Push to Reactive Resume</button>
+                  <button class="btn btn-secondary" id="btnGenerateRrPdf" onclick="exportReactiveResumePdf('${escapeHtml(j.job_key)}', false)">Generate PDF</button>
+                  <button class="btn btn-secondary" id="btnDownloadRrPdf" onclick="downloadLatestRrPdf()">Download latest PDF</button>
+                </div>
+                <div class="row" style="justify-content:flex-start; margin-top:8px;">
+                  <button class="btn btn-ghost" onclick="copyPackSummary()">Copy tailored summary</button>
+                  <button class="btn btn-ghost" onclick="copyPackBullets()">Copy tailored bullets</button>
+                  <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','APPLIED')">Mark Applied</button>
+                  <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','SHORTLISTED')">Mark Shortlisted</button>
+                  <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','REJECTED')">Mark Not a Fit</button>
+                  <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','ARCHIVED')">Mark Archived</button>
+                </div>
+              </div>
             </div>
-            <div class="row" style="justify-content:flex-start; margin-top:8px;">
-              <button class="btn btn-ghost" onclick="copyPackSummary()">Copy tailored summary</button>
-              <button class="btn btn-ghost" onclick="copyPackBullets()">Copy tailored bullets</button>
-              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','APPLIED')">Mark APPLIED</button>
-              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','SHORTLISTED')">Mark SHORTLISTED</button>
-              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','REJECTED')">Mark REJECTED</button>
-              <button class="btn btn-secondary" onclick="updateStatus('${escapeHtml(j.job_key)}','ARCHIVED')">Mark ARCHIVED</button>
-            </div>
-          </div>
+          </details>
         </div>
       </details>
 
@@ -1638,6 +1923,7 @@ function renderDetail(j) {
   setWizardStep_(resolveWizardStep_(j, ""));
   resetWizardOutreachUi_({ hideCard: true });
   hydrateApplicationPack(j);
+  updateRoleContextUi_(j);
   fetchAndRenderEvidence(j.job_key);
 }
 
@@ -1927,10 +2213,11 @@ async function loadResumeProfiles() {
   try {
     const res = await api("/resume/profiles");
     state.resumeProfiles = Array.isArray(res.data) ? res.data : [];
-    if (!state.resumeProfiles.length) return;
-    if (!state.resumeProfiles.some((p) => p.id === state.activeProfileId)) {
-      state.activeProfileId = state.resumeProfiles[0].id;
+    if (state.resumeProfiles.length && !state.resumeProfiles.some((p) => p.id === state.activeProfileId)) {
+      state.activeProfileId = state.resumeProfiles[0].id || "primary";
     }
+    syncResumeProfileSelectUi_();
+    renderProfileManagerList_();
   } catch (e) {
     toast("Profiles load failed: " + e.message);
   }
@@ -1940,12 +2227,63 @@ function getActiveProfile() {
   return state.resumeProfiles.find((p) => p.id === state.activeProfileId) || null;
 }
 
+function getProfileRoleMeta_(profileRow) {
+  const row = (profileRow && typeof profileRow === "object") ? profileRow : {};
+  const profileObj = (row.profile_json && typeof row.profile_json === "object") ? row.profile_json : {};
+  const basics = (profileObj.basics && typeof profileObj.basics === "object") ? profileObj.basics : {};
+  const role = String(basics.headline || basics.role || profileObj.role || "").trim();
+  const name = String(row.name || basics.name || "").trim();
+  const id = String(row.id || "").trim();
+  return { role, name, id };
+}
+
+function getJobRoleLabel_(job) {
+  const raw = String(job?.role_title || "").trim();
+  if (raw) return raw;
+  const fallback = String(getDisplayTitle(job || {}) || "").trim();
+  return fallback && fallback !== "(Untitled)" ? fallback : "";
+}
+
+function getRoleContextPrefix_(job) {
+  const jobRole = getJobRoleLabel_(job);
+  const profileMeta = getProfileRoleMeta_(getActiveProfile());
+  const profileRole = String(profileMeta.role || "").trim();
+  if (jobRole && profileRole) return `JD role: ${jobRole}. Applicant profile role: ${profileRole}.`;
+  if (jobRole) return `JD role: ${jobRole}.`;
+  if (profileRole) return `Applicant profile role: ${profileRole}.`;
+  return "";
+}
+
+function updateRoleContextUi_(job) {
+  const jobRoleEl = $("appRoleContextJobRole");
+  const profileRoleEl = $("appRoleContextProfileRole");
+  const profileMetaEl = $("appRoleContextProfileMeta");
+  if (!jobRoleEl && !profileRoleEl && !profileMetaEl) return;
+
+  const profileMeta = getProfileRoleMeta_(getActiveProfile());
+  const profileRole = profileMeta.role || "(set in Profiles tab)";
+  const profileContext = [profileMeta.name, profileMeta.id ? `id: ${profileMeta.id}` : ""]
+    .filter(Boolean)
+    .join(" | ");
+  const profileMetaText = profileContext || "Select applicant profile for this job.";
+  const jobRole = getJobRoleLabel_(job || state.activeJob || {}) || "-";
+
+  if (jobRoleEl) jobRoleEl.textContent = jobRole;
+  if (profileRoleEl) profileRoleEl.textContent = profileRole;
+  if (profileMetaEl) profileMetaEl.textContent = profileMetaText;
+}
+
 function defaultProfileTemplate_() {
   return {
-    basics: { name: "", email: "", phone: "", location: "" },
+    basics: { name: "", headline: "", email: "", phone: "", location: "", profiles: [] },
     summary: "",
     experience: [],
+    education: [],
+    projects: [],
     skills: [],
+    certifications: [],
+    awards: [],
+    hobbies: [],
   };
 }
 
@@ -2214,6 +2552,7 @@ async function loadResumeProfileDetail(profileId, { silent = false } = {}) {
     if ($("appProfileId")) $("appProfileId").value = canonicalId;
     if ($("appProfileName")) $("appProfileName").value = canonicalName;
     if ($("appProfileJson")) $("appProfileJson").value = txt;
+    updateRoleContextUi_(state.activeJob);
   } catch (e) {
     if (!silent) toast("Profile load failed: " + e.message, { kind: "error" });
     if ($("appProfileId")) $("appProfileId").value = id;
@@ -2221,6 +2560,7 @@ async function loadResumeProfileDetail(profileId, { silent = false } = {}) {
     const fallback = state.profileJsonDraftById[id] || JSON.stringify(defaultProfileTemplate_(), null, 2);
     state.profileJsonDraftById[id] = fallback;
     if ($("appProfileJson")) $("appProfileJson").value = fallback;
+    updateRoleContextUi_(state.activeJob);
   }
 }
 
@@ -2249,6 +2589,557 @@ async function saveResumeProfileFromUi() {
   } finally {
     spin(false);
   }
+}
+
+function cloneJson_(value) {
+  try {
+    return JSON.parse(JSON.stringify(value ?? {}));
+  } catch {
+    return {};
+  }
+}
+
+function profileItemToLine_(item) {
+  if (typeof item === "string") return item.trim();
+  if (!item || typeof item !== "object") return "";
+  const name = String(item.name || item.title || item.label || item.value || "").trim();
+  const issuer = String(item.issuer || item.organization || item.provider || "").trim();
+  if (name && issuer) return `${name} - ${issuer}`;
+  return name || issuer;
+}
+
+function profileListToText_(value) {
+  const list = Array.isArray(value) ? value : [];
+  return list.map(profileItemToLine_).filter(Boolean).join("\n");
+}
+
+function parseProfileListText_(text, { splitComma = false } = {}) {
+  const raw = String(text || "").trim();
+  if (!raw) return [];
+  const normalized = splitComma ? raw.replaceAll(",", "\n") : raw;
+  return normalized
+    .split(/\r?\n/g)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function getPrimaryBaselinePayload_() {
+  const payload = cloneJson_(SHIVANAND_PRIMARY_BASELINE_);
+  const profile = (payload.profile_json && typeof payload.profile_json === "object")
+    ? payload.profile_json
+    : defaultProfileTemplate_();
+  payload.id = "primary";
+  payload.name = String(payload.name || "Shivanand Shah").trim() || "Shivanand Shah";
+  payload.profile_json = profile;
+  return payload;
+}
+
+function profileLooksPlaceholder_(profileObj, profileId = "") {
+  const id = String(profileId || "").trim().toLowerCase();
+  if (id && id !== "primary") return false;
+  const profile = (profileObj && typeof profileObj === "object") ? profileObj : {};
+  const basics = (profile.basics && typeof profile.basics === "object") ? profile.basics : {};
+  const name = String(basics.name || profile.name || "").trim().toLowerCase();
+  const email = String(basics.email || profile.email || "").trim().toLowerCase();
+  const summary = String(profile.summary || basics.summary || "").trim();
+  const skillsCount = Array.isArray(profile.skills) ? profile.skills.filter((x) => String(x || "").trim()).length : 0;
+  const expCount = Array.isArray(profile.experience) ? profile.experience.length : 0;
+
+  if (!name && !email && !summary && !expCount && !skillsCount) return true;
+  if (name.includes("smoke") || name.includes("test") || name.includes("demo")) return true;
+  if (email.endsWith("@example.com")) return true;
+  return false;
+}
+
+function getProfileLinkedinUrl_(profileObj) {
+  const profile = (profileObj && typeof profileObj === "object") ? profileObj : {};
+  const basics = (profile.basics && typeof profile.basics === "object") ? profile.basics : {};
+  const direct = String(basics.linkedin || basics.linkedin_url || profile.linkedin || "").trim();
+  if (direct) return direct;
+  const links = Array.isArray(basics.profiles) ? basics.profiles : [];
+  for (const link of links) {
+    if (!link || typeof link !== "object") continue;
+    const url = String(link.url || link.link || "").trim();
+    const network = String(link.network || "").trim().toLowerCase();
+    if (!url) continue;
+    if (network.includes("linkedin") || url.toLowerCase().includes("linkedin.com")) return url;
+  }
+  return "";
+}
+
+function profileManagerOptionLabel_(profile) {
+  const p = (profile && typeof profile === "object") ? profile : {};
+  const id = String(p.id || "").trim();
+  const name = String(p.name || "").trim();
+  if (name && id && name !== id) return `${name} (${id})`;
+  return name || id || "profile";
+}
+
+function profileManagerSetHint_(message) {
+  if ($("profileMgrHint")) $("profileMgrHint").textContent = String(message || "").trim() || "Select a profile to edit.";
+}
+
+function renderProfileManagerList_() {
+  const select = $("profileMgrSelect");
+  if (!select) return;
+  const options = (state.resumeProfiles || [])
+    .map((p) => `<option value="${escapeHtml(String(p.id || "").trim())}">${escapeHtml(profileManagerOptionLabel_(p))}</option>`)
+    .join("");
+  select.innerHTML = options;
+  if (!state.resumeProfiles.length) {
+    profileManagerSetHint_("No profiles yet. Click New to create one.");
+    return;
+  }
+  const preferred = String(state.profileManager.activeId || state.activeProfileId || state.resumeProfiles[0]?.id || "").trim();
+  if (preferred) select.value = preferred;
+}
+
+function renumberProfileRepeat_(hostId, prefix) {
+  const host = $(hostId);
+  if (!host) return;
+  const nodes = host.querySelectorAll(".profile-repeat-title");
+  nodes.forEach((node, idx) => {
+    node.textContent = `${prefix} ${idx + 1}`;
+  });
+}
+
+function appendProfileExperienceItem_(entry = {}) {
+  const host = $("profileMgrExperienceList");
+  if (!host) return;
+  const item = (entry && typeof entry === "object") ? entry : {};
+  const company = String(item.company || item.organization || "").trim();
+  const role = String(item.role || item.title || item.position || "").trim();
+  const dateRange = String(item.date_range || item.dateRange || item.dates || "").trim();
+  const location = String(item.location || "").trim();
+  const bullets = Array.isArray(item.bullets) ? item.bullets : (Array.isArray(item.highlights) ? item.highlights : []);
+  const bulletsText = bullets.map((x) => String(x || "").trim()).filter(Boolean).join("\n");
+  host.insertAdjacentHTML("beforeend", `
+    <div class="profile-repeat-item">
+      <div class="profile-repeat-head">
+        <div class="profile-repeat-title">Experience</div>
+        <button class="btn btn-ghost btn-xs profile-remove-item" type="button">Remove</button>
+      </div>
+      <div class="profile-item-grid profile-item-grid-2">
+        <div>
+          <label class="muted tiny">Company</label>
+          <input data-field="company" value="${escapeHtml(company)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Role</label>
+          <input data-field="role" value="${escapeHtml(role)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Date range</label>
+          <input data-field="date_range" value="${escapeHtml(dateRange)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Location</label>
+          <input data-field="location" value="${escapeHtml(location)}" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="muted tiny">Bullets (one per line)</label>
+          <textarea data-field="bullets" rows="4">${escapeHtml(bulletsText)}</textarea>
+        </div>
+      </div>
+    </div>
+  `);
+  renumberProfileRepeat_("profileMgrExperienceList", "Experience");
+}
+
+function appendProfileEducationItem_(entry = {}) {
+  const host = $("profileMgrEducationList");
+  if (!host) return;
+  const item = (entry && typeof entry === "object") ? entry : {};
+  const degree = String(item.degree || item.title || "").trim();
+  const institution = String(item.institution || item.school || item.university || "").trim();
+  const year = String(item.year || item.date_range || item.dateRange || "").trim();
+  const details = String(item.details || item.description || "").trim();
+  host.insertAdjacentHTML("beforeend", `
+    <div class="profile-repeat-item">
+      <div class="profile-repeat-head">
+        <div class="profile-repeat-title">Education</div>
+        <button class="btn btn-ghost btn-xs profile-remove-item" type="button">Remove</button>
+      </div>
+      <div class="profile-item-grid profile-item-grid-3">
+        <div>
+          <label class="muted tiny">Degree</label>
+          <input data-field="degree" value="${escapeHtml(degree)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Institution</label>
+          <input data-field="institution" value="${escapeHtml(institution)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Year / Dates</label>
+          <input data-field="year" value="${escapeHtml(year)}" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="muted tiny">Details</label>
+          <textarea data-field="details" rows="3">${escapeHtml(details)}</textarea>
+        </div>
+      </div>
+    </div>
+  `);
+  renumberProfileRepeat_("profileMgrEducationList", "Education");
+}
+
+function appendProfileProjectItem_(entry = {}) {
+  const host = $("profileMgrProjectsList");
+  if (!host) return;
+  const item = (entry && typeof entry === "object") ? entry : {};
+  const name = String(item.name || item.title || "").trim();
+  const role = String(item.role || "").trim();
+  const link = String(item.link || item.url || "").trim();
+  const description = String(item.description || item.summary || "").trim();
+  const bullets = Array.isArray(item.bullets) ? item.bullets : [];
+  const bulletsText = bullets.map((x) => String(x || "").trim()).filter(Boolean).join("\n");
+  host.insertAdjacentHTML("beforeend", `
+    <div class="profile-repeat-item">
+      <div class="profile-repeat-head">
+        <div class="profile-repeat-title">Project</div>
+        <button class="btn btn-ghost btn-xs profile-remove-item" type="button">Remove</button>
+      </div>
+      <div class="profile-item-grid profile-item-grid-2">
+        <div>
+          <label class="muted tiny">Name</label>
+          <input data-field="name" value="${escapeHtml(name)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Role</label>
+          <input data-field="role" value="${escapeHtml(role)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Link</label>
+          <input data-field="link" value="${escapeHtml(link)}" />
+        </div>
+        <div>
+          <label class="muted tiny">Description</label>
+          <input data-field="description" value="${escapeHtml(description)}" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label class="muted tiny">Highlights (one per line)</label>
+          <textarea data-field="bullets" rows="3">${escapeHtml(bulletsText)}</textarea>
+        </div>
+      </div>
+    </div>
+  `);
+  renumberProfileRepeat_("profileMgrProjectsList", "Project");
+}
+
+function readRepeatField_(row, field) {
+  return String(row?.querySelector(`[data-field="${field}"]`)?.value || "").trim();
+}
+
+function collectProfileExperienceItems_() {
+  const rows = Array.from($("profileMgrExperienceList")?.querySelectorAll(".profile-repeat-item") || []);
+  return rows
+    .map((row) => {
+      const bullets = parseProfileListText_(readRepeatField_(row, "bullets"));
+      return {
+        company: readRepeatField_(row, "company"),
+        role: readRepeatField_(row, "role"),
+        date_range: readRepeatField_(row, "date_range"),
+        location: readRepeatField_(row, "location"),
+        bullets,
+      };
+    })
+    .filter((item) => item.company || item.role || item.date_range || item.location || item.bullets.length);
+}
+
+function collectProfileEducationItems_() {
+  const rows = Array.from($("profileMgrEducationList")?.querySelectorAll(".profile-repeat-item") || []);
+  return rows
+    .map((row) => ({
+      degree: readRepeatField_(row, "degree"),
+      institution: readRepeatField_(row, "institution"),
+      year: readRepeatField_(row, "year"),
+      details: readRepeatField_(row, "details"),
+    }))
+    .filter((item) => item.degree || item.institution || item.year || item.details);
+}
+
+function collectProfileProjectItems_() {
+  const rows = Array.from($("profileMgrProjectsList")?.querySelectorAll(".profile-repeat-item") || []);
+  return rows
+    .map((row) => {
+      const bullets = parseProfileListText_(readRepeatField_(row, "bullets"));
+      return {
+        name: readRepeatField_(row, "name"),
+        role: readRepeatField_(row, "role"),
+        link: readRepeatField_(row, "link"),
+        description: readRepeatField_(row, "description"),
+        bullets,
+      };
+    })
+    .filter((item) => item.name || item.role || item.link || item.description || item.bullets.length);
+}
+
+function fillProfileManagerForm_(meta, profileObj) {
+  const profile = (profileObj && typeof profileObj === "object") ? profileObj : defaultProfileTemplate_();
+  const basics = (profile.basics && typeof profile.basics === "object") ? profile.basics : {};
+  const metaObj = (meta && typeof meta === "object") ? meta : {};
+
+  if ($("profileMgrId")) $("profileMgrId").value = String(metaObj.id || "").trim();
+  if ($("profileMgrName")) $("profileMgrName").value = String(metaObj.name || metaObj.id || "").trim();
+  if ($("profileMgrFullName")) $("profileMgrFullName").value = String(basics.name || profile.name || "").trim();
+  if ($("profileMgrRole")) $("profileMgrRole").value = String(basics.headline || basics.role || profile.role || "").trim();
+  if ($("profileMgrEmail")) $("profileMgrEmail").value = String(basics.email || profile.email || "").trim();
+  if ($("profileMgrPhone")) $("profileMgrPhone").value = String(basics.phone || profile.phone || "").trim();
+  if ($("profileMgrLocation")) $("profileMgrLocation").value = String(basics.location || profile.location || "").trim();
+  if ($("profileMgrLinkedin")) $("profileMgrLinkedin").value = getProfileLinkedinUrl_(profile);
+  if ($("profileMgrSummary")) $("profileMgrSummary").value = String(profile.summary || basics.summary || "").trim();
+  if ($("profileMgrSkills")) $("profileMgrSkills").value = profileListToText_(Array.isArray(profile.skills) ? profile.skills : []);
+  if ($("profileMgrCertifications")) $("profileMgrCertifications").value = profileListToText_(Array.isArray(profile.certifications) ? profile.certifications : []);
+  if ($("profileMgrAwards")) $("profileMgrAwards").value = profileListToText_(Array.isArray(profile.awards) ? profile.awards : []);
+  if ($("profileMgrHobbies")) $("profileMgrHobbies").value = profileListToText_(Array.isArray(profile.hobbies) ? profile.hobbies : []);
+
+  const expHost = $("profileMgrExperienceList");
+  const eduHost = $("profileMgrEducationList");
+  const projHost = $("profileMgrProjectsList");
+  if (expHost) expHost.innerHTML = "";
+  if (eduHost) eduHost.innerHTML = "";
+  if (projHost) projHost.innerHTML = "";
+
+  const experience = Array.isArray(profile.experience) ? profile.experience : [];
+  const education = Array.isArray(profile.education) ? profile.education : [];
+  const projects = Array.isArray(profile.projects) ? profile.projects : [];
+
+  if (experience.length) experience.forEach((entry) => appendProfileExperienceItem_(entry));
+  else appendProfileExperienceItem_({});
+  if (education.length) education.forEach((entry) => appendProfileEducationItem_(entry));
+  else appendProfileEducationItem_({});
+  if (projects.length) projects.forEach((entry) => appendProfileProjectItem_(entry));
+  else appendProfileProjectItem_({});
+}
+
+function startNewProfileDraft_() {
+  const template = defaultProfileTemplate_();
+  state.profileManager.activeId = "";
+  state.profileManager.baseProfileJson = cloneJson_(template);
+  fillProfileManagerForm_({ id: "", name: "" }, template);
+  profileManagerSetHint_("New profile draft. Fill details and click Save Profile.");
+}
+
+async function applyPrimaryBaselineToProfileManager_({ save = true, silent = false } = {}) {
+  const payload = getPrimaryBaselinePayload_();
+  state.profileManager.activeId = payload.id;
+  state.profileManager.baseProfileJson = cloneJson_(payload.profile_json);
+  fillProfileManagerForm_({ id: payload.id, name: payload.name }, payload.profile_json);
+  renderProfileManagerList_();
+  if ($("profileMgrSelect")) $("profileMgrSelect").value = payload.id;
+
+  if (!save) {
+    profileManagerSetHint_("Baseline loaded into form. Save Profile to persist.");
+    return;
+  }
+
+  try {
+    spin(true);
+    await api("/resume/profiles", { method: "POST", body: payload });
+    localStorage.setItem(PROFILE_PRIMARY_PREFILL_ONCE_KEY, "1");
+    state.activeProfileId = payload.id;
+    await loadResumeProfiles();
+    await loadResumeProfileDetail(payload.id, { silent: true });
+    renderProfileManagerList_();
+    if ($("profileMgrSelect")) $("profileMgrSelect").value = payload.id;
+    profileManagerSetHint_("Primary baseline applied and saved.");
+    if (!silent) toast("Primary profile prefilled");
+  } catch (e) {
+    if (!silent) toast("Primary prefill failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+async function loadProfileManagerDetail_(profileId, { silent = false } = {}) {
+  const id = String(profileId || "").trim();
+  if (!id) return;
+  try {
+    const res = await api(`/resume/profiles/${encodeURIComponent(id)}`);
+    const row = (res?.data && typeof res.data === "object") ? res.data : {};
+    const canonicalId = String(row.id || id).trim() || id;
+    const canonicalName = String(row.name || canonicalId).trim() || canonicalId;
+    const profileObj = (row.profile_json && typeof row.profile_json === "object")
+      ? row.profile_json
+      : defaultProfileTemplate_();
+    state.profileManager.activeId = canonicalId;
+    state.profileManager.baseProfileJson = cloneJson_(profileObj);
+    fillProfileManagerForm_({ id: canonicalId, name: canonicalName }, profileObj);
+    if ($("profileMgrSelect")) $("profileMgrSelect").value = canonicalId;
+    profileManagerSetHint_(`Editing ${canonicalName} (${canonicalId})`);
+  } catch (e) {
+    if (!silent) toast("Profile load failed: " + e.message, { kind: "error" });
+  }
+}
+
+async function openProfilesManager() {
+  setProfilesTabActive_(true);
+  openModal("modalProfiles");
+  try {
+    spin(true);
+    await loadResumeProfiles();
+    renderProfileManagerList_();
+    const firstId = String(state.resumeProfiles[0]?.id || "").trim();
+    const preferred = String(state.activeProfileId || state.profileManager.activeId || firstId).trim();
+    if (preferred) {
+      await loadProfileManagerDetail_(preferred, { silent: true });
+      const onceDone = String(localStorage.getItem(PROFILE_PRIMARY_PREFILL_ONCE_KEY) || "") === "1";
+      const activeId = String(state.profileManager.activeId || preferred || "").trim().toLowerCase();
+      const needsPrefill = profileLooksPlaceholder_(state.profileManager.baseProfileJson, activeId);
+      if (!onceDone && activeId === "primary" && needsPrefill) {
+        await applyPrimaryBaselineToProfileManager_({ save: true, silent: true });
+      }
+    } else {
+      startNewProfileDraft_();
+    }
+  } catch (e) {
+    toast("Profiles load failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+function buildProfileManagerPayload_() {
+  const base = cloneJson_(state.profileManager.baseProfileJson || defaultProfileTemplate_());
+  const baseBasics = (base.basics && typeof base.basics === "object") ? base.basics : {};
+
+  const idInput = String($("profileMgrId")?.value || "").trim();
+  const profileNameInput = String($("profileMgrName")?.value || "").trim();
+  const fullName = String($("profileMgrFullName")?.value || "").trim();
+  const role = String($("profileMgrRole")?.value || "").trim();
+  const email = String($("profileMgrEmail")?.value || "").trim();
+  const phone = String($("profileMgrPhone")?.value || "").trim();
+  const location = String($("profileMgrLocation")?.value || "").trim();
+  const linkedin = String($("profileMgrLinkedin")?.value || "").trim();
+  const summary = String($("profileMgrSummary")?.value || "").trim();
+
+  const generatedId = slugify_(profileNameInput || fullName) || `profile-${Date.now()}`;
+  const id = (idInput || generatedId).slice(0, 80);
+  const name = String(profileNameInput || fullName || id).trim() || id;
+
+  const nonLinkedinProfiles = Array.isArray(baseBasics.profiles)
+    ? baseBasics.profiles.filter((entry) => {
+      const row = entry && typeof entry === "object" ? entry : {};
+      const low = `${row.network || ""} ${row.url || row.link || row.username || ""}`.toLowerCase();
+      return !low.includes("linkedin");
+    })
+    : [];
+
+  const basics = {
+    ...baseBasics,
+    name: fullName,
+    email,
+    phone,
+    location,
+  };
+  if (role) {
+    basics.headline = role;
+    basics.role = role;
+  } else {
+    delete basics.headline;
+    delete basics.role;
+  }
+  if (linkedin) {
+    basics.linkedin = linkedin;
+    basics.profiles = [{ network: "LinkedIn", url: linkedin }, ...nonLinkedinProfiles];
+  } else {
+    delete basics.linkedin;
+    basics.profiles = nonLinkedinProfiles;
+  }
+
+  const next = cloneJson_(base);
+  for (const key of PROFILE_MANAGER_KEYS_) delete next[key];
+  next.basics = basics;
+  next.summary = summary;
+  next.experience = collectProfileExperienceItems_();
+  next.education = collectProfileEducationItems_();
+  next.projects = collectProfileProjectItems_();
+  next.skills = parseProfileListText_($("profileMgrSkills")?.value || "", { splitComma: true });
+  next.certifications = parseProfileListText_($("profileMgrCertifications")?.value || "");
+  next.awards = parseProfileListText_($("profileMgrAwards")?.value || "");
+  next.hobbies = parseProfileListText_($("profileMgrHobbies")?.value || "", { splitComma: true });
+
+  return { id, name, profile_json: next };
+}
+
+async function saveProfileManagerProfile_() {
+  try {
+    const payload = buildProfileManagerPayload_();
+    if (!payload.id) {
+      toast("Profile id is required", { kind: "error" });
+      return;
+    }
+    spin(true);
+    await api("/resume/profiles", { method: "POST", body: payload });
+    state.activeProfileId = payload.id;
+    state.profileManager.activeId = payload.id;
+    state.profileManager.baseProfileJson = cloneJson_(payload.profile_json);
+    await loadResumeProfiles();
+    await loadResumeProfileDetail(payload.id, { silent: true });
+    renderProfileManagerList_();
+    if ($("profileMgrSelect")) $("profileMgrSelect").value = payload.id;
+    profileManagerSetHint_(`Saved ${payload.name} (${payload.id})`);
+    toast("Profile saved");
+  } catch (e) {
+    toast("Profile save failed: " + e.message, { kind: "error" });
+  } finally {
+    spin(false);
+  }
+}
+
+function bindProfileRepeaterRemove_(hostId, labelPrefix) {
+  const host = $(hostId);
+  if (!host) return;
+  host.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".profile-remove-item");
+    if (!btn) return;
+    const item = btn.closest(".profile-repeat-item");
+    if (!item) return;
+    item.remove();
+    renumberProfileRepeat_(hostId, labelPrefix);
+  });
+}
+
+function bindProfileManagerUi_() {
+  $("btnProfiles") && ($("btnProfiles").onclick = openProfilesManager);
+  $("btnCloseProfiles") && ($("btnCloseProfiles").onclick = () => {
+    closeModal("modalProfiles");
+    setProfilesTabActive_(false);
+  });
+  $("btnProfileMgrCancel") && ($("btnProfileMgrCancel").onclick = () => {
+    closeModal("modalProfiles");
+    setProfilesTabActive_(false);
+  });
+  $("btnProfileMgrNew") && ($("btnProfileMgrNew").onclick = () => startNewProfileDraft_());
+  $("btnProfileMgrSave") && ($("btnProfileMgrSave").onclick = saveProfileManagerProfile_);
+  $("btnProfileMgrUseBaseline") && ($("btnProfileMgrUseBaseline").onclick = async () => {
+    await applyPrimaryBaselineToProfileManager_({ save: true, silent: false });
+  });
+  $("btnProfileMgrRefresh") && ($("btnProfileMgrRefresh").onclick = async () => {
+    try {
+      spin(true);
+      await loadResumeProfiles();
+      renderProfileManagerList_();
+      const selected = String($("profileMgrSelect")?.value || state.activeProfileId || "").trim();
+      if (selected) await loadProfileManagerDetail_(selected, { silent: true });
+      else startNewProfileDraft_();
+    } finally {
+      spin(false);
+    }
+  });
+  $("profileMgrSelect") && ($("profileMgrSelect").onchange = async () => {
+    const id = String($("profileMgrSelect")?.value || "").trim();
+    if (!id) return;
+    await loadProfileManagerDetail_(id, { silent: true });
+  });
+
+  $("btnProfileAddExperience") && ($("btnProfileAddExperience").onclick = () => appendProfileExperienceItem_({}));
+  $("btnProfileAddEducation") && ($("btnProfileAddEducation").onclick = () => appendProfileEducationItem_({}));
+  $("btnProfileAddProject") && ($("btnProfileAddProject").onclick = () => appendProfileProjectItem_({}));
+
+  bindProfileRepeaterRemove_("profileMgrExperienceList", "Experience");
+  bindProfileRepeaterRemove_("profileMgrEducationList", "Education");
+  bindProfileRepeaterRemove_("profileMgrProjectsList", "Project");
 }
 
 async function generateApplicationPack(jobKey, force = false) {
@@ -2366,6 +3257,8 @@ async function hydrateApplicationPack(jobOrKey) {
       state.activeProfileId = profileSelect.value || "primary";
       await saveJobProfilePreference_(jobKey, state.activeProfileId, { silent: true });
       await loadResumeProfileDetail(state.activeProfileId, { silent: true });
+      updateRoleContextUi_(currentJob);
+      await hydrateApplicationPack(currentJob);
     };
   }
 
@@ -2399,6 +3292,7 @@ async function hydrateApplicationPack(jobOrKey) {
   if ($("appProfileName")) $("appProfileName").value = p?.name || "Primary";
   const profileId = state.activeProfileId || "primary";
   await loadResumeProfileDetail(profileId, { silent: true });
+  updateRoleContextUi_(currentJob);
   if ($("appProfileJson")) {
     const draft = state.profileJsonDraftById[profileId];
     if (draft) $("appProfileJson").value = draft;
@@ -2446,7 +3340,7 @@ async function hydrateApplicationPack(jobOrKey) {
       ? pdfReadiness.failed_checks.map((x) => String(x?.detail || x?.label || x?.id || "").trim()).filter(Boolean)
       : [];
     const rrBaseUrl = String(d?.rr_base_url || "").trim();
-    $("appPackStatus").innerHTML = `<span class="badge ${escapeHtml(status)}">${escapeHtml(status)}</span>`;
+    $("appPackStatus").innerHTML = statusBadgeHtml_(status);
     $("appAtsScore").textContent = String(ats.score ?? "-");
     $("appMissingKw").textContent = missing.length ? missing.join(", ") : "-";
     if ($("appTargetRubricScore")) {
@@ -2491,6 +3385,16 @@ async function hydrateApplicationPack(jobOrKey) {
     const packSummary = String(d?.pack_json?.tailoring?.summary || "");
     const packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
     const packCoverLetter = String(d?.pack_json?.tailoring?.cover_letter || "");
+    const qualityFlags = Array.isArray(d?.quality_flags)
+      ? d.quality_flags.map((x) => String(x || "").trim().toUpperCase()).filter(Boolean)
+      : [];
+    const qualityBlockingFlags = Array.isArray(d?.quality_blocking_flags)
+      ? d.quality_blocking_flags.map((x) => String(x || "").trim().toUpperCase()).filter(Boolean)
+      : qualityFlags.filter((f) => QUALITY_BLOCKING_FLAGS.has(f));
+    const qualityScore = Number.isFinite(Number(d?.quality_score)) ? Number(d.quality_score) : null;
+    const qualityBlocked = (typeof d?.quality_blocked === "boolean")
+      ? d.quality_blocked
+      : qualityBlockingFlags.length > 0;
     section.dataset.packSummary = packSummary;
     section.dataset.packBullets = packBullets;
     section.dataset.packCoverLetter = packCoverLetter;
@@ -2500,6 +3404,10 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrPdfUrl = rrPdfUrl;
     section.dataset.pdfReady = pdfReadiness ? (pdfReady ? "1" : "0") : "0";
     section.dataset.pdfReadyIssues = pdfIssues.join(", ");
+    section.dataset.qualityFlagsJson = JSON.stringify(qualityFlags);
+    section.dataset.qualityBlockingFlagsJson = JSON.stringify(qualityBlockingFlags);
+    section.dataset.qualityScore = qualityScore === null ? "" : String(qualityScore);
+    section.dataset.qualityBlocked = qualityBlocked ? "1" : "0";
 
     const controlTemplateId = String(controls.template_id || "").trim();
     if (controlTemplateId) state.activeTemplateId = controlTemplateId;
@@ -2525,7 +3433,8 @@ async function hydrateApplicationPack(jobOrKey) {
     if ($("wizardSummary")) $("wizardSummary").value = packSummary;
     if ($("wizardCoverLetter")) $("wizardCoverLetter").value = packCoverLetter;
     if ($("wizardFinalLetter")) $("wizardFinalLetter").value = packCoverLetter;
-    if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = status || "-";
+    if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = statusLabel_(status || "-");
+    syncWizardQualityGate_();
     const outreachVisible = status === "READY_TO_APPLY" || status === "APPLIED";
     await hydrateWizardOutreachContacts_(jobKey, { showCard: outreachVisible });
     const mustKeywords = Array.isArray(d?.pack_json?.tailoring?.must_keywords) ? d.pack_json.tailoring.must_keywords : [];
@@ -2536,8 +3445,10 @@ async function hydrateApplicationPack(jobOrKey) {
       .filter((x) => !missingSet.has(x.toLowerCase()))
       .slice(0, 3);
     const missingTop = missing.slice(0, 2);
+    const rolePrefix = getRoleContextPrefix_(currentJob);
+    const matchSummaryText = `Matched ${matchedTop.length} strong signals, missing ${missingTop.length} must-have keywords.`;
     if ($("appMatchSummary")) {
-      $("appMatchSummary").textContent = `Matched ${matchedTop.length} strong signals, missing ${missingTop.length} must-have keywords.`;
+      $("appMatchSummary").textContent = rolePrefix ? `${rolePrefix} ${matchSummaryText}` : matchSummaryText;
     }
     if ($("appMatchChips")) {
       const matchedHtml = matchedTop.map((kw) => `<span class="chip chip-match-pos">${escapeHtml(kw)}</span>`).join("");
@@ -2548,8 +3459,9 @@ async function hydrateApplicationPack(jobOrKey) {
     syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: true });
     setWizardStep_(resolveWizardStep_(currentJob, status));
+    updateRoleContextUi_(currentJob);
   } catch (e) {
-    $("appPackStatus").innerHTML = `<span class="badge">-</span>`;
+    $("appPackStatus").innerHTML = statusBadgeHtml_("-");
     $("appAtsScore").textContent = "-";
     $("appMissingKw").textContent = e.httpStatus === 404 ? "-" : ("Error: " + e.message);
     if ($("appTargetRubricScore")) $("appTargetRubricScore").textContent = "-";
@@ -2577,19 +3489,29 @@ async function hydrateApplicationPack(jobOrKey) {
     section.dataset.rrPdfUrl = "";
     section.dataset.pdfReady = "0";
     section.dataset.pdfReadyIssues = "";
+    section.dataset.qualityFlagsJson = "[]";
+    section.dataset.qualityBlockingFlagsJson = "[]";
+    section.dataset.qualityScore = "";
+    section.dataset.qualityBlocked = "0";
     if ($("appOnePagerStrict")) $("appOnePagerStrict").checked = getOnePagerStrictPref_();
     if ($("wizardSummary")) $("wizardSummary").value = "";
     if ($("wizardCoverLetter")) $("wizardCoverLetter").value = "";
     if ($("wizardFinalLetter")) $("wizardFinalLetter").value = "";
     if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = "-";
+    syncWizardQualityGate_();
     resetWizardOutreachUi_({ hideCard: true });
-    if ($("appMatchSummary")) $("appMatchSummary").textContent = "No scored evidence yet. Generate pitch to continue.";
+    if ($("appMatchSummary")) {
+      const rolePrefix = getRoleContextPrefix_(currentJob);
+      const base = "No scored evidence yet. Generate pitch to continue.";
+      $("appMatchSummary").textContent = rolePrefix ? `${rolePrefix} ${base}` : base;
+    }
     if ($("appMatchChips")) $("appMatchChips").innerHTML = `<span class="muted tiny">No keyword chips available yet.</span>`;
     applyTemplateToResumeUi_(state.activeTemplateId || DEFAULT_TEMPLATE_ID);
     renderKeywordPicker_(currentJob, null);
     syncRrDownloadUi_();
     updateNextActionCard_(currentJob, { hasPack: false });
     setWizardStep_(resolveWizardStep_(currentJob, ""));
+    updateRoleContextUi_(currentJob);
   }
 }
 
@@ -2841,7 +3763,7 @@ async function approveWizardPack() {
       },
     });
     if ($("wizardFinalLetter")) $("wizardFinalLetter").value = coverLetter;
-    if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = String(res?.data?.status || "READY_TO_APPLY");
+    if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = statusLabel_(String(res?.data?.status || "READY_TO_APPLY"));
     toast(`Approved (${res?.data?.status || "READY_TO_APPLY"})`);
     await loadJobs({ ignoreStatus: true });
     await setActive(jobKey);
@@ -2868,6 +3790,11 @@ function flashCopiedState_(btn) {
 }
 
 async function copyWizardCoverLetter(sourceBtn = null) {
+  const quality = getPackQualityState_();
+  if (quality.blocked) {
+    toast("Needs content review before final copy/print.", { kind: "error" });
+    return;
+  }
   const letter = String($("wizardFinalLetter")?.value || $("wizardCoverLetter")?.value || $("appPackSection")?.dataset?.packCoverLetter || "").trim();
   if (!letter) return toast("No cover letter available", { kind: "error" });
   try {
@@ -3150,6 +4077,11 @@ function togglePdfReadyMode() {
 }
 
 function printPdfReadyView() {
+  const quality = getPackQualityState_();
+  if (quality.blocked) {
+    toast("Needs content review before print/export.", { kind: "error" });
+    return;
+  }
   if (!document.body.classList.contains("pdf-ready-mode")) {
     setPdfReadyMode_(true);
   }
@@ -3160,6 +4092,11 @@ async function openTailoredResumeHtml(jobKey) {
   const key = String(jobKey || state.activeJob?.job_key || "").trim();
   if (!key) {
     toast("Select a job first.", { kind: "error" });
+    return;
+  }
+  const quality = getPackQualityState_();
+  if (quality.blocked) {
+    toast("Needs content review before final resume export.", { kind: "error" });
     return;
   }
 
@@ -3181,6 +4118,7 @@ async function openTailoredResumeHtml(jobKey) {
     const profileId = String($("appProfileId")?.value || state.activeProfileId || "").trim();
     const qs = new URLSearchParams();
     if (profileId) qs.set("profile_id", profileId);
+    qs.set("evidence_source_policy", DEFAULT_EVIDENCE_SOURCE_POLICY);
     const path = `/jobs/${encodeURIComponent(key)}/resume/html${qs.toString() ? `?${qs.toString()}` : ""}`;
     const res = await fetch(cfg.apiBase + path, {
       method: "GET",
@@ -3386,7 +4324,7 @@ async function updateStatus(jobKey, status) {
   try {
     spin(true);
     await api(`/jobs/${encodeURIComponent(jobKey)}/status`, { method: "POST", body: { status } });
-    toast("Status updated: " + status);
+    toast("Status updated: " + statusLabel_(status));
     await loadJobs();
     await setActive(jobKey);
   } catch (e) {
@@ -3439,6 +4377,10 @@ function openModal(id) {
 
 function closeModal(id) {
   $(id).classList.add("hidden");
+}
+
+function setProfilesTabActive_(on) {
+  $("btnProfiles")?.classList.toggle("active-tab", Boolean(on));
 }
 
 async function ingestUrls(text) {
@@ -3711,12 +4653,20 @@ function openSettings() {
   const cfg = getCfg();
   $("setApiBase").value = cfg.apiBase;
   $("setUiKey").value = cfg.uiKey;
+  if ($("setUiKeyRemember")) {
+    const hasKey = Boolean(String(cfg.uiKey || "").trim());
+    $("setUiKeyRemember").checked = hasKey ? String(cfg.uiKeyMode || "session") === "local" : false;
+  }
+  if ($("setUiKey")) $("setUiKey").type = "password";
+  if ($("btnToggleUiKeyVisibility")) $("btnToggleUiKeyVisibility").textContent = "Show";
   openModal("modalSettings");
 }
 
 async function saveSettings() {
   const apiBase = $("setApiBase").value.trim();
   const uiKey = $("setUiKey").value.trim();
+  const remember = Boolean($("setUiKeyRemember")?.checked);
+  const uiKeyMode = remember ? "local" : "session";
   if (!apiBase.startsWith("http")) {
     toast("API base must start with http(s)");
     return;
@@ -3725,10 +4675,10 @@ async function saveSettings() {
     toast("UI key is required");
     return;
   }
-  setCfg({ apiBase, uiKey });
+  setCfg({ apiBase, uiKey, uiKeyMode });
   closeModal("modalSettings");
   hydrateSettingsUI();
-  toast("Saved settings");
+  toast(`Saved settings (${remember ? "remembered on device" : "session only"})`);
   if (state.view === "jobs") await loadJobs();
   if (state.view === "tracking") await loadJobs({ ignoreStatus: true });
   if (state.view === "targets") await loadTargets();
@@ -3750,6 +4700,7 @@ async function saveSettings() {
   $("btnTabMetrics").onclick = () => showView("metrics");
   $("btnMobileJobs").onclick = () => showView("jobs");
   $("btnMobileTracking").onclick = () => showView("tracking");
+  $("btnMobileProfiles").onclick = () => openProfilesManager();
   $("btnMobileAdd").onclick = () => openModal("modalAdd");
   $("btnMobileRescore").onclick = () => rescorePending("NEW");
 
@@ -3759,7 +4710,16 @@ async function saveSettings() {
   $("btnAddSubmit").onclick = doIngest;
   $("addMode").onchange = syncAddModeUi;
 
+  bindProfileManagerUi_();
+
   $("btnSettings").onclick = openSettings;
+  $("btnToggleUiKeyVisibility").onclick = () => {
+    const input = $("setUiKey");
+    if (!input) return;
+    const reveal = input.type === "password";
+    input.type = reveal ? "text" : "password";
+    $("btnToggleUiKeyVisibility").textContent = reveal ? "Hide" : "Show";
+  };
   $("btnCloseSettings").onclick = () => closeModal("modalSettings");
   $("btnCancelSettings").onclick = () => closeModal("modalSettings");
   $("btnSaveSettings").onclick = saveSettings;
@@ -3812,8 +4772,11 @@ async function saveSettings() {
   loadResumeProfiles();
   loadResumeTemplates_();
   syncTrackingControlsUi_();
-  showView("jobs");
-  loadJobs();
+  const initialView = getInitialHomeView_();
+  showView(initialView);
+  if (initialView === "tracking") loadJobs({ ignoreStatus: true });
+  else loadJobs();
+  markReturningUser_();
 })();
 
 window.updateStatus = updateStatus;

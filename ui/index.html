@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- ui-version: 2026-02-26T23:30:00Z resume-wizard-v3 -->
+<!-- ui-version: 2026-02-27T11:30:00Z advanced-zones-v1 -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -19,6 +19,7 @@
       <button class="btn btn-ghost" id="btnTabTracking">Tracking</button>
       <button class="btn btn-ghost" id="btnTabTargets">Targets</button>
       <button class="btn btn-ghost" id="btnTabMetrics">Metrics</button>
+      <button class="btn btn-ghost" id="btnProfiles" title="Profiles">Profiles</button>
       <button class="btn btn-ghost hidden" id="btnShowAiNotice" title="Show AI notice">Show AI notice</button>
       <button class="btn btn-ghost" id="btnSettings" title="Settings">Settings</button>
       <button class="btn" id="btnAdd">+ Add job URL</button>
@@ -40,14 +41,14 @@
           <label>Status</label>
           <select id="statusFilter">
             <option value="">All</option>
-            <option value="NEW">NEW</option>
-            <option value="SCORED">SCORED</option>
-            <option value="SHORTLISTED">SHORTLISTED</option>
-            <option value="READY_TO_APPLY">READY_TO_APPLY</option>
-            <option value="APPLIED">APPLIED</option>
-            <option value="REJECTED">REJECTED</option>
-            <option value="ARCHIVED">ARCHIVED</option>
-            <option value="LINK_ONLY">LINK_ONLY</option>
+            <option value="NEW">To Review</option>
+            <option value="SCORED">Scored</option>
+            <option value="SHORTLISTED">Shortlisted</option>
+            <option value="READY_TO_APPLY">Ready to Apply</option>
+            <option value="APPLIED">Applied</option>
+            <option value="REJECTED">Not a Fit</option>
+            <option value="ARCHIVED">Archived</option>
+            <option value="LINK_ONLY">Needs Details</option>
           </select>
         </div>
 
@@ -336,13 +337,133 @@
         <label class="muted">API base URL</label>
         <input id="setApiBase" placeholder="https://get-job....workers.dev" />
         <label class="muted">UI key (x-ui-key)</label>
-        <input id="setUiKey" placeholder="Paste your UI_KEY" />
+        <div class="settings-key-row">
+          <input id="setUiKey" type="password" autocomplete="off" placeholder="Paste your UI_KEY" />
+          <button class="btn btn-ghost" id="btnToggleUiKeyVisibility" type="button">Show</button>
+        </div>
+        <label class="tiny settings-ui-key-mode">
+          <input type="checkbox" id="setUiKeyRemember" />
+          Remember on this device (less secure)
+        </label>
         <div class="row">
           <button class="btn" id="btnSaveSettings">Save</button>
           <button class="btn btn-ghost" id="btnCancelSettings">Cancel</button>
         </div>
         <div class="muted tiny" id="settingsBuildInfo">UI: - | Worker: -</div>
-        <div class="muted tiny">We store these in your browser localStorage.</div>
+        <div class="muted tiny">Default mode is session-only key storage for privacy.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profiles Modal -->
+  <div id="modalProfiles" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-card-wide profile-modal-card">
+      <div class="modal-head">
+        <div class="h3">Profile Manager</div>
+        <button class="btn btn-ghost" id="btnCloseProfiles">Close</button>
+      </div>
+      <div class="modal-body modal-body-split profile-modal-split">
+        <section class="review-panel profile-list-panel">
+          <div class="h3">Profiles</div>
+          <div class="row profile-toolbar-row">
+            <button class="btn btn-ghost btn-xs" id="btnProfileMgrRefresh" type="button">Refresh</button>
+            <button class="btn btn-secondary btn-xs" id="btnProfileMgrNew" type="button">+ New</button>
+            <button class="btn btn-ghost btn-xs" id="btnProfileMgrUseBaseline" type="button">Use Baseline</button>
+          </div>
+          <select id="profileMgrSelect" size="14"></select>
+          <div id="profileMgrHint" class="muted tiny">Select a profile to edit.</div>
+        </section>
+        <section class="review-panel profile-form-panel">
+          <div class="profile-grid profile-grid-2">
+            <div>
+              <label class="muted tiny">Profile ID</label>
+              <input id="profileMgrId" placeholder="primary" />
+            </div>
+            <div>
+              <label class="muted tiny">Profile Name</label>
+              <input id="profileMgrName" placeholder="Primary" />
+            </div>
+            <div>
+              <label class="muted tiny">Full Name</label>
+              <input id="profileMgrFullName" placeholder="Candidate name" />
+            </div>
+            <div>
+              <label class="muted tiny">Profile Role (Applicant)</label>
+              <input id="profileMgrRole" placeholder="Product Consultant" />
+              <div class="muted tiny profile-help">This is your own role/profile headline, not the job's JD role.</div>
+            </div>
+            <div>
+              <label class="muted tiny">Email</label>
+              <input id="profileMgrEmail" placeholder="name@example.com" />
+            </div>
+            <div>
+              <label class="muted tiny">Phone</label>
+              <input id="profileMgrPhone" placeholder="+91-..." />
+            </div>
+            <div>
+              <label class="muted tiny">Location</label>
+              <input id="profileMgrLocation" placeholder="Gurugram, IN" />
+            </div>
+            <div>
+              <label class="muted tiny">LinkedIn URL</label>
+              <input id="profileMgrLinkedin" placeholder="https://www.linkedin.com/in/..." />
+            </div>
+          </div>
+
+          <div class="profile-block">
+            <label class="muted tiny">Professional Summary</label>
+            <textarea id="profileMgrSummary" rows="4" placeholder="2-4 line summary"></textarea>
+          </div>
+
+          <div class="profile-block">
+            <div class="profile-block-head">
+              <div class="h3">Experience</div>
+              <button class="btn btn-ghost btn-xs" id="btnProfileAddExperience" type="button">+ Add</button>
+            </div>
+            <div id="profileMgrExperienceList" class="profile-repeat-list"></div>
+          </div>
+
+          <div class="profile-block">
+            <div class="profile-block-head">
+              <div class="h3">Education</div>
+              <button class="btn btn-ghost btn-xs" id="btnProfileAddEducation" type="button">+ Add</button>
+            </div>
+            <div id="profileMgrEducationList" class="profile-repeat-list"></div>
+          </div>
+
+          <div class="profile-block">
+            <div class="profile-block-head">
+              <div class="h3">Projects</div>
+              <button class="btn btn-ghost btn-xs" id="btnProfileAddProject" type="button">+ Add</button>
+            </div>
+            <div id="profileMgrProjectsList" class="profile-repeat-list"></div>
+          </div>
+
+          <div class="profile-grid profile-grid-2">
+            <div>
+              <label class="muted tiny">Skills (one per line)</label>
+              <textarea id="profileMgrSkills" rows="5" placeholder="Program Management&#10;Stakeholder Management"></textarea>
+            </div>
+            <div>
+              <label class="muted tiny">Certifications (one per line)</label>
+              <textarea id="profileMgrCertifications" rows="5" placeholder="IBM AI Product Manager - Coursera"></textarea>
+            </div>
+            <div>
+              <label class="muted tiny">Awards and Achievements (one per line)</label>
+              <textarea id="profileMgrAwards" rows="5" placeholder="Top Performer - 2024"></textarea>
+            </div>
+            <div>
+              <label class="muted tiny">Hobbies / Interests (one per line)</label>
+              <textarea id="profileMgrHobbies" rows="5" placeholder="Cooking"></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="modal-body">
+        <div class="row profile-footer-row">
+          <button class="btn btn-secondary" id="btnProfileMgrSave" type="button">Save Profile</button>
+          <button class="btn btn-ghost" id="btnProfileMgrCancel" type="button">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
@@ -402,6 +523,7 @@
   <nav id="mobileQuickActions" class="mobile-quick-actions" aria-label="Mobile quick actions">
     <button class="btn btn-ghost" id="btnMobileJobs">Jobs</button>
     <button class="btn btn-ghost" id="btnMobileTracking">Tracking</button>
+    <button class="btn btn-ghost" id="btnMobileProfiles">Profiles</button>
     <button class="btn" id="btnMobileAdd">Add</button>
     <button class="btn btn-secondary" id="btnMobileRescore">Rescore</button>
   </nav>

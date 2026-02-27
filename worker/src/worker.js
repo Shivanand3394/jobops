@@ -536,9 +536,38 @@ export default {
           profileIdIn: String(url.searchParams.get("profile_id") || "").trim(),
         });
         const profile = profileResolved.profile || await ensurePrimaryProfile_(env);
+        const evidenceSourcePolicy = normalizeEvidenceSourcePolicy_(
+          String(url.searchParams.get("evidence_source_policy") || "").trim() || "resume_only"
+        );
         const evidenceLimit = clampInt_(url.searchParams.get("evidence_limit") || 12, 1, 30);
-        const matchedEvidence = await loadMatchedEvidenceForPack_(env, jobKey, evidenceLimit);
-        const html = generateProfessionalHtml(profile, job, matchedEvidence);
+        const matchedEvidence = await loadMatchedEvidenceForPack_(env, jobKey, evidenceLimit, {
+          policy: evidenceSourcePolicy,
+        });
+        const draftByProfile = await env.DB.prepare(`
+          SELECT pack_json
+          FROM resume_drafts
+          WHERE job_key = ? AND profile_id = ?
+          ORDER BY updated_at DESC
+          LIMIT 1;
+        `.trim()).bind(jobKey, String(profileResolved.profile_id || profile?.id || "primary").trim() || "primary").first();
+        const draftFallback = draftByProfile || await env.DB.prepare(`
+          SELECT pack_json
+          FROM resume_drafts
+          WHERE job_key = ?
+          ORDER BY updated_at DESC
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        const draftPack = safeJsonParse_(draftFallback?.pack_json) || {};
+        const draftTailoring = (draftPack?.tailoring && typeof draftPack.tailoring === "object") ? draftPack.tailoring : {};
+        const tailoredSummary = String(draftTailoring.summary || "").trim();
+        const tailoredBullets = Array.isArray(draftTailoring.bullets)
+          ? draftTailoring.bullets.map((x) => String(x || "").trim()).filter(Boolean)
+          : [];
+        const html = generateProfessionalHtml(profile, job, matchedEvidence, {
+          tailored_summary: tailoredSummary,
+          tailored_bullets: tailoredBullets,
+          evidence_source_policy: evidenceSourcePolicy,
+        });
 
         return new Response(html, {
           status: 200,
@@ -1548,12 +1577,17 @@ export default {
 
         const target = targets.find((t) => t.id === String(scoredJob.primary_target_id || "")) || null;
         const evidenceFirst = body.evidence_first === undefined ? true : toBool_(body.evidence_first, true);
+        const evidenceSourcePolicy = normalizeEvidenceSourcePolicy_(
+          body.evidence_source_policy || body.evidenceSourcePolicy || "resume_only"
+        );
         const evidenceLimit = clampInt_(body.evidence_limit || 12, 1, 30);
 
         let packData = null;
         try {
           const matchedEvidence = evidenceFirst
-            ? await loadMatchedEvidenceForPack_(env, scoredJob.job_key, evidenceLimit)
+            ? await loadMatchedEvidenceForPack_(env, scoredJob.job_key, evidenceLimit, {
+              policy: evidenceSourcePolicy,
+            })
             : [];
           packData = await generateApplicationPack_({
             env,
@@ -1653,6 +1687,7 @@ export default {
               ats_score: packData.ats_score,
               one_page_mode: controls.one_page_mode,
               one_pager_strict: Boolean(controls.one_pager_strict),
+              evidence_source_policy: evidenceSourcePolicy,
             },
             output: {
               summary: String(packData?.pack_json?.tailoring?.summary || ""),
@@ -1981,12 +2016,17 @@ export default {
         const target = targets.find((t) => t.id === String(job.primary_target_id || "")) || null;
         const aiForPack = getAi_(env);
         const evidenceFirst = body.evidence_first === undefined ? true : toBool_(body.evidence_first, true);
+        const evidenceSourcePolicy = normalizeEvidenceSourcePolicy_(
+          body.evidence_source_policy || body.evidenceSourcePolicy || "resume_only"
+        );
         const evidenceLimit = clampInt_(body.evidence_limit || 12, 1, 30);
 
         let packData = null;
         try {
           const matchedEvidence = evidenceFirst
-            ? await loadMatchedEvidenceForPack_(env, job.job_key, evidenceLimit)
+            ? await loadMatchedEvidenceForPack_(env, job.job_key, evidenceLimit, {
+              policy: evidenceSourcePolicy,
+            })
             : [];
           packData = await generateApplicationPack_({
             env,
@@ -2079,6 +2119,7 @@ export default {
           status: packData.status,
           ats_score: packData.ats_score,
           evidence_first: evidenceFirst,
+          evidence_source_policy: evidenceSourcePolicy,
           evidence_match_count: Array.isArray(packData?.pack_json?.tailoring?.evidence_matches)
             ? packData.pack_json.tailoring.evidence_matches.length
             : 0,
@@ -2104,6 +2145,7 @@ export default {
             one_pager_strict: Boolean(controls.one_pager_strict),
             content_review_required: true,
             evidence_first: evidenceFirst,
+            evidence_source_policy: evidenceSourcePolicy,
             evidence_match_count: Array.isArray(packData?.pack_json?.tailoring?.evidence_matches)
               ? packData.pack_json.tailoring.evidence_matches.length
               : 0,
@@ -2175,11 +2217,24 @@ export default {
           WHERE job_key = ?
           LIMIT 1;
         `.trim()).bind(row.job_key).first();
+        const profileRow = row.profile_id
+          ? await env.DB.prepare(`
+              SELECT id, name, profile_json
+              FROM resume_profiles
+              WHERE id = ?
+              LIMIT 1;
+            `.trim()).bind(row.profile_id).first()
+          : null;
         const pdfReadiness = evaluatePdfReadiness_(env, {
           job: jobRow || {},
           packJson,
           atsJson,
           rrExportJson,
+        });
+        const quality = buildApplicationPackQuality_({
+          jobRow: jobRow || {},
+          packJson,
+          profileRow: profileRow || null,
         });
         const rrResumeId = draftSchema.hasRrPushFields
           ? (String(row.rr_resume_id || "").trim() || null)
@@ -2251,6 +2306,11 @@ export default {
             pdf_readiness: pdfReadiness,
             one_page_mode: onePageMode,
             content_review_required: contentReviewRequired,
+            quality_flags: quality.flags,
+            quality_score: quality.score,
+            quality_blocking_flags: quality.blocking_flags,
+            quality_blocked: quality.blocked,
+            quality_gap_map: quality.gap_map,
             latest_version: latestVersion
               ? {
                 id: latestVersion.id,
@@ -4971,10 +5031,45 @@ async function loadLatestResumeTailoringForEvidence_(env, jobKey) {
   }
 }
 
-async function loadMatchedEvidenceForPack_(env, jobKey, limitIn = 12) {
+function normalizeEvidenceSourcePolicy_(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (raw === "mixed") return "mixed";
+  return "resume_only";
+}
+
+function isResumeEvidenceSource_(source) {
+  const src = String(source || "").trim().toLowerCase();
+  return src.startsWith("resume_");
+}
+
+function isLikelyJdEchoEvidenceRow_(row) {
+  const req = normalizeEvidenceText_(row?.requirement_text || "");
+  const evidence = normalizeEvidenceText_(row?.evidence_text || "");
+  if (!req || !evidence) return false;
+  if (evidence === req) return true;
+  if (evidence.startsWith(req) || req.startsWith(evidence)) return true;
+  const reqTokens = req.split(/[^a-z0-9+#.-]+/g).filter((x) => x.length >= 3);
+  if (!reqTokens.length) return false;
+  let overlap = 0;
+  for (const tok of reqTokens) {
+    if (evidence.includes(tok)) overlap += 1;
+  }
+  return (overlap / reqTokens.length) >= 0.85;
+}
+
+function appendEvidenceIfUnique_(bucket, row, seenReq) {
+  const reqKey = normalizeEvidenceText_(row?.requirement_text || "");
+  if (!reqKey || seenReq.has(reqKey)) return;
+  seenReq.add(reqKey);
+  bucket.push(row);
+}
+
+async function loadMatchedEvidenceForPack_(env, jobKey, limitIn = 12, opts = {}) {
   const jobKeySafe = String(jobKey || "").trim();
   if (!jobKeySafe) return [];
   const limit = clampInt_(limitIn || 12, 1, 30);
+  const policy = normalizeEvidenceSourcePolicy_(opts?.policy || opts?.evidence_source_policy || "resume_only");
+  const rawFetchLimit = clampInt_(Math.max(limit * 5, 25), 10, 150);
   try {
     const hasEvidenceTable = await hasJobEvidenceTable_(env);
     if (!hasEvidenceTable) return [];
@@ -4983,6 +5078,7 @@ async function loadMatchedEvidenceForPack_(env, jobKey, limitIn = 12) {
         requirement_text,
         requirement_type,
         evidence_text,
+        evidence_source,
         confidence_score,
         updated_at
       FROM job_evidence
@@ -4998,17 +5094,209 @@ async function loadMatchedEvidenceForPack_(env, jobKey, limitIn = 12) {
         confidence_score DESC,
         updated_at DESC
       LIMIT ?;
-    `.trim()).bind(jobKeySafe, limit).all();
-    return (res.results || []).map((row) => ({
+    `.trim()).bind(jobKeySafe, rawFetchLimit).all();
+
+    const rows = (res.results || []).map((row) => ({
       requirement_text: String(row.requirement_text || "").trim(),
       requirement_type: String(row.requirement_type || "").trim().toLowerCase(),
       evidence_text: String(row.evidence_text || "").trim(),
+      evidence_source: String(row.evidence_source || "").trim().toLowerCase() || "none",
       confidence_score: clampInt_(row.confidence_score, 0, 100),
       updated_at: numOrNull_(row.updated_at) || null,
     })).filter((row) => row.requirement_text);
+
+    const primary = [];
+    const fallback = [];
+    for (const row of rows) {
+      const source = String(row.evidence_source || "").trim().toLowerCase();
+      const isResume = isResumeEvidenceSource_(source);
+      const echoLike = isLikelyJdEchoEvidenceRow_(row);
+      if (isResume) {
+        primary.push(row);
+        continue;
+      }
+      if (!echoLike) {
+        fallback.push(row);
+      }
+    }
+
+    const out = [];
+    const seenReq = new Set();
+    for (const row of primary) appendEvidenceIfUnique_(out, row, seenReq);
+
+    const minResumeThreshold = Math.min(limit, 4);
+    if (policy === "mixed" && out.length < minResumeThreshold) {
+      for (const row of fallback) {
+        if (out.length >= limit) break;
+        appendEvidenceIfUnique_(out, row, seenReq);
+      }
+    }
+
+    return out.slice(0, limit);
   } catch {
     return [];
   }
+}
+
+function normalizeQualitySkillLabel_(value) {
+  if (typeof value === "string") return String(value || "").trim();
+  if (!value || typeof value !== "object") return "";
+  return String(
+    value.name ||
+    value.label ||
+    value.skill ||
+    value.keyword ||
+    value.value ||
+    value.text ||
+    ""
+  ).trim();
+}
+
+function isMeaningfulQualitySkill_(value) {
+  const s = String(value || "").trim();
+  if (!s) return false;
+  const low = s.toLowerCase();
+  return !["null", "undefined", "none", "n/a", "na", "[object object]"].includes(low);
+}
+
+function containsIgnoreCase_(haystack, needle) {
+  const h = String(haystack || "").toLowerCase();
+  const n = String(needle || "").toLowerCase();
+  return Boolean(n) && h.includes(n);
+}
+
+function normalizeBulletForQualityDedupe_(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isGenericQualityBullet_(text) {
+  const low = String(text || "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!low) return true;
+  const genericPatterns = [
+    /delivered measurable impact/,
+    /structured execution/,
+    /cross-functional alignment/,
+    /results[- ]driven professional/,
+    /responsible for/,
+    /various projects/,
+  ];
+  return genericPatterns.some((re) => re.test(low));
+}
+
+function collectSmokeSignalsFromProfile_(profileRow) {
+  const row = (profileRow && typeof profileRow === "object") ? profileRow : {};
+  const profileJson = safeJsonParseAny_(row.profile_json) || {};
+  const basics = (profileJson?.basics && typeof profileJson.basics === "object") ? profileJson.basics : {};
+  const id = String(row.id || "").trim();
+  const name = String(row.name || basics.name || profileJson.name || "").trim();
+  const email = String(basics.email || profileJson.email || "").trim();
+  const haystack = `${id} ${name} ${email}`.toLowerCase();
+  const signals = [];
+  if (/(\bsmoke\b|\btest\b|\bdemo\b|\bdummy\b|\bplaceholder\b)/i.test(haystack)) {
+    signals.push("profile contains smoke/test placeholder tokens");
+  }
+  if (/@example\.com$/i.test(email)) {
+    signals.push("profile email uses @example.com placeholder");
+  }
+  return unique_(signals);
+}
+
+function buildApplicationPackQuality_({ jobRow = {}, packJson = {}, profileRow = null } = {}) {
+  const role = String(jobRow?.role_title || packJson?.extracted?.role_title || "").trim();
+  const company = String(jobRow?.company || packJson?.extracted?.company || "").trim();
+  const tailoring = (packJson?.tailoring && typeof packJson.tailoring === "object") ? packJson.tailoring : {};
+  const summary = String(tailoring.summary || "").trim();
+  const coverLetter = String(tailoring.cover_letter || "").trim();
+  const bullets = Array.isArray(tailoring.bullets)
+    ? tailoring.bullets.map((x) => String(x || "").trim()).filter(Boolean)
+    : [];
+  const rawSkills = Array.isArray(tailoring.skills) ? tailoring.skills : [];
+  const normalizedSkills = rawSkills
+    .map(normalizeQualitySkillLabel_)
+    .filter(isMeaningfulQualitySkill_);
+  const invalidSkills = rawSkills
+    .map((x) => normalizeQualitySkillLabel_(x))
+    .filter((x) => !isMeaningfulQualitySkill_(x));
+
+  const flags = [];
+  const gapMap = [];
+  let score = 100;
+
+  if (invalidSkills.length || normalizedSkills.length === 0) {
+    flags.push("NULL_SKILLS");
+    score -= 30;
+    gapMap.push({
+      code: "NULL_SKILLS",
+      severity: "blocker",
+      field: "tailoring.skills",
+      before: invalidSkills.length ? invalidSkills.join(", ") : "No non-empty skills",
+      after: "Remove null/empty skills and keep at least 3 concrete role-relevant skills.",
+    });
+  }
+
+  const anchorText = `${summary}\n${coverLetter}`.trim();
+  const roleMissing = role && !containsIgnoreCase_(anchorText, role);
+  const companyMissing = company && !containsIgnoreCase_(anchorText, company);
+  if (roleMissing || companyMissing) {
+    flags.push("ROLE_COMPANY_DRIFT");
+    score -= 35;
+    gapMap.push({
+      code: "ROLE_COMPANY_DRIFT",
+      severity: "blocker",
+      field: "tailoring.summary",
+      before: summary || "(empty)",
+      after: `Include exact role "${role || "target role"}" and company "${company || "target company"}" in summary/cover opening.`,
+    });
+  }
+
+  const genericBullets = bullets.filter((b) => isGenericQualityBullet_(b));
+  const bulletDedupe = new Set();
+  let duplicateCount = 0;
+  for (const bullet of bullets) {
+    const key = normalizeBulletForQualityDedupe_(bullet);
+    if (!key) continue;
+    if (bulletDedupe.has(key)) duplicateCount += 1;
+    bulletDedupe.add(key);
+  }
+  if (genericBullets.length >= 2 || duplicateCount > 0) {
+    flags.push("GENERIC_BULLETS");
+    score -= 20;
+    gapMap.push({
+      code: "GENERIC_BULLETS",
+      severity: "major",
+      field: "tailoring.bullets",
+      before: genericBullets[0] || bullets[0] || "(empty)",
+      after: "Use role-specific action + scope + measurable result (e.g., [X%], [N stakeholders], [T-week cadence]).",
+    });
+  }
+
+  const smokeSignals = collectSmokeSignalsFromProfile_(profileRow);
+  if (smokeSignals.length) {
+    flags.push("PROFILE_SMOKE_LIKE");
+    score -= 15;
+    gapMap.push({
+      code: "PROFILE_SMOKE_LIKE",
+      severity: "major",
+      field: "profile.basics",
+      before: smokeSignals.join("; "),
+      after: "Replace smoke/demo placeholder profile data with real candidate identity and achievements.",
+    });
+  }
+
+  const uniqueFlags = unique_(flags);
+  const blockingFlags = uniqueFlags.filter((flag) => flag === "NULL_SKILLS" || flag === "ROLE_COMPANY_DRIFT");
+  return {
+    flags: uniqueFlags,
+    score: clampInt_(score, 0, 100),
+    blocking_flags: blockingFlags,
+    blocked: blockingFlags.length > 0,
+    gap_map: gapMap.slice(0, 16),
+  };
 }
 
 function collectEvidenceBulletsFromProfile_(profileObj) {

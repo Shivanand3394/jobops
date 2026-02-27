@@ -149,6 +149,78 @@ function normalizeSummary_(profileJson, jobRow) {
   return `Outcome-focused engineer with hands-on delivery experience, tailored for ${role} at ${company}.`;
 }
 
+function enforceSummaryAnchors_(summary, role, company) {
+  let out = cleanText_(summary);
+  const roleSafe = cleanText_(role);
+  const companySafe = cleanText_(company);
+  if (!out) {
+    return `${roleSafe || "Target role"} at ${companySafe || "target company"} focused on measurable execution outcomes.`;
+  }
+  if (roleSafe && !out.toLowerCase().includes(roleSafe.toLowerCase())) {
+    out = `${roleSafe}: ${out}`;
+  }
+  if (companySafe && !out.toLowerCase().includes(companySafe.toLowerCase())) {
+    out = `${out} Focused on value delivery for ${companySafe}.`;
+  }
+  return out;
+}
+
+function normalizeTailoredBullets_(value) {
+  return asArray_(value)
+    .map((x) => cleanText_(typeof x === "string" ? x : (x?.text || x?.value || x?.content)))
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+function collectTokensFromText_(value) {
+  const stop = new Set([
+    "and", "the", "for", "with", "from", "that", "this", "into", "using", "use", "used", "have", "has",
+    "your", "their", "will", "team", "across", "years", "year", "plus", "role", "jobs", "work", "build",
+    "built", "high", "level", "must", "nice", "good", "strong", "ability", "experience", "knowledge",
+    "to", "of", "in", "on", "by", "a", "an",
+  ]);
+  const tokens = [];
+  for (const token of String(value || "").toLowerCase().split(/[^a-z0-9+#.-]+/g)) {
+    const t = token.trim();
+    if (!t || t.length < 3) continue;
+    if (stop.has(t)) continue;
+    tokens.push(t);
+  }
+  return Array.from(new Set(tokens)).slice(0, 24);
+}
+
+function prioritizeExperience_(experienceRows, highlightTokens, maxEntries = 3, maxBullets = 2) {
+  const list = Array.isArray(experienceRows) ? experienceRows : [];
+  const tokens = Array.isArray(highlightTokens) ? highlightTokens : [];
+  const scored = list.map((exp, idx) => {
+    const corpus = `${exp.company} ${exp.role} ${exp.summary} ${(exp.bullets || []).join(" ")}`.toLowerCase();
+    const hitCount = tokens.filter((t) => corpus.includes(t)).length;
+    return { exp, idx, hitCount };
+  });
+  scored.sort((a, b) => {
+    if (b.hitCount !== a.hitCount) return b.hitCount - a.hitCount;
+    return a.idx - b.idx;
+  });
+  return scored.slice(0, Math.max(1, maxEntries)).map((row) => {
+    const exp = row.exp || {};
+    const bullets = Array.isArray(exp.bullets) ? exp.bullets : [];
+    const rankedBullets = bullets.map((bullet) => {
+      const low = String(bullet || "").toLowerCase();
+      const hits = tokens.filter((t) => low.includes(t)).length;
+      return { bullet, hits };
+    });
+    rankedBullets.sort((a, b) => b.hits - a.hits);
+    const topBullets = rankedBullets
+      .slice(0, Math.max(1, maxBullets))
+      .map((x) => cleanText_(x.bullet))
+      .filter(Boolean);
+    return {
+      ...exp,
+      bullets: topBullets.length ? topBullets : (Array.isArray(exp.bullets) ? exp.bullets.slice(0, maxBullets) : []),
+    };
+  });
+}
+
 function renderImpactRows_(evidenceRows) {
   if (!evidenceRows.length) {
     return `<li class="impact-item">No matched evidence yet. Run score and evidence rebuild first.</li>`;
@@ -163,14 +235,25 @@ function renderImpactRows_(evidenceRows) {
   }).join("");
 }
 
-function renderExperience_(experienceRows, highlightTokens) {
+function renderImpactBullets_(bullets) {
+  const list = Array.isArray(bullets) ? bullets : [];
+  if (!list.length) return "";
+  return list.slice(0, 6).map((bullet) => {
+    return `<li class="impact-item"><div>${escapeHtml_(bullet)}</div></li>`;
+  }).join("");
+}
+
+function renderExperience_(experienceRows, highlightTokens, opts = {}) {
   if (!experienceRows.length) {
     return `<div class="exp-item"><div class="exp-role">No experience entries in active profile.</div></div>`;
   }
   const tokens = Array.isArray(highlightTokens) ? highlightTokens : [];
+  const maxBullets = Number.isFinite(Number(opts.maxBullets))
+    ? Math.max(1, Math.min(5, Math.trunc(Number(opts.maxBullets))))
+    : 2;
   return experienceRows.map((exp) => {
     const bullets = exp.bullets.length
-      ? exp.bullets.map((bullet) => {
+      ? exp.bullets.slice(0, maxBullets).map((bullet) => {
         const low = bullet.toLowerCase();
         const hasHit = tokens.some((token) => low.includes(token));
         return `<li class="bullet${hasHit ? " bullet-hit" : ""}">${escapeHtml_(bullet)}</li>`;
@@ -190,19 +273,30 @@ function renderExperience_(experienceRows, highlightTokens) {
   }).join("");
 }
 
-export function generateProfessionalHtml(profileRow, jobRow, evidenceRows) {
+export function generateProfessionalHtml(profileRow, jobRow, evidenceRows, opts = {}) {
+  const options = (opts && typeof opts === "object") ? opts : {};
   const profileJson = parseProfileJson_(profileRow);
   const evidence = normalizeEvidence_(evidenceRows);
   const experience = normalizeExperience_(profileJson);
   const skills = flattenProfileSkills_(profileJson);
-  const highlightTokens = collectHighlightTokens_(evidence);
 
   const basics = profileJson?.basics && typeof profileJson.basics === "object" ? profileJson.basics : {};
   const name = pickFirstText_([basics.name, profileJson.name, profileRow?.name]) || "Candidate Name";
   const contactLine = buildContactLine_(profileJson, profileRow);
-  const summary = normalizeSummary_(profileJson, jobRow);
   const role = cleanText_(jobRow?.role_title) || "Role";
   const company = cleanText_(jobRow?.company) || "Company";
+  const summaryFromPack = cleanText_(options.tailored_summary || options.tailoredSummary);
+  const summaryBase = summaryFromPack || normalizeSummary_(profileJson, jobRow);
+  const summary = enforceSummaryAnchors_(summaryBase, role, company);
+  const tailoredBullets = normalizeTailoredBullets_(options.tailored_bullets || options.tailoredBullets);
+  const highlightTokens = Array.from(new Set([
+    ...collectHighlightTokens_(evidence),
+    ...collectTokensFromText_(tailoredBullets.join(" ")),
+  ])).slice(0, 24);
+  const prioritizedExperience = prioritizeExperience_(experience, highlightTokens, 3, 2);
+  const impactRowsHtml = tailoredBullets.length
+    ? renderImpactBullets_(tailoredBullets)
+    : renderImpactRows_(evidence);
 
   return `<!doctype html>
 <html lang="en">
@@ -366,13 +460,13 @@ export function generateProfessionalHtml(profileRow, jobRow, evidenceRows) {
     <section>
       <div class="section-title">Targeted Impact for ${escapeHtml_(company)} (${escapeHtml_(role)})</div>
       <ul class="impact-list">
-        ${renderImpactRows_(evidence)}
+        ${impactRowsHtml}
       </ul>
     </section>
 
     <section>
       <div class="section-title">Experience</div>
-      ${renderExperience_(experience, highlightTokens)}
+      ${renderExperience_(prioritizedExperience, highlightTokens, { maxBullets: 2 })}
     </section>
 
     <section>

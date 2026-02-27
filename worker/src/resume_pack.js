@@ -17,6 +17,9 @@ export async function generateApplicationPack_({
   const niceAll = arr_(job.nice_to_have_keywords_json || job.nice_to_have_keywords);
   const evidenceRows = normalizeMatchedEvidenceRows_(matchedEvidence);
   const selectedKeywords = unique_(arr_(controls.selected_keywords || controls.selectedKeywords));
+  const focusKeywords = selectedKeywords.length ? selectedKeywords : mustAll;
+  const profileJson = safeJsonObj_(profile?.profile_json) || {};
+  const profileSkills = deriveTailoredSkills_(profileJson, focusKeywords, niceAll, 16);
   const templateId = str_(controls.template_id || controls.templateId || "balanced") || "balanced";
   const atsTargetMode = str_(controls.ats_target_mode || controls.atsTargetMode || "all").toLowerCase() || "all";
   const enabledBlocks = normalizeEnabledBlocks_(controls.enabled_blocks || controls.enabledBlocks);
@@ -25,10 +28,8 @@ export async function generateApplicationPack_({
     ? onePageModeRaw
     : (toBoolLike_(controls.one_pager_strict ?? controls.onePagerStrict, true) ? "hard" : "soft");
   const onePagerStrict = onePageMode === "hard";
-  const focusKeywords = selectedKeywords.length ? selectedKeywords : mustAll;
   const atsMust = (atsTargetMode === "selected_only" && selectedKeywords.length) ? selectedKeywords : mustAll;
   const atsNice = (atsTargetMode === "selected_only" && selectedKeywords.length) ? [] : niceAll;
-  const profileJson = safeJsonObj_(profile?.profile_json) || {};
   const strongestMust = pickStrongestMustMatch_(atsMust, evidenceRows);
   const strongestKeyword = str_(strongestMust?.requirement_text || atsMust[0] || focusKeywords[0] || roleFallback_(job));
 
@@ -78,8 +79,9 @@ export async function generateApplicationPack_({
   }
 
   tailoredSummary = enforceSummaryConstraints_(tailoredSummary, summaryBase, strongestKeyword);
-  tailoredBullets = enforceImpactKeywordBullets_(tailoredBullets, focusKeywords, evidenceRows);
-  tailoredCoverLetter = enforceCoverLetterTone_(tailoredCoverLetter, coverLetterBase, strongestKeyword);
+  tailoredSummary = enforceRoleCompanyAnchoring_(tailoredSummary, role, company);
+  tailoredBullets = enforceImpactKeywordBullets_(tailoredBullets, focusKeywords, evidenceRows, { role, company });
+  tailoredCoverLetter = enforceCoverLetterTone_(tailoredCoverLetter, coverLetterBase, strongestKeyword, role, company);
 
   if (!enabledBlocks.has("summary")) tailoredSummary = "";
   if (!enabledBlocks.has("bullets")) tailoredBullets = [];
@@ -139,11 +141,13 @@ export async function generateApplicationPack_({
       summary: tailoredSummary,
       bullets: tailoredBullets,
       cover_letter: tailoredCoverLetter,
+      skills: profileSkills,
       must_keywords: atsMust,
       nice_keywords: atsNice,
       evidence_matches: evidenceRows.slice(0, 12).map((x) => ({
         requirement_text: x.requirement_text,
         requirement_type: x.requirement_type,
+        evidence_source: x.evidence_source,
         confidence_score: x.confidence_score,
       })),
     },
@@ -521,12 +525,12 @@ function buildTailoredSummary_({ role, company, location, must, profileJson, str
   const where = location ? ` based in ${location}` : "";
   const anchor = str_(strongestKeyword || must?.[0] || role || "Core requirement");
   const evidenceSentence = strongestEvidenceSnippet
-    ? ` Recent evidence: ${toSentenceFragment_(strongestEvidenceSnippet)}.`
-    : "";
+    ? ` Evidence focus: ${toSentenceFragment_(strongestEvidenceSnippet)}.`
+    : " Evidence focus: translated requirements into execution plans, KPI cadences, and stakeholder-ready updates.";
   return [
-    `${anchor}: ${profileSummary || "I deliver measurable business outcomes through disciplined execution."}`,
+    `${anchor}: ${profileSummary || "I deliver measurable business outcomes through disciplined execution and cross-functional ownership."}`,
     `Targeting ${role} at ${company}${where}.`,
-    focus ? `Core strengths aligned: ${focus}.` : "",
+    focus ? `Core strengths aligned: ${focus}.` : "Core strengths aligned: program management, KPI tracking, and stakeholder communication.",
     evidenceSentence,
   ].filter(Boolean).join(" ");
 }
@@ -540,23 +544,26 @@ function buildTailoredBullets_({ role, company, must, nice, profileJson, evidenc
   const keyMust = must.slice(0, 4);
   const keyNice = nice.slice(0, 3);
   const evidenceBullets = (Array.isArray(evidenceRows) ? evidenceRows : [])
+    .filter((row) => !isJdEchoEvidenceRow_(row))
     .slice(0, 3)
     .map((row) => {
       const req = str_(row?.requirement_text);
       const snippet = str_(row?.evidence_text);
       if (!req) return "";
       if (snippet) {
-        return `Delivered measurable impact using ${req} by ${toSentenceFragment_(snippet)}.`;
+        return `Mapped ${req} into weekly execution rhythm and progress reporting by ${toSentenceFragment_(snippet)}.`;
       }
-      return `Delivered measurable impact using ${req} through cross-functional execution and clear ownership.`;
+      return `Owned ${req} delivery with [N]-workstream coordination and measurable milestone tracking.`;
     })
     .filter(Boolean);
 
   const generated = [
-    `Delivered measurable impact using ${keyMust[0] || "core requirements"} while aligning outcomes to ${role} expectations at ${company}.`,
-    keyMust[1] ? `Delivered measurable impact using ${keyMust[1]} through structured planning, execution, and measurable KPI movement.` : "",
-    keyNice.length ? `Delivered measurable impact using ${keyNice[0]} while improving speed, quality, and stakeholder confidence.` : "",
-    "Delivered measurable impact using data-driven decision making and quantified business outcomes.",
+    `Drove ${keyMust[0] || "program delivery"} planning from scope definition to milestone tracking across product, engineering, and operations teams.`,
+    keyMust[1] ? `Ran a [T]-week KPI cadence for ${keyMust[1]} and delivered leadership-ready updates across [N stakeholders].` : "",
+    keyMust[2] ? `Built SQL-backed reporting for ${keyMust[2]} to surface risk earlier and improve plan reliability by [X%].` : "",
+    keyMust[3] ? `Coordinated ${keyMust[3]} execution across [N] active workstreams with clear owners, dependencies, and escalation paths.` : "",
+    keyNice[0] ? `Improved operational throughput through ${keyNice[0]} changes, reducing rework and delivery friction.` : "",
+    `Executed against ${role} priorities at ${company} using measurable milestones, stakeholder alignment, and delivery discipline.`,
   ].filter(Boolean);
   return unique_([...evidenceBullets, ...expBullets, ...generated]).slice(0, 8);
 }
@@ -640,14 +647,15 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
 }
 
 function applyOnePagePolicy_(summary, bullets, mode = "soft") {
-  const softSummaryMax = 320;
-  const softBulletsMax = 4;
-  const summaryOut = trimTextToMaxChars_(summary, softSummaryMax);
-  const bulletsOut = Array.isArray(bullets) ? bullets.slice(0, softBulletsMax).map(str_).filter(Boolean) : [];
+  const resolvedMode = (mode === "hard" || mode === "soft") ? mode : "soft";
+  const summaryMax = resolvedMode === "hard" ? 320 : 420;
+  const bulletsMax = resolvedMode === "hard" ? 4 : 6;
+  const summaryOut = trimTextToMaxChars_(summary, summaryMax);
+  const bulletsOut = Array.isArray(bullets) ? bullets.slice(0, bulletsMax).map(str_).filter(Boolean) : [];
   return {
     summary: summaryOut,
     bullets: bulletsOut,
-    mode: (mode === "hard" || mode === "soft") ? mode : "soft",
+    mode: resolvedMode,
   };
 }
 
@@ -813,6 +821,7 @@ function normalizeMatchedEvidenceRows_(rows) {
       requirement_text: str_(row?.requirement_text),
       requirement_type: str_(row?.requirement_type).toLowerCase(),
       evidence_text: str_(row?.evidence_text),
+      evidence_source: str_(row?.evidence_source || row?.source).toLowerCase(),
       confidence_score: num_(row?.confidence_score) || 0,
     }))
     .filter((row) => row.requirement_text);
@@ -856,47 +865,94 @@ function enforceSummaryConstraints_(input, fallback, strongestKeyword = "") {
   return out;
 }
 
-function enforceImpactKeywordBullets_(bulletsIn, keywordsIn = [], evidenceRows = []) {
+function enforceImpactKeywordBullets_(bulletsIn, keywordsIn = [], evidenceRows = [], context = {}) {
   const keywords = unique_(
     [
       ...(Array.isArray(keywordsIn) ? keywordsIn : []),
       ...((Array.isArray(evidenceRows) ? evidenceRows : []).map((r) => str_(r.requirement_text)).filter(Boolean)),
     ].map(str_)
-  ).slice(0, 8);
+  ).slice(0, 10);
+  const role = str_(context?.role || "the role");
+  const company = str_(context?.company || "the company");
   const bullets = Array.isArray(bulletsIn) ? bulletsIn.map((x) => str_(x)).filter(Boolean) : [];
   const out = [];
+  const seen = new Set();
+  const hasMetric = (text) => /\b(\d+%|\d+\+?|\b[km]\b|\$\d+|\bweekly\b|\bmonthly\b|\bquarterly\b|\bSLA\b|\bKPI\b)\b/i.test(String(text || ""));
 
-  for (let i = 0; i < bullets.length && out.length < 6; i += 1) {
+  for (let i = 0; i < bullets.length && out.length < 8; i += 1) {
     const raw = bullets[i];
     const keyword = keywords[i % Math.max(1, keywords.length)] || "core capability";
     let next = raw.replace(/\s+/g, " ").trim();
     if (!next) continue;
+    if (isGenericBullet_(next)) continue;
     if (!next.toLowerCase().includes(keyword.toLowerCase())) {
-      next = `${next} using ${keyword}`;
+      next = `${next} (${keyword})`;
     }
-    if (!/^delivered\b/i.test(next)) {
-      next = `Delivered measurable impact ${toActionPhrase_(next)}.`;
+    if (!hasMetric(next)) {
+      next = `${next} with [X%] improvement and [N] stakeholder touchpoints.`;
     }
-    out.push(next.replace(/\.+$/g, "").trim() + ".");
+    next = next.replace(/\.+$/g, "").trim() + ".";
+    const dedupeKey = normalizeBulletForDedupe_(next);
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    out.push(next);
   }
 
-  while (out.length < 3 && out.length < 6) {
-    const keyword = keywords[out.length % Math.max(1, keywords.length)] || "core capability";
-    out.push(`Delivered measurable impact using ${keyword} through structured execution and stakeholder alignment.`);
+  while (out.length < 5 && out.length < 8) {
+    const keyword = keywords[out.length % Math.max(1, keywords.length)] || "program delivery";
+    const templates = [
+      `Owned ${keyword} execution for ${role} at ${company}, translating goals into milestones with [X%] on-time delivery.`,
+      `Established KPI reporting for ${keyword} and shared executive-ready updates on a [T]-week cadence.`,
+      `Coordinated cross-functional dependencies tied to ${keyword} across [N] workstreams with clear escalation paths.`,
+      `Used SQL-driven insights to prioritize ${keyword} improvements and reduce operational bottlenecks.`,
+      `Strengthened stakeholder alignment around ${keyword} by defining owners, timelines, and measurable success criteria.`,
+    ];
+    const candidate = templates[out.length % templates.length];
+    const dedupeKey = normalizeBulletForDedupe_(candidate);
+    if (seen.has(dedupeKey)) break;
+    seen.add(dedupeKey);
+    out.push(candidate);
   }
-  return unique_(out).slice(0, 6);
+  return unique_(out).slice(0, 8);
 }
 
-function enforceCoverLetterTone_(input, fallback, strongestKeyword = "") {
+function enforceCoverLetterTone_(input, fallback, strongestKeyword = "", role = "", company = "") {
   const keyword = str_(strongestKeyword || "key requirements");
   const raw = str_(input || fallback).replace(/\s+/g, " ").trim();
   if (!raw) {
-    return `My experience aligns directly with your need for ${keyword}, and I can contribute quickly with measurable execution.`;
+    return `I am applying for ${role || "this role"} at ${company || "your company"}. My experience aligns directly with your need for ${keyword}, and I can contribute quickly with measurable execution.`;
   }
   const bad = /perfect fit|best candidate|guarantee|no doubt/gi;
-  const cleaned = raw.replace(bad, "strong match");
-  if (cleaned.toLowerCase().includes("aligns directly with your need for")) return cleaned;
-  return `${cleaned} My experience aligns directly with your need for ${keyword}.`;
+  let cleaned = raw.replace(bad, "strong match");
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+  const roleStr = str_(role);
+  const companyStr = str_(company);
+  if (roleStr && !cleaned.toLowerCase().includes(roleStr.toLowerCase())) {
+    cleaned = `I am applying for the ${roleStr}. ${cleaned}`;
+  }
+  if (companyStr && !cleaned.toLowerCase().includes(companyStr.toLowerCase())) {
+    cleaned = `${cleaned} I am particularly interested in ${companyStr}'s operating context.`;
+  }
+  if (!cleaned.toLowerCase().includes("aligns directly with your need for")) {
+    cleaned = `${cleaned} My experience aligns directly with your need for ${keyword}.`;
+  }
+  return cleaned;
+}
+
+function enforceRoleCompanyAnchoring_(summaryIn, role, company) {
+  const roleSafe = str_(role);
+  const companySafe = str_(company);
+  let out = str_(summaryIn).replace(/\s+/g, " ").trim();
+  if (!out) {
+    return `${roleSafe || "Target role"} at ${companySafe || "target company"}: execution-focused operator with measurable delivery outcomes.`;
+  }
+  if (roleSafe && !out.toLowerCase().includes(roleSafe.toLowerCase())) {
+    out = `${roleSafe}: ${out}`;
+  }
+  if (companySafe && !out.toLowerCase().includes(companySafe.toLowerCase())) {
+    out = `${out} Focused on value delivery for ${companySafe}.`;
+  }
+  return out;
 }
 
 function toActionPhrase_(text) {
@@ -931,6 +987,114 @@ function normalizeRubricProfile_(input) {
 function num_(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function normalizeSkillLabel_(value) {
+  if (typeof value === "string") return str_(value);
+  if (!value || typeof value !== "object") return "";
+  return str_(
+    value.name ||
+    value.label ||
+    value.skill ||
+    value.keyword ||
+    value.value ||
+    value.text
+  );
+}
+
+function isMeaningfulSkill_(value) {
+  const s = str_(value);
+  if (!s) return false;
+  const low = s.toLowerCase();
+  return !["null", "undefined", "none", "n/a", "na", "[object object]"].includes(low);
+}
+
+function deriveTailoredSkills_(profileJson, focusKeywords = [], niceKeywords = [], limit = 16) {
+  const rootSkills = Array.isArray(profileJson?.skills) ? profileJson.skills : [];
+  const categorySkills = (Array.isArray(profileJson?.skill_categories) ? profileJson.skill_categories : [])
+    .flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      return Array.isArray(entry?.keywords)
+        ? entry.keywords
+        : (Array.isArray(entry?.skills) ? entry.skills : []);
+    });
+  const rrSkills = (Array.isArray(profileJson?.sections?.skills?.items) ? profileJson.sections.skills.items : [])
+    .flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      return Array.isArray(entry?.keywords)
+        ? entry.keywords
+        : (Array.isArray(entry?.skills) ? entry.skills : [entry]);
+    });
+  const fromProfile = unique_(
+    [...rootSkills, ...categorySkills, ...rrSkills]
+      .map(normalizeSkillLabel_)
+      .filter(isMeaningfulSkill_)
+  );
+  const fallbackKeywords = unique_(
+    [...(Array.isArray(focusKeywords) ? focusKeywords : []), ...(Array.isArray(niceKeywords) ? niceKeywords : [])]
+      .map(str_)
+      .filter((x) => x.length >= 3)
+  );
+  const out = [...fromProfile];
+  for (const kw of fallbackKeywords) {
+    if (out.length >= limit) break;
+    if (!out.some((s) => s.toLowerCase() === kw.toLowerCase())) {
+      out.push(kw);
+    }
+  }
+  const baselineFallback = [
+    "Program Management",
+    "Cross-functional Collaboration",
+    "Stakeholder Management",
+  ];
+  for (const kw of baselineFallback) {
+    if (out.length >= 3 || out.length >= limit) break;
+    if (!out.some((s) => s.toLowerCase() === kw.toLowerCase())) {
+      out.push(kw);
+    }
+  }
+  return unique_(out).slice(0, limit);
+}
+
+function isGenericBullet_(text) {
+  const low = str_(text).toLowerCase();
+  if (!low) return true;
+  const patterns = [
+    /delivered measurable impact/,
+    /core capability/,
+    /structured execution and stakeholder alignment/,
+    /results[- ]driven professional/,
+    /responsible for/,
+    /various projects/,
+  ];
+  if (patterns.some((re) => re.test(low))) return true;
+  return low.split(/\s+/g).length < 8;
+}
+
+function normalizeBulletForDedupe_(text) {
+  return str_(text)
+    .toLowerCase()
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isJdEchoEvidenceRow_(row) {
+  const source = str_(row?.evidence_source).toLowerCase();
+  const req = str_(row?.requirement_text).toLowerCase();
+  const evidence = str_(row?.evidence_text).toLowerCase();
+  if (!req || !evidence) return source === "jd_text";
+  if (source !== "jd_text") return false;
+  if (evidence === req) return true;
+  if (evidence.startsWith(req) || req.startsWith(evidence)) return true;
+  const reqTokens = req.split(/[^a-z0-9+#.-]+/g).filter((t) => t.length >= 3);
+  if (!reqTokens.length) return false;
+  let overlap = 0;
+  for (const tok of reqTokens) {
+    if (evidence.includes(tok)) overlap += 1;
+  }
+  return overlap / reqTokens.length >= 0.85;
 }
 
 function validateReactiveResumeExport_(rr) {

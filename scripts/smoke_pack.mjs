@@ -61,6 +61,41 @@ function normalizeWhitespace(value) {
   return asString(value, 20_000).replace(/\s+/g, " ").trim();
 }
 
+function normalizeBulletForDedupe(value) {
+  return asString(value, 1200)
+    .toLowerCase()
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isGenericBulletText(value) {
+  const low = normalizeWhitespace(value).toLowerCase();
+  if (!low) return true;
+  const patterns = [
+    /delivered measurable impact/,
+    /structured execution/,
+    /cross-functional alignment/,
+    /results[- ]driven professional/,
+    /responsible for/,
+    /various projects/,
+  ];
+  return patterns.some((re) => re.test(low));
+}
+
+function normalizeSkillLabel(value) {
+  if (typeof value === "string") return asString(value, 160);
+  if (!value || typeof value !== "object") return "";
+  return asString(value.name || value.label || value.skill || value.keyword || value.value || value.text, 160);
+}
+
+function isMeaningfulSkillLabel(value) {
+  const low = asString(value, 160).toLowerCase();
+  if (!low) return false;
+  return !["null", "undefined", "none", "n/a", "na", "[object object]"].includes(low);
+}
+
 function toBoolEnv(value, fallback = false) {
   const raw = asString(value, 50).toLowerCase();
   if (!raw) return fallback;
@@ -665,9 +700,50 @@ async function main() {
         return `Expected READY_TO_APPLY in final pack, got "${status || "EMPTY"}"`;
       }
       const profileId = asString(json?.data?.profile_id, 120);
-      return profileId === effectiveProfileId
-        ? true
-        : `Expected final pack profile_id "${effectiveProfileId}", got "${profileId || "EMPTY"}"`;
+      if (profileId !== effectiveProfileId) {
+        return `Expected final pack profile_id "${effectiveProfileId}", got "${profileId || "EMPTY"}"`;
+      }
+
+      const qualityFlags = Array.isArray(json?.data?.quality_flags) ? json.data.quality_flags : null;
+      if (!qualityFlags) return "Expected quality_flags[] in application-pack response.";
+      const qualityScore = Number(json?.data?.quality_score);
+      if (!Number.isFinite(qualityScore)) return "Expected numeric quality_score in application-pack response.";
+
+      const tailoring = (json?.data?.pack_json?.tailoring && typeof json.data.pack_json.tailoring === "object")
+        ? json.data.pack_json.tailoring
+        : {};
+      const skills = Array.isArray(tailoring.skills) ? tailoring.skills : [];
+      const normalizedSkills = skills.map((x) => normalizeSkillLabel(x)).filter((x) => isMeaningfulSkillLabel(x));
+      if (!normalizedSkills.length) return "Expected non-empty, non-null tailoring.skills.";
+      if (normalizedSkills.length !== skills.length) return "Found null/empty/invalid skills in tailoring.skills.";
+
+      const summary = asString(tailoring.summary, 3000);
+      const role = asString(json?.data?.pack_json?.extracted?.role_title, 400);
+      const company = asString(json?.data?.pack_json?.extracted?.company, 400);
+      const summaryLow = summary.toLowerCase();
+      if (role && !summaryLow.includes(role.toLowerCase())) {
+        return `Summary missing role_title anchor "${role}".`;
+      }
+      if (company && !summaryLow.includes(company.toLowerCase())) {
+        return `Summary missing company anchor "${company}".`;
+      }
+
+      const bullets = Array.isArray(tailoring.bullets)
+        ? tailoring.bullets.map((x) => asString(x, 800)).filter(Boolean)
+        : [];
+      const deduped = [];
+      const seen = new Set();
+      for (const bullet of bullets) {
+        const key = normalizeBulletForDedupe(bullet);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(bullet);
+      }
+      const specificBullets = deduped.filter((bullet) => !isGenericBulletText(bullet));
+      if (specificBullets.length < 3) {
+        return `Expected at least 3 non-generic, non-duplicate bullets, got ${specificBullets.length}.`;
+      }
+      return true;
     },
   });
 

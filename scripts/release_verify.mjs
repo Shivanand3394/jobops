@@ -331,7 +331,7 @@ async function main() {
     },
   });
 
-  await runStep({
+  const jobs = await runStep({
     name: "release.jobs.limit1",
     method: "GET",
     path: "/jobs?limit=1&offset=0",
@@ -350,6 +350,47 @@ async function main() {
       return pulse && typeof pulse === "object" ? true : "Missing pulse data";
     },
   });
+
+  const firstJobKey = asString(jobs?.json?.data?.[0]?.job_key, 200);
+  if (!firstJobKey) {
+    recordStep({
+      name: "release.application_pack.quality",
+      method: "GET",
+      path: "-",
+      auth: "ui",
+      expected_status: [200, 404],
+      request_body: null,
+      http_status: null,
+      duration_ms: 0,
+      ok: true,
+      soft: true,
+      note: "Skipped quality check: no job_key from jobs list.",
+      error: null,
+      response_content_type: null,
+      response_json: null,
+      response_text: null,
+    });
+  } else {
+    await runStep({
+      name: "release.application_pack.quality",
+      method: "GET",
+      path: `/jobs/${encodeURIComponent(firstJobKey)}/application-pack`,
+      auth: "ui",
+      expectedStatus: [200, 404],
+      validate: ({ status, json, text }) => {
+        if (status === 404) {
+          return {
+            soft: true,
+            note: "No application pack yet for first job; skipped quality payload validation.",
+          };
+        }
+        if (json?.ok !== true) return asString(json?.error || text, 300) || "Expected { ok: true }";
+        if (!Array.isArray(json?.data?.quality_flags)) return "Expected quality_flags[] in application-pack response.";
+        if (!Number.isFinite(Number(json?.data?.quality_score))) return "Expected numeric quality_score in application-pack response.";
+        return true;
+      },
+    });
+  }
 
   await runStep({
     name: "release.gmail.poll",

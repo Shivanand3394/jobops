@@ -1,0 +1,112 @@
+{
+  "id": "primary",
+  "name": "Shivanand Shah",
+  "profile_json": {
+    "basics": {
+      "name": "Shivanand Shah",
+      "headline": "Product Consultant",
+      "email": "career.shivanand@gmail.com",
+      "phone": "+91-9873724226",
+      "location": "Gurugram, IN",
+      "profiles": [
+        {
+          "network": "LinkedIn",
+          "url": "https://www.linkedin.com/in/shivanand-shah-2a2192114"
+        }
+      ]
+    },
+    "summary": "Product Consultant with hands-on experience across consulting, entrepreneurship, and field operations. I translate business goals into executable plans, align cross-functional stakeholders, and drive measurable outcomes through structured delivery, reporting, and continuous process improvement.",
+    "experience": [
+      {
+        "company": "Deloitte USI",
+        "role": "Consultant",
+        "date_range": "[Add dates]",
+        "bullets": [
+          "Led cross-functional workstreams to deliver business and product outcomes against defined timelines.",
+          "Built operating rhythms with stakeholders using status cadences, risk tracking, and clear ownership.",
+          "Translated ambiguous requirements into actionable plans and measurable execution milestones."
+        ]
+      },
+      {
+        "company": "The Good Time Co.",
+        "role": "Founder",
+        "date_range": "[Add dates]",
+        "bullets": [
+          "Built and operated the business end-to-end, including strategy, execution, and performance tracking.",
+          "Owned growth planning, vendor/stakeholder coordination, and day-to-day operational decision making.",
+          "Improved process reliability by introducing structured workflows and accountability mechanisms."
+        ]
+      },
+      {
+        "company": "Synergy Teletech Pvt. Ltd.",
+        "role": "Field Executive",
+        "date_range": "[Add dates]",
+        "bullets": [
+          "Managed field execution tasks with a focus on service quality, speed, and issue resolution.",
+          "Coordinated with internal teams to close operational gaps and improve customer-facing outcomes.",
+          "Maintained accurate ground-level reporting to support planning and escalation decisions."
+        ]
+      },
+      {
+        "company": "InstaCure",
+        "role": "Business Associate",
+        "date_range": "[Add dates]",
+        "bullets": [
+          "Supported business operations and cross-team coordination to improve delivery consistency.",
+          "Tracked key business metrics and contributed insights for process and performance improvements.",
+          "Worked with stakeholders to prioritize actions and maintain execution momentum."
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "name": "Clearstate",
+        "summary": "Product/operations initiative focused on structured execution and measurable outcomes.",
+        "highlights": [
+          "Defined project scope, execution milestones, and stakeholder communication rhythm.",
+          "Established reporting discipline to improve visibility, risk control, and follow-through."
+        ],
+        "date_range": "[Add dates]"
+      }
+    ],
+    "education": [
+      {
+        "degree": "MBA",
+        "specialization": "Marketing/Analytics",
+        "institution": "Indian Institute of Management Rohtak",
+        "date_range": "[Add dates]"
+      },
+      {
+        "degree": "B.Tech",
+        "institution": "Delhi Technological University (formerly DCE)",
+        "date_range": "[Add dates]"
+      }
+    ],
+    "skills": [
+      "Product Consulting",
+      "Program Management",
+      "Stakeholder Management",
+      "Cross-functional Collaboration",
+      "Business Operations",
+      "Execution Planning",
+      "KPI Tracking",
+      "Process Improvement",
+      "Reporting and Communication",
+      "Problem Solving"
+    ],
+    "certifications": [
+      "IBM AI Product Manager - Coursera",
+      "Google Data Analytics - Coursera"
+    ],
+    "awards_achievements": [
+      "[Add award/achievement 1]",
+      "[Add award/achievement 2]"
+    ],
+    "hobbies": [
+      "Cooking",
+      "Playing guitar",
+      "Singing",
+      "Travelling"
+    ]
+  }
+}
