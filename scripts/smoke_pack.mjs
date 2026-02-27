@@ -627,7 +627,8 @@ async function main() {
     path: `/jobs/${encodedJobKey}/generate-application-pack`,
     auth: "ui",
     body: {
-      force: false,
+      // Force fresh generation to avoid stale locked drafts from earlier runs.
+      force: true,
       renderer: "reactive_resume",
       evidence_first: true,
       evidence_limit: 8,

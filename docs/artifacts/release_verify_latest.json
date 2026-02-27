@@ -1,0 +1,1409 @@
+{
+  "started_at": "2026-02-27T00:55:29.630Z",
+  "base_url": "https://get-job.shivanand-shah94.workers.dev",
+  "release_id": "446f78db-db92-4f33-9b1c-090283ec86f9",
+  "pages_url": "https://jobops-ui.pages.dev",
+  "expected_worker_version": null,
+  "script": "scripts/release_verify.mjs",
+  "config": {
+    "timeout_ms": 30000,
+    "run_smoke": true,
+    "require_smoke_pass": true,
+    "profile_id": "primary",
+    "allow_connector_skip": true,
+    "smoke_out_file": "docs/artifacts/smoke_pack_latest.json"
+  },
+  "steps": [
+    {
+      "name": "release.health",
+      "method": "GET",
+      "path": "/health",
+      "auth": "none",
+      "expected_status": [
+        200
+      ],
+      "request_body": null,
+      "http_status": 200,
+      "duration_ms": 110,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "ts": 1772153730440,
+        "worker_version": "dev"
+      },
+      "response_text": null
+    },
+    {
+      "name": "release.admin.config.self_check",
+      "method": "GET",
+      "path": "/admin/config/self-check",
+      "auth": "api",
+      "expected_status": [
+        200
+      ],
+      "request_body": null,
+      "http_status": 200,
+      "duration_ms": 15,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "generated_at": 1772153730464,
+          "overall_ok": true,
+          "missing_required": [],
+          "warnings": [
+            "WORKER_VERSION is not set. /health will report worker_version=dev."
+          ],
+          "checks": {
+            "bindings": {
+              "DB": {
+                "required": true,
+                "present": true
+              },
+              "AI": {
+                "required": true,
+                "present": true,
+                "binding_name": "AI"
+              }
+            },
+            "secrets": {
+              "UI_KEY": {
+                "required": true,
+                "present": true
+              },
+              "API_KEY": {
+                "required": true,
+                "present": true
+              }
+            },
+            "vars": {
+              "ALLOW_ORIGIN": {
+                "required": true,
+                "present": true
+              },
+              "WORKER_VERSION": {
+                "required": false,
+                "present": false
+              }
+            },
+            "connectors": {
+              "gmail": {
+                "client_id_present": true,
+                "client_secret_present": true,
+                "token_enc_key_present": true
+              },
+              "whatsapp_vonage": {
+                "ingest_key_present": true,
+                "signature_secret_present": true,
+                "media_extractor_present": true
+              },
+              "reactive_resume": {
+                "base_url_present": true,
+                "api_key_present": true
+              }
+            }
+          }
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "release.jobs.limit1",
+      "method": "GET",
+      "path": "/jobs?limit=1&offset=0",
+      "auth": "ui",
+      "expected_status": [
+        200
+      ],
+      "request_body": null,
+      "http_status": 200,
+      "duration_ms": 356,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": [
+          {
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+            "company": "Smoke Systems",
+            "role_title": "Business Program Manager - Platform Operations",
+            "location": "Remote",
+            "seniority": "Mid",
+            "final_score": 73,
+            "status": "READY_TO_APPLY",
+            "job_url": "https://www.linkedin.com/jobs/view/4376723427/",
+            "source_domain": "linkedin",
+            "system_status": "READY_TO_APPLY",
+            "fetch_debug_json": "{}",
+            "updated_at": 1772153699860,
+            "created_at": 1772088360698,
+            "fetch_debug": {},
+            "ingest_channel": null,
+            "jd_confidence": null,
+            "last_touchpoint_at": null,
+            "last_touchpoint_status": null,
+            "last_touchpoint_channel": null,
+            "days_since_touchpoint": null,
+            "display_title": "Business Program Manager - Platform Operations",
+            "display_company": "Smoke Systems"
+          }
+        ]
+      },
+      "response_text": null
+    },
+    {
+      "name": "release.dashboard.triage",
+      "method": "GET",
+      "path": "/dashboard/triage?stale_days=3&limit=20&gold_limit=3",
+      "auth": "ui",
+      "expected_status": [
+        200
+      ],
+      "request_body": null,
+      "http_status": 200,
+      "duration_ms": 881,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "enabled": true,
+          "stale_days": 3,
+          "generated_at": 1772153730836,
+          "pulse": {
+            "gold_leads_count": 3,
+            "replies_7d_count": 3,
+            "stale_followups_count": 0,
+            "reply_pending_count": 3
+          },
+          "queues": {
+            "reply_pending": [
+              {
+                "touchpoint_id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
+                "contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
+                "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
+                "channel": "LINKEDIN",
+                "status": "REPLIED",
+                "touchpoint_content": "Hi Sarah - saw the Senior Product Operations Manager role at Acme Labs.\nI noticed the role emphasizes JavaScript and SQL. In my recent work, ...ead of Engineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+                "touchpoint_updated_at": 1772120761115,
+                "days_in_stage": 0,
+                "contact_name": "Sarah Chen",
+                "contact_title": "Head of Engineering",
+                "contact_company": "Acme Labs",
+                "linkedin_url": "",
+                "email": "",
+                "role_title": "Senior Product Operations Manager",
+                "company": "Acme Labs",
+                "job_status": "READY_TO_APPLY",
+                "final_score": 74,
+                "job_updated_at": 1772120754288,
+                "priority": "RESPONSE_PENDING",
+                "priority_score": 300,
+                "action_label": "Respond",
+                "queue": "reply_pending"
+              },
+              {
+                "touchpoint_id": "a30434d1-a7a3-4476-8534-eb39c6a23daa",
+                "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+                "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+                "channel": "LINKEDIN",
+                "status": "REPLIED",
+                "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+                "touchpoint_updated_at": 1772127419225,
+                "days_in_stage": 0,
+                "contact_name": "Shivanand Shah",
+                "contact_title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+                "contact_company": "Microsoft",
+                "linkedin_url": "",
+                "email": "",
+                "role_title": "Business Program Manager - Platform Operations",
+                "company": "Smoke Systems",
+                "job_status": "READY_TO_APPLY",
+                "final_score": 73,
+                "job_updated_at": 1772127410556,
+                "priority": "RESPONSE_PENDING",
+                "priority_score": 300,
+                "action_label": "Respond",
+                "queue": "reply_pending"
+              },
+              {
+                "touchpoint_id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
+                "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+                "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+                "channel": "LINKEDIN",
+                "status": "REPLIED",
+                "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+                "touchpoint_updated_at": 1772131743037,
+                "days_in_stage": 0,
+                "contact_name": "Shivanand Shah",
+                "contact_title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+                "contact_company": "Microsoft",
+                "linkedin_url": "",
+                "email": "",
+                "role_title": "Business Program Manager - Platform Operations",
+                "company": "Smoke Systems",
+                "job_status": "READY_TO_APPLY",
+                "final_score": 73,
+                "job_updated_at": 1772131734456,
+                "priority": "RESPONSE_PENDING",
+                "priority_score": 300,
+                "action_label": "Respond",
+                "queue": "reply_pending"
+              }
+            ],
+            "follow_up_overdue": [],
+            "all": [
+              {
+                "touchpoint_id": "67b29ab5-531b-4bf2-865e-c7021ca0680b",
+                "contact_id": "180d912a-b9f8-404d-9d81-287baae3449f",
+                "job_key": "8df817e4000a3b196109dd373de8f068bfd411ff",
+                "channel": "LINKEDIN",
+                "status": "REPLIED",
+                "touchpoint_content": "Hi Sarah - saw the Senior Product Operations Manager role at Acme Labs.\nI noticed the role emphasizes JavaScript and SQL. In my recent work, ...ead of Engineering Sarah Chen and partners with Engineering Manager David Park. Responsibilities include JavaScript, SQL, KPI tracking, process optimization, stakeholder....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+                "touchpoint_updated_at": 1772120761115,
+                "days_in_stage": 0,
+                "contact_name": "Sarah Chen",
+                "contact_title": "Head of Engineering",
+                "contact_company": "Acme Labs",
+                "linkedin_url": "",
+                "email": "",
+                "role_title": "Senior Product Operations Manager",
+                "company": "Acme Labs",
+                "job_status": "READY_TO_APPLY",
+                "final_score": 74,
+                "job_updated_at": 1772120754288,
+                "priority": "RESPONSE_PENDING",
+                "priority_score": 300,
+                "action_label": "Respond",
+                "queue": "reply_pending"
+              },
+              {
+                "touchpoint_id": "a30434d1-a7a3-4476-8534-eb39c6a23daa",
+                "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+                "job_key": "fc923ebfc9a30ba5e13ad2dcf9d5f1bbfb299623",
+                "channel": "LINKEDIN",
+                "status": "REPLIED",
+                "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+                "touchpoint_updated_at": 1772127419225,
+                "days_in_stage": 0,
+                "contact_name": "Shivanand Shah",
+                "contact_title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+                "contact_company": "Microsoft",
+                "linkedin_url": "",
+                "email": "",
+                "role_title": "Business Program Manager - Platform Operations",
+                "company": "Smoke Systems",
+                "job_status": "READY_TO_APPLY",
+                "final_score": 73,
+                "job_updated_at": 1772127410556,
+                "priority": "RESPONSE_PENDING",
+                "priority_score": 300,
+                "action_label": "Respond",
+                "queue": "reply_pending"
+              },
+              {
+                "touchpoint_id": "06843465-f621-4946-9df6-93b0d2d5d2eb",
+                "contact_id": "ace6d45a-110a-457f-b540-84db34128a4c",
+                "job_key": "705f7c063eb7bd67752995c9993cf7af24429291",
+                "channel": "LINKEDIN",
+                "status": "REPLIED",
+                "touchpoint_content": "Hi Shivanand - saw the Business Program Manager - Platform Operations role at Smoke Systems.\nI noticed the role emphasizes Program management and KPI tracking. In my recent work, Business Program Management: Delivering measurable impact through structured execution and data-driven decision making at Microsoft. I deliver measurable impact with clear....\nHappy to share a quick, relevant walkthrough if useful.\nThanks, Smoke User Alt",
+                "touchpoint_updated_at": 1772131743037,
+                "days_in_stage": 0,
+                "contact_name": "Shivanand Shah",
+                "contact_title": "Consultant II Deloitte USI II Product Management II PGPM IIM Rohtak",
+                "contact_company": "Microsoft",
+                "linkedin_url": "",
+                "email": "",
+                "role_title": "Business Program Manager - Platform Operations",
+                "company": "Smoke Systems",
+                "job_status": "READY_TO_APPLY",
+                "final_score": 73,
+                "job_updated_at": 1772131734456,
+                "priority": "RESPONSE_PENDING",
+                "priority_score": 300,
+                "action_label": "Respond",
+                "queue": "reply_pending"
+              }
+            ]
+          },
+          "gold_leads": [
+            {
+              "job_key": "0876eef0e21e91599febd8fd47b300554347a2cf",
+              "role_title": "Enterprise Sales",
+              "company": "AuthBridge",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772153194584
+            },
+            {
+              "job_key": "76346a91d4107179f8a9c52df27ec0a50afbc0b4",
+              "role_title": "Enterprise Sales",
+              "company": "AuthBridge",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772153191416
+            },
+            {
+              "job_key": "3028f15a6b7a6d1439a775c28fd38a5241565908",
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772153188854
+            }
+          ],
+          "touchpoint_conversion": {
+            "enabled": true,
+            "overall": {
+              "sent": 0,
+              "replied": 3,
+              "sent_or_replied": 3,
+              "reply_rate_percent": 100
+            }
+          },
+          "meta": {
+            "contacts_storage_error": null,
+            "profile_preferences_enabled": true,
+            "limit": 20,
+            "gold_limit": 3
+          }
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "release.application_pack.quality",
+      "method": "GET",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/application-pack",
+      "auth": "ui",
+      "expected_status": [
+        200,
+        404
+      ],
+      "request_body": null,
+      "http_status": 200,
+      "duration_ms": 1404,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "id": "e81f63cb-5d95-447e-b41a-986570e270d8",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+          "profile_id": "primary-alt",
+          "profile_lookup_source": "job_preference",
+          "requested_profile_id": null,
+          "preference_profile_id": "primary-alt",
+          "status": "READY_TO_APPLY",
+          "error_text": "",
+          "pack_json": {
+            "job": {
+              "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+              "job_url": "https://www.linkedin.com/jobs/view/4376723427/",
+              "source_domain": "linkedin",
+              "status": "READY_TO_APPLY"
+            },
+            "target": {
+              "id": "TGT-NEW-01",
+              "name": "Growth PM Target",
+              "primaryRole": "Product Manager",
+              "seniorityPref": "Mid",
+              "locationPref": "Bangalore",
+              "rubricProfile": "auto",
+              "rubric_profile": "auto",
+              "must": [
+                "product strategy",
+                "roadmap"
+              ],
+              "nice": [
+                "sql"
+              ],
+              "reject": []
+            },
+            "extracted": {
+              "role_title": "Business Program Manager - Platform Operations",
+              "company": "Smoke Systems",
+              "location": "Remote",
+              "seniority": "Mid",
+              "final_score": 73,
+              "reason_top_matches": ""
+            },
+            "tailoring": {
+              "summary": "Program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "bullets": [
+                "Mapped Program management into weekly execution rhythm and progress reporting, driving measurable impact and aligning outcomes to expectations.",
+                "Mapped Cross-functional collaboration into weekly execution rhythm and progress reporting, leveraging expertise in SQL skills, KPI tracking, and stakeholder management.",
+                "Built SQL-backed reporting to surface risk earlier and improve plan reliability, reducing rework and delivery friction. (SQL skills) with [X%] improvement and [N] stakeholder touchpoints.",
+                "Coordinated KPI tracking execution across multiple active workstreams with clear owners, dependencies, and escalation paths."
+              ],
+              "cover_letter": "Dear Hiring Team, I am applying for the Business Program Manager - Platform Operations role at Smoke Systems in Remote. My experience with business Program Manager - Platform Operations: Program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi aligns directly with your need for Program management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "skills": [
+                "Business Program Management",
+                "Roadmap",
+                "Delivery",
+                "KPI",
+                "Stakeholder Management",
+                "Program management",
+                "Cross-functional collaboration",
+                "SQL skills",
+                "KPI tracking",
+                "Process optimization",
+                "Workflow automation",
+                "Business strategy",
+                "Operational planning"
+              ],
+              "must_keywords": [
+                "Program management",
+                "Cross-functional collaboration",
+                "SQL skills",
+                "KPI tracking",
+                "Stakeholder management"
+              ],
+              "nice_keywords": [
+                "Process optimization",
+                "Workflow automation",
+                "Business strategy",
+                "Operational planning"
+              ],
+              "evidence_matches": [
+                {
+                  "requirement_text": "Program management",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Cross-functional collaboration",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "SQL skills",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "KPI tracking",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Stakeholder management",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Process optimization",
+                  "requirement_type": "nice",
+                  "evidence_source": "resume_bullets",
+                  "confidence_score": 88
+                }
+              ]
+            },
+            "controls": {
+              "template_id": "balanced",
+              "enabled_blocks": [
+                "summary",
+                "experience",
+                "skills",
+                "highlights",
+                "bullets"
+              ],
+              "selected_keywords": [],
+              "ats_target_mode": "all",
+              "one_page_mode": "soft",
+              "one_pager_strict": false,
+              "content_review_required": false,
+              "approved_at": 1772153699688
+            },
+            "renderer": "reactive_resume"
+          },
+          "ats_json": {
+            "score": 70,
+            "missing_keywords": [],
+            "coverage": {
+              "must_total": 5,
+              "must_hit": 5,
+              "nice_total": 4,
+              "nice_hit": 0
+            },
+            "notes": "Good keyword coverage",
+            "target_rubric": {
+              "applicable": true,
+              "score": 47,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "kpi",
+                    "sql"
+                  ],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 100,
+                  "hit_count": 3,
+                  "target_hits": 3,
+                  "evidence": [
+                    "cross-functional",
+                    "delivery",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "collaboration"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            },
+            "pm_rubric": {
+              "applicable": true,
+              "score": 47,
+              "dimensions": [
+                {
+                  "id": "strategy",
+                  "label": "Product Strategy",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "strategy",
+                    "vision",
+                    "roadmap",
+                    "prioritization"
+                  ]
+                },
+                {
+                  "id": "discovery",
+                  "label": "Discovery & Research",
+                  "score": 0,
+                  "hit_count": 0,
+                  "target_hits": 3,
+                  "evidence": [],
+                  "missing_evidence": [
+                    "customer",
+                    "user research",
+                    "discovery",
+                    "problem statement"
+                  ]
+                },
+                {
+                  "id": "analytics",
+                  "label": "Analytics & Experimentation",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "kpi",
+                    "sql"
+                  ],
+                  "missing_evidence": [
+                    "a/b",
+                    "experiment",
+                    "hypothesis",
+                    "funnel"
+                  ]
+                },
+                {
+                  "id": "execution",
+                  "label": "Delivery & Execution",
+                  "score": 100,
+                  "hit_count": 3,
+                  "target_hits": 3,
+                  "evidence": [
+                    "cross-functional",
+                    "delivery",
+                    "execution"
+                  ],
+                  "missing_evidence": [
+                    "prd",
+                    "requirements",
+                    "backlog",
+                    "agile"
+                  ]
+                },
+                {
+                  "id": "leadership",
+                  "label": "Leadership & Influence",
+                  "score": 67,
+                  "hit_count": 2,
+                  "target_hits": 3,
+                  "evidence": [
+                    "stakeholder",
+                    "collaboration"
+                  ],
+                  "missing_evidence": [
+                    "influence",
+                    "alignment",
+                    "communication",
+                    "leadership"
+                  ]
+                }
+              ],
+              "missing_evidence": [
+                "Product Strategy: strategy",
+                "Product Strategy: vision",
+                "Product Strategy: roadmap",
+                "Product Strategy: prioritization",
+                "Discovery & Research: customer",
+                "Discovery & Research: user research",
+                "Discovery & Research: discovery",
+                "Discovery & Research: problem statement",
+                "Analytics & Experimentation: a/b",
+                "Analytics & Experimentation: experiment"
+              ],
+              "notes": "Add stronger PM evidence in summary/bullets.",
+              "template_id": "pm_v1",
+              "rubric_profile": "auto",
+              "target_id": "TGT-NEW-01",
+              "target_name": "Growth PM Target",
+              "target_role": "Product Manager"
+            }
+          },
+          "rr_export_json": {
+            "metadata": {
+              "source": "jobops",
+              "contract_id": "jobops.rr_export.v1",
+              "schema_version": 1,
+              "version": 1,
+              "exported_at": 1772153695430,
+              "template_id": "balanced",
+              "renderer": "reactive_resume",
+              "contract_valid": true,
+              "import_ready": true
+            },
+            "basics": {
+              "name": "Smoke User Alt",
+              "email": "smoke.user.alt@example.com",
+              "phone": "",
+              "location": "Remote",
+              "summary": "Program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+            },
+            "sections": {
+              "experience": [
+                {
+                  "company": "Alt Smoke Co",
+                  "role": "Business Program Manager",
+                  "date_range": "2021 - Present",
+                  "bullets": [
+                    "Owned roadmap execution for program increments spanning product, ops, and engineering teams.",
+                    "Established SLA and weekly KPI review cadence to improve delivery consistency."
+                  ]
+                }
+              ],
+              "skills": [
+                "Business Program Management",
+                "Roadmap",
+                "Delivery",
+                "KPI",
+                "Stakeholder Management"
+              ],
+              "highlights": [
+                {
+                  "text": "Mapped Program management into weekly execution rhythm and progress reporting, driving measurable impact and aligning outcomes to expectations."
+                },
+                {
+                  "text": "Mapped Cross-functional collaboration into weekly execution rhythm and progress reporting, leveraging expertise in SQL skills, KPI tracking, and stakeholder management."
+                },
+                {
+                  "text": "Built SQL-backed reporting to surface risk earlier and improve plan reliability, reducing rework and delivery friction. (SQL skills) with [X%] improvement and [N] stakeholder touchpoints."
+                },
+                {
+                  "text": "Coordinated KPI tracking execution across multiple active workstreams with clear owners, dependencies, and escalation paths."
+                }
+              ]
+            },
+            "job_context": {
+              "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+              "role_title": "Business Program Manager - Platform Operations",
+              "company": "Smoke Systems",
+              "job_url": "https://www.linkedin.com/jobs/view/4376723427/"
+            }
+          },
+          "rr_export_contract": {
+            "id": "jobops.rr_export.v1",
+            "schema_version": 1
+          },
+          "rr_export_import_ready": true,
+          "rr_export_import_errors": [],
+          "rr_resume_id": null,
+          "rr_last_pushed_at": 0,
+          "rr_last_push_status": null,
+          "rr_last_push_error": "",
+          "rr_pdf_url": null,
+          "rr_pdf_last_exported_at": 0,
+          "rr_pdf_last_export_status": null,
+          "rr_pdf_last_export_error": "",
+          "pdf_readiness": {
+            "gate_version": "pdf_readiness_v2",
+            "ready": true,
+            "failed_count": 0,
+            "checks": [
+              {
+                "id": "role_title",
+                "label": "Role title present",
+                "ok": true,
+                "detail": "role: Business Program Manager - Platform Operations",
+                "enforced": false
+              },
+              {
+                "id": "company",
+                "label": "Company present",
+                "ok": true,
+                "detail": "company: Smoke Systems",
+                "enforced": false
+              },
+              {
+                "id": "jd_quality",
+                "label": "JD quality usable",
+                "ok": true,
+                "detail": "jd_len=807, jd_confidence=-",
+                "enforced": false
+              },
+              {
+                "id": "summary_length",
+                "label": "Tailored summary length",
+                "ok": true,
+                "detail": "summary_chars=288/80",
+                "enforced": false
+              },
+              {
+                "id": "bullets_count",
+                "label": "Tailored bullets count",
+                "ok": true,
+                "detail": "bullets=4/3",
+                "enforced": false
+              },
+              {
+                "id": "ats_score",
+                "label": "ATS score threshold",
+                "ok": true,
+                "detail": "ats_score=70 / 60",
+                "enforced": false
+              },
+              {
+                "id": "must_coverage",
+                "label": "Must-keyword coverage",
+                "ok": true,
+                "detail": "must_coverage=100% (5/5)",
+                "enforced": false
+              },
+              {
+                "id": "rr_import_ready",
+                "label": "RR import contract ready",
+                "ok": true,
+                "detail": "ready",
+                "enforced": true
+              }
+            ],
+            "failed_checks": [],
+            "warning_checks": [],
+            "thresholds": {
+              "min_summary_chars": 80,
+              "min_bullets": 3,
+              "min_ats_score": 60,
+              "min_must_coverage_pct": 50
+            },
+            "one_page_mode": "soft",
+            "one_page_estimate": {
+              "summary_chars": 288,
+              "bullets_count": 4,
+              "experience_items": 1,
+              "skills_items": 5,
+              "estimated_density": "high"
+            },
+            "hard_gate_applied": false
+          },
+          "one_page_mode": "soft",
+          "content_review_required": false,
+          "quality_flags": [
+            "PROFILE_SMOKE_LIKE"
+          ],
+          "quality_score": 85,
+          "quality_blocking_flags": [],
+          "quality_blocked": false,
+          "quality_gap_map": [
+            {
+              "code": "PROFILE_SMOKE_LIKE",
+              "severity": "major",
+              "field": "profile.basics",
+              "before": "profile contains smoke/test placeholder tokens; profile email uses @example.com placeholder",
+              "after": "Replace smoke/demo placeholder profile data with real candidate identity and achievements."
+            }
+          ],
+          "latest_version": {
+            "id": "6df250dd-ca58-4fb0-ab81-a4a30e051733",
+            "version_no": 17,
+            "source_action": "approve",
+            "created_at": 1772153699860
+          },
+          "version_history_enabled": true,
+          "rr_base_url": "https://rxresu.me",
+          "updated_at": 1772153699860
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "release.gmail.poll",
+      "method": "POST",
+      "path": "/gmail/poll",
+      "auth": "api",
+      "expected_status": [
+        200,
+        400
+      ],
+      "request_body": {},
+      "http_status": 200,
+      "duration_ms": 5116,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "run_id": "c07e8b6d-a3ed-4ec7-b7fc-14b94f3372af",
+          "ts": 1772153733125,
+          "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
+          "max_results": 25,
+          "max_jobs_per_email": 3,
+          "max_jobs_per_poll": 10,
+          "messages_listed": 25,
+          "scanned": 25,
+          "processed": 0,
+          "skipped_already_ingested": 25,
+          "skipped_existing": 25,
+          "blocked_or_failed_fetch": 0,
+          "urls_found_total": 0,
+          "urls_unique_total": 0,
+          "urls_job_domains_total": 0,
+          "jobs_kept_total": 0,
+          "jobs_dropped_due_to_caps_total": 0,
+          "skipped_promotional": 0,
+          "skipped_promotional_heuristic": 0,
+          "skipped_promotional_ai": 0,
+          "ignored_domains_count": 0,
+          "ingested_count": 0,
+          "ingest_inserted_count": 0,
+          "ingest_updated_count": 0,
+          "ingest_link_only_count": 0,
+          "ingest_ignored_count": 0,
+          "results_sample": [],
+          "inserted_or_updated": 0,
+          "inserted_count": 0,
+          "updated_count": 0,
+          "ignored": 0,
+          "ignored_count": 0,
+          "link_only": 0,
+          "link_only_count": 0
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "release.rss.diagnostics",
+      "method": "POST",
+      "path": "/rss/diagnostics",
+      "auth": "api",
+      "expected_status": [
+        200,
+        400
+      ],
+      "request_body": {
+        "max_per_run": 10,
+        "sample_limit": 5
+      },
+      "http_status": 200,
+      "duration_ms": 195,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "run_id": "39a51b1f-aebf-4d84-9c51-a8bc48abd99e",
+          "ts": 1772153738238,
+          "skipped": true,
+          "reason": "no_feeds_configured",
+          "feeds_total": 0,
+          "feeds_processed": 0,
+          "feeds_failed": 0,
+          "max_per_run": 10,
+          "items_listed": 0,
+          "processed": 0,
+          "skipped_empty": 0,
+          "blocked_or_failed_fetch": 0,
+          "allow_keywords_count": 0,
+          "block_keywords_count": 0,
+          "items_filtered_allow": 0,
+          "items_filtered_block": 0,
+          "urls_found_total": 0,
+          "urls_unique_total": 0,
+          "urls_job_domains_total": 0,
+          "ignored_domains_count": 0,
+          "ingested_count": 0,
+          "inserted_or_updated": 0,
+          "inserted_count": 0,
+          "updated_count": 0,
+          "ignored": 0,
+          "link_only": 0,
+          "reason_buckets": {
+            "unsupported_domain": 0,
+            "normalize_ignored": 0,
+            "unresolved_wrapper": 0,
+            "duplicate_candidate": 0,
+            "no_url_in_item": 0,
+            "ingested": 0
+          },
+          "unsupported_domain_by_host": {},
+          "rejected_url_samples": [],
+          "feed_summaries": [],
+          "source_summary": [],
+          "results_sample": [],
+          "mode": "diagnostics"
+        }
+      },
+      "response_text": null
+    },
+    {
+      "name": "release.admin.scoring_runs.report",
+      "method": "GET",
+      "path": "/admin/scoring-runs/report?window_days=14&trend_days=14&stage_sample_limit=500",
+      "auth": "api",
+      "expected_status": [
+        200
+      ],
+      "request_body": null,
+      "http_status": 200,
+      "duration_ms": 2364,
+      "ok": true,
+      "soft": false,
+      "note": null,
+      "error": null,
+      "response_content_type": "application/json",
+      "response_json": {
+        "ok": true,
+        "data": {
+          "enabled": true,
+          "source": null,
+          "heuristic_config": {
+            "min_jd_chars": 120,
+            "min_target_signal": 8
+          },
+          "window": {
+            "days": 14,
+            "start_at": 1770944138596,
+            "end_at": 1772153738596
+          },
+          "trend": {
+            "days": 14,
+            "start_at": 1770944138596,
+            "end_at": 1772153738596
+          },
+          "totals": {
+            "total_runs": 626,
+            "heuristic_passed_runs": 619,
+            "heuristic_rejected_runs": 7
+          },
+          "heuristic_reject_rate": {
+            "ratio": 0.0112,
+            "percent": 1.12
+          },
+          "latency_ms": {
+            "avg_total_latency_ms": 2545.06,
+            "avg_ai_latency_ms": 2545.06,
+            "stage_sample_limit": 500,
+            "stage_rows_scanned": 500,
+            "stage_avg_latency_ms": {
+              "ai_extract": {
+                "runs_seen": 500,
+                "latency_samples": 500,
+                "avg_latency_ms": 0,
+                "status_counts": {
+                  "skipped": 500
+                }
+              },
+              "ai_reason": {
+                "runs_seen": 500,
+                "latency_samples": 500,
+                "avg_latency_ms": 2362.63,
+                "status_counts": {
+                  "ok": 497,
+                  "skipped": 3
+                }
+              },
+              "evidence_upsert": {
+                "runs_seen": 500,
+                "latency_samples": 500,
+                "avg_latency_ms": 0,
+                "status_counts": {
+                  "skipped": 500
+                }
+              },
+              "heuristic": {
+                "runs_seen": 500,
+                "latency_samples": 500,
+                "avg_latency_ms": 0,
+                "status_counts": {
+                  "ok": 497,
+                  "rejected": 3
+                }
+              }
+            }
+          },
+          "token_spend": {
+            "ai_tokens_total_sum": 756491,
+            "ai_tokens_total_avg_per_run": 1208.45,
+            "trend_by_day": [
+              {
+                "day": "2026-02-26",
+                "run_count": 592,
+                "heuristic_rejected_runs": 7,
+                "heuristic_reject_rate_percent": 1.18,
+                "ai_tokens_in": 665423,
+                "ai_tokens_out": 55725,
+                "ai_tokens_total": 721148,
+                "avg_total_latency_ms": 2588.72
+              },
+              {
+                "day": "2026-02-27",
+                "run_count": 34,
+                "heuristic_rejected_runs": 0,
+                "heuristic_reject_rate_percent": 0,
+                "ai_tokens_in": 32143,
+                "ai_tokens_out": 3200,
+                "ai_tokens_total": 35343,
+                "avg_total_latency_ms": 1784.88
+              }
+            ]
+          },
+          "funnel": {
+            "source_breakdown": [
+              {
+                "source": "score-pending",
+                "run_count": 418,
+                "heuristic_rejected_runs": 4,
+                "heuristic_reject_rate_percent": 0.96,
+                "avg_final_score": 72,
+                "avg_total_latency_ms": 2117.91,
+                "ai_tokens_total": 518505
+              },
+              {
+                "source": "ingest-recover",
+                "run_count": 186,
+                "heuristic_rejected_runs": 0,
+                "heuristic_reject_rate_percent": 0,
+                "avg_final_score": 73.98,
+                "avg_total_latency_ms": 3579.47,
+                "ai_tokens_total": 205641
+              },
+              {
+                "source": "rescore",
+                "run_count": 10,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 10,
+                "avg_final_score": 64.8,
+                "avg_total_latency_ms": 2647.7,
+                "ai_tokens_total": 24242
+              },
+              {
+                "source": "manual-jd",
+                "run_count": 9,
+                "heuristic_rejected_runs": 0,
+                "heuristic_reject_rate_percent": 0,
+                "avg_final_score": 73.11,
+                "avg_total_latency_ms": 1637.67,
+                "ai_tokens_total": 7294
+              },
+              {
+                "source": "auto-pilot",
+                "run_count": 3,
+                "heuristic_rejected_runs": 2,
+                "heuristic_reject_rate_percent": 66.67,
+                "avg_final_score": 24.33,
+                "avg_total_latency_ms": 307.67,
+                "ai_tokens_total": 809
+              }
+            ],
+            "profile_breakdown": [
+              {
+                "profile_id": "primary-alt",
+                "jobs_count": 13,
+                "avg_final_score": 73.46,
+                "applied_jobs": 0
+              },
+              {
+                "profile_id": "primary",
+                "jobs_count": 28,
+                "avg_final_score": 54.14,
+                "applied_jobs": 0
+              }
+            ],
+            "source_profile_breakdown": [
+              {
+                "source": "ingest-recover",
+                "profile_id": "primary",
+                "run_count": 60,
+                "avg_final_score": 74,
+                "heuristic_rejected_runs": 0,
+                "heuristic_reject_rate_percent": 0
+              },
+              {
+                "source": "ingest-recover",
+                "profile_id": "primary-alt",
+                "run_count": 126,
+                "avg_final_score": 73.97,
+                "heuristic_rejected_runs": 0,
+                "heuristic_reject_rate_percent": 0
+              },
+              {
+                "source": "manual-jd",
+                "profile_id": "primary-alt",
+                "run_count": 9,
+                "avg_final_score": 73.11,
+                "heuristic_rejected_runs": 0,
+                "heuristic_reject_rate_percent": 0
+              },
+              {
+                "source": "score-pending",
+                "profile_id": "primary",
+                "run_count": 223,
+                "avg_final_score": 72.28,
+                "heuristic_rejected_runs": 3,
+                "heuristic_reject_rate_percent": 1.35
+              },
+              {
+                "source": "score-pending",
+                "profile_id": "primary-alt",
+                "run_count": 195,
+                "avg_final_score": 71.69,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 0.51
+              },
+              {
+                "source": "rescore",
+                "profile_id": "primary-alt",
+                "run_count": 10,
+                "avg_final_score": 64.8,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 10
+              },
+              {
+                "source": "auto-pilot",
+                "profile_id": "primary-alt",
+                "run_count": 2,
+                "avg_final_score": 36.5,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 50
+              },
+              {
+                "source": "auto-pilot",
+                "profile_id": "primary",
+                "run_count": 1,
+                "avg_final_score": 0,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 100
+              }
+            ],
+            "touchpoint_conversion": {
+              "enabled": true,
+              "window_days": 14,
+              "overall": {
+                "sent": 0,
+                "replied": 3,
+                "sent_or_replied": 3,
+                "reply_rate_percent": 100
+              },
+              "by_channel": [
+                {
+                  "channel": "EMAIL",
+                  "sent": 0,
+                  "replied": 0,
+                  "sent_or_replied": 0,
+                  "reply_rate_percent": 0
+                },
+                {
+                  "channel": "LINKEDIN",
+                  "sent": 0,
+                  "replied": 3,
+                  "sent_or_replied": 3,
+                  "reply_rate_percent": 100
+                },
+                {
+                  "channel": "OTHER",
+                  "sent": 0,
+                  "replied": 0,
+                  "sent_or_replied": 0,
+                  "reply_rate_percent": 0
+                }
+              ]
+            },
+            "whatsapp_media_funnel": {
+              "enabled": true,
+              "filtered_out_by_source": false,
+              "source_filter": null,
+              "window_days": 14,
+              "events": {
+                "queued": 21,
+                "extract_ingested": 3,
+                "extract_empty": 1,
+                "extract_failed": 17,
+                "missing_url": 5
+              },
+              "jobs": {
+                "media_jobs_total": 2,
+                "link_only_jobs": 0,
+                "scored_jobs": 2,
+                "shortlisted_jobs": 0,
+                "ready_to_apply_jobs": 0,
+                "applied_jobs": 0
+              },
+              "conversion": {
+                "queued_to_extract_ingested_percent": 14.29,
+                "extract_ingested_to_scored_percent": 66.67,
+                "media_jobs_scored_percent": 100,
+                "media_jobs_ready_to_apply_percent": 0,
+                "media_jobs_link_only_percent": 0
+              }
+            }
+          }
+        }
+      },
+      "response_text": null
+    }
+  ],
+  "smoke": {
+    "invoked": true,
+    "duration_ms": 26435,
+    "exit_code": 0,
+    "signal": null,
+    "stdout_tail": "[PASS] health status=200 duration_ms=135\n[PASS] whatsapp.vonage.sim status=n/a duration_ms=0\n[PASS] whatsapp.vonage.media.sim status=n/a duration_ms=0\n[PASS] jobs.list.limit1 status=200 duration_ms=356\n[PASS] dashboard.triage status=200 duration_ms=868\n[PASS] gmail.poll status=200 duration_ms=5134\n[PASS] rss.diagnostics status=200 duration_ms=196\n[PASS] admin.scoring_runs.report status=200 duration_ms=2977\n[PASS] wizard.profile.upsert status=200 duration_ms=193\n[PASS] wizard.profile.upsert.alt status=200 duration_ms=193\n[PASS] wizard.profile.preference.set status=200 duration_ms=1392\n[PASS] wizard.profile.preference.get status=200 duration_ms=1040\n[PASS] wizard.generate status=200 duration_ms=5578\n[PASS] wizard.pack.fetch.before status=200 duration_ms=1389\n[PASS] wizard.review status=200 duration_ms=1262\n[PASS] wizard.approve status=200 duration_ms=1609\n[PASS] wizard.pack.fetch.after status=200 duration_ms=1382\n[PASS] wizard.evidence.rebuild status=200 duration_ms=890\n[PASS] wizard.evidence.fetch status=200 duration_ms=361\n[PASS] wizard.resume.html status=200 duration_ms=876\n[PASS] outreach.contacts.list status=200 duration_ms=518\n[PASS] outreach.draft.linkedin status=n/a duration_ms=0\n[PASS] outreach.status.sent status=n/a duration_ms=0\n[PASS] outreach.status.replied status=n/a duration_ms=0\n[PASS] outreach.contacts.verify.replied status=n/a duration_ms=0\nSaved smoke pack report: C:\\Users\\dell\\Documents\\GitHub\\jobops\\docs\\artifacts\\smoke_pack_latest.json",
+    "stderr_tail": "",
+    "out_file": "docs/artifacts/smoke_pack_latest.json",
+    "result": "PASS",
+    "summary": {
+      "total_steps": 25,
+      "passed_steps": 25,
+      "failed_steps": 0,
+      "success": true
+    },
+    "note": null
+  },
+  "result": "PASS",
+  "summary": {
+    "total_steps": 8,
+    "passed_steps": 8,
+    "warned_steps": 0,
+    "failed_steps": 0,
+    "success": true
+  },
+  "error": null,
+  "detected_worker_version": "dev",
+  "ended_at": "2026-02-27T00:56:06.509Z"
+}

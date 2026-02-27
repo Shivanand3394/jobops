@@ -1,26 +1,26 @@
 {
-  "run_id": "0ac7800b-f6f3-422f-bba0-d5f5168c88fc",
-  "started_at": "2026-02-26T21:48:11.660Z",
+  "run_id": "0c9024f2-0b26-4808-a2d2-f26b31685956",
+  "started_at": "2026-02-27T00:55:40.135Z",
   "base_url": "https://get-job.shivanand-shah94.workers.dev",
   "script": "scripts/smoke_pack.mjs",
   "config": {
     "timeout_ms": 45000,
     "profile_id": "primary",
-    "job_key_input": null,
+    "job_key_input": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
     "output_file": "docs/artifacts/smoke_pack_latest.json",
     "require_outreach": false,
     "whatsapp_sim_enabled": false,
     "whatsapp_webhook_path": "/ingest/whatsapp/vonage",
-    "job_key_resolved": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+    "job_key_resolved": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
     "whatsapp_media_funnel_snapshot": {
       "source_filter": null,
       "filtered_out_by_source": false,
       "events": {
-        "queued": 18,
+        "queued": 21,
         "extract_ingested": 3,
         "extract_empty": 1,
-        "extract_failed": 14,
-        "missing_url": 2
+        "extract_failed": 17,
+        "missing_url": 5
       },
       "jobs": {
         "media_jobs_total": 2,
@@ -31,7 +31,7 @@
         "applied_jobs": 0
       },
       "conversion": {
-        "queued_to_extract_ingested_percent": 16.67,
+        "queued_to_extract_ingested_percent": 14.29,
         "extract_ingested_to_scored_percent": 66.67,
         "media_jobs_scored_percent": 100,
         "media_jobs_ready_to_apply_percent": 0,
@@ -40,7 +40,7 @@
     },
     "profile_id_effective": "primary-alt",
     "resume_html_evidence_rows": 9,
-    "resume_html_evidence_needle": "...on making for role at microsoft. i deliver",
+    "resume_html_evidence_needle": "program management: alternate profile for per-job preference verification.",
     "resume_html_expected_email": "smoke.user.alt@example.com",
     "outreach_contact_id": null,
     "outreach_skipped": true
@@ -56,13 +56,13 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 965,
+      "duration_ms": 135,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
-        "ts": 1772142493102,
+        "ts": 1772153740969,
         "worker_version": "dev"
       },
       "response_text": null
@@ -111,7 +111,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 621,
+      "duration_ms": 356,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -119,37 +119,28 @@
         "ok": true,
         "data": [
           {
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-            "company": "Microsoft",
-            "role_title": "",
-            "location": "",
-            "seniority": "",
-            "final_score": 74,
-            "status": "SCORED",
-            "job_url": "https://careers.microsoft.com/v2/global/en/home.html",
-            "source_domain": "careers.microsoft.com",
-            "system_status": null,
-            "fetch_debug_json": "{\"jd_confidence\":\"medium\",\"jd_length\":4320,\"http_status\":200,\"ai_available\":true,\"ingest_channel\":\"recover\",\"fallback_reason\":\"none\",\"fallback_policy\":\"default\",\"source_policy_domain\":\"careers.microsoft.com\"}",
-            "updated_at": 1772142413146,
-            "created_at": 1772137087316,
-            "fetch_debug": {
-              "jd_confidence": "medium",
-              "jd_length": 4320,
-              "http_status": 200,
-              "ai_available": true,
-              "ingest_channel": "recover",
-              "fallback_reason": "none",
-              "fallback_policy": "default",
-              "source_policy_domain": "careers.microsoft.com"
-            },
-            "ingest_channel": "recover",
-            "jd_confidence": "medium",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+            "company": "Smoke Systems",
+            "role_title": "Business Program Manager - Platform Operations",
+            "location": "Remote",
+            "seniority": "Mid",
+            "final_score": 73,
+            "status": "READY_TO_APPLY",
+            "job_url": "https://www.linkedin.com/jobs/view/4376723427/",
+            "source_domain": "linkedin",
+            "system_status": "READY_TO_APPLY",
+            "fetch_debug_json": "{}",
+            "updated_at": 1772153699860,
+            "created_at": 1772088360698,
+            "fetch_debug": {},
+            "ingest_channel": null,
+            "jd_confidence": null,
             "last_touchpoint_at": null,
             "last_touchpoint_status": null,
             "last_touchpoint_channel": null,
             "days_since_touchpoint": null,
-            "display_title": "Microsoft",
-            "display_company": "Microsoft"
+            "display_title": "Business Program Manager - Platform Operations",
+            "display_company": "Smoke Systems"
           }
         ]
       },
@@ -165,7 +156,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1026,
+      "duration_ms": 868,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -174,7 +165,7 @@
         "data": {
           "enabled": true,
           "stale_days": 3,
-          "generated_at": 1772142493906,
+          "generated_at": 1772153741352,
           "pulse": {
             "gold_leads_count": 3,
             "replies_7d_count": 3,
@@ -334,31 +325,31 @@
           },
           "gold_leads": [
             {
-              "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-              "role_title": "",
-              "company": "Microsoft",
-              "status": "SCORED",
-              "final_score": 74,
-              "profile_id": "primary",
-              "updated_at": 1772142413146
-            },
-            {
-              "job_key": "1418874c737d46afa6dd2d2bcd5c53cb1c379c9e",
-              "role_title": "",
-              "company": "Wockhardt",
-              "status": "SCORED",
-              "final_score": 74,
-              "profile_id": "primary",
-              "updated_at": 1772142411130
-            },
-            {
               "job_key": "0876eef0e21e91599febd8fd47b300554347a2cf",
               "role_title": "Enterprise Sales",
               "company": "AuthBridge",
               "status": "SCORED",
               "final_score": 74,
               "profile_id": "primary",
-              "updated_at": 1772142402308
+              "updated_at": 1772153194584
+            },
+            {
+              "job_key": "76346a91d4107179f8a9c52df27ec0a50afbc0b4",
+              "role_title": "Enterprise Sales",
+              "company": "AuthBridge",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772153191416
+            },
+            {
+              "job_key": "3028f15a6b7a6d1439a775c28fd38a5241565908",
+              "role_title": "Product Manager",
+              "company": "Majid Al Futtaim",
+              "status": "SCORED",
+              "final_score": 74,
+              "profile_id": "primary",
+              "updated_at": 1772153188854
             }
           ],
           "touchpoint_conversion": {
@@ -390,15 +381,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 5266,
+      "duration_ms": 5134,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "b32918f9-15b4-4e28-be21-0a5320cbb205",
-          "ts": 1772142494927,
+          "run_id": "25d78099-7d1b-47a3-8299-b9f7f477eaec",
+          "ts": 1772153742226,
           "query_used": "in:anywhere newer_than:14d (label:JobOps/Hot OR label:JobOps/Raw)",
           "max_results": 25,
           "max_jobs_per_email": 3,
@@ -448,15 +439,15 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 359,
+      "duration_ms": 196,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "run_id": "24591f7f-e305-4327-86e9-acfbea9f07af",
-          "ts": 1772142500243,
+          "run_id": "c4522c79-225f-46ba-beb8-dc9e41ebae84",
+          "ts": 1772153747358,
           "skipped": true,
           "reason": "no_feeds_configured",
           "feeds_total": 0,
@@ -509,7 +500,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 2664,
+      "duration_ms": 2977,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -524,78 +515,88 @@
           },
           "window": {
             "days": 14,
-            "start_at": 1770932900727,
-            "end_at": 1772142500727
+            "start_at": 1770944147720,
+            "end_at": 1772153747720
           },
           "trend": {
             "days": 14,
-            "start_at": 1770932900727,
-            "end_at": 1772142500727
+            "start_at": 1770944147720,
+            "end_at": 1772153747720
           },
           "totals": {
-            "total_runs": 498,
-            "heuristic_passed_runs": 493,
-            "heuristic_rejected_runs": 5
+            "total_runs": 626,
+            "heuristic_passed_runs": 619,
+            "heuristic_rejected_runs": 7
           },
           "heuristic_reject_rate": {
-            "ratio": 0.01,
-            "percent": 1
+            "ratio": 0.0112,
+            "percent": 1.12
           },
           "latency_ms": {
-            "avg_total_latency_ms": 2685.15,
-            "avg_ai_latency_ms": 2685.15,
+            "avg_total_latency_ms": 2545.06,
+            "avg_ai_latency_ms": 2545.06,
             "stage_sample_limit": 500,
-            "stage_rows_scanned": 498,
+            "stage_rows_scanned": 500,
             "stage_avg_latency_ms": {
               "ai_extract": {
-                "runs_seen": 498,
-                "latency_samples": 498,
+                "runs_seen": 500,
+                "latency_samples": 500,
                 "avg_latency_ms": 0,
                 "status_counts": {
-                  "skipped": 498
+                  "skipped": 500
                 }
               },
               "ai_reason": {
-                "runs_seen": 498,
-                "latency_samples": 498,
-                "avg_latency_ms": 2685.15,
+                "runs_seen": 500,
+                "latency_samples": 500,
+                "avg_latency_ms": 2362.63,
                 "status_counts": {
-                  "ok": 493,
-                  "skipped": 5
+                  "ok": 497,
+                  "skipped": 3
                 }
               },
               "evidence_upsert": {
-                "runs_seen": 498,
-                "latency_samples": 498,
+                "runs_seen": 500,
+                "latency_samples": 500,
                 "avg_latency_ms": 0,
                 "status_counts": {
-                  "skipped": 498
+                  "skipped": 500
                 }
               },
               "heuristic": {
-                "runs_seen": 498,
-                "latency_samples": 498,
+                "runs_seen": 500,
+                "latency_samples": 500,
                 "avg_latency_ms": 0,
                 "status_counts": {
-                  "ok": 493,
-                  "rejected": 5
+                  "ok": 497,
+                  "rejected": 3
                 }
               }
             }
           },
           "token_spend": {
-            "ai_tokens_total_sum": 626875,
-            "ai_tokens_total_avg_per_run": 1258.79,
+            "ai_tokens_total_sum": 756491,
+            "ai_tokens_total_avg_per_run": 1208.45,
             "trend_by_day": [
               {
                 "day": "2026-02-26",
-                "run_count": 498,
-                "heuristic_rejected_runs": 5,
-                "heuristic_reject_rate_percent": 1,
-                "ai_tokens_in": 580037,
-                "ai_tokens_out": 46838,
-                "ai_tokens_total": 626875,
-                "avg_total_latency_ms": 2685.15
+                "run_count": 592,
+                "heuristic_rejected_runs": 7,
+                "heuristic_reject_rate_percent": 1.18,
+                "ai_tokens_in": 665423,
+                "ai_tokens_out": 55725,
+                "ai_tokens_total": 721148,
+                "avg_total_latency_ms": 2588.72
+              },
+              {
+                "day": "2026-02-27",
+                "run_count": 34,
+                "heuristic_rejected_runs": 0,
+                "heuristic_reject_rate_percent": 0,
+                "ai_tokens_in": 32143,
+                "ai_tokens_out": 3200,
+                "ai_tokens_total": 35343,
+                "avg_total_latency_ms": 1784.88
               }
             ]
           },
@@ -603,112 +604,112 @@
             "source_breakdown": [
               {
                 "source": "score-pending",
-                "run_count": 331,
+                "run_count": 418,
                 "heuristic_rejected_runs": 4,
-                "heuristic_reject_rate_percent": 1.21,
-                "avg_final_score": 71.78,
-                "avg_total_latency_ms": 2267.18,
-                "ai_tokens_total": 431627
+                "heuristic_reject_rate_percent": 0.96,
+                "avg_final_score": 72,
+                "avg_total_latency_ms": 2117.91,
+                "ai_tokens_total": 518505
               },
               {
                 "source": "ingest-recover",
-                "run_count": 150,
+                "run_count": 186,
                 "heuristic_rejected_runs": 0,
                 "heuristic_reject_rate_percent": 0,
-                "avg_final_score": 74,
-                "avg_total_latency_ms": 3667.44,
-                "ai_tokens_total": 166257
+                "avg_final_score": 73.98,
+                "avg_total_latency_ms": 3579.47,
+                "ai_tokens_total": 205641
               },
               {
                 "source": "rescore",
-                "run_count": 8,
-                "heuristic_rejected_runs": 0,
-                "heuristic_reject_rate_percent": 0,
-                "avg_final_score": 71.75,
-                "avg_total_latency_ms": 3206.88,
-                "ai_tokens_total": 22506
+                "run_count": 10,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 10,
+                "avg_final_score": 64.8,
+                "avg_total_latency_ms": 2647.7,
+                "ai_tokens_total": 24242
               },
               {
                 "source": "manual-jd",
-                "run_count": 7,
+                "run_count": 9,
                 "heuristic_rejected_runs": 0,
                 "heuristic_reject_rate_percent": 0,
-                "avg_final_score": 73.14,
-                "avg_total_latency_ms": 1439.29,
-                "ai_tokens_total": 5676
+                "avg_final_score": 73.11,
+                "avg_total_latency_ms": 1637.67,
+                "ai_tokens_total": 7294
               },
               {
                 "source": "auto-pilot",
-                "run_count": 2,
-                "heuristic_rejected_runs": 1,
-                "heuristic_reject_rate_percent": 50,
-                "avg_final_score": 36.5,
-                "avg_total_latency_ms": 461.5,
+                "run_count": 3,
+                "heuristic_rejected_runs": 2,
+                "heuristic_reject_rate_percent": 66.67,
+                "avg_final_score": 24.33,
+                "avg_total_latency_ms": 307.67,
                 "ai_tokens_total": 809
               }
             ],
             "profile_breakdown": [
               {
                 "profile_id": "primary-alt",
-                "jobs_count": 11,
-                "avg_final_score": 66.73,
+                "jobs_count": 13,
+                "avg_final_score": 73.46,
                 "applied_jobs": 0
               },
               {
                 "profile_id": "primary",
-                "jobs_count": 30,
-                "avg_final_score": 57.9,
+                "jobs_count": 28,
+                "avg_final_score": 54.14,
                 "applied_jobs": 0
               }
             ],
             "source_profile_breakdown": [
               {
                 "source": "ingest-recover",
-                "profile_id": "primary-alt",
-                "run_count": 96,
+                "profile_id": "primary",
+                "run_count": 60,
                 "avg_final_score": 74,
                 "heuristic_rejected_runs": 0,
                 "heuristic_reject_rate_percent": 0
               },
               {
                 "source": "ingest-recover",
-                "profile_id": "primary",
-                "run_count": 54,
-                "avg_final_score": 74,
+                "profile_id": "primary-alt",
+                "run_count": 126,
+                "avg_final_score": 73.97,
                 "heuristic_rejected_runs": 0,
                 "heuristic_reject_rate_percent": 0
               },
               {
                 "source": "manual-jd",
                 "profile_id": "primary-alt",
-                "run_count": 7,
-                "avg_final_score": 73.14,
+                "run_count": 9,
+                "avg_final_score": 73.11,
                 "heuristic_rejected_runs": 0,
                 "heuristic_reject_rate_percent": 0
               },
               {
                 "source": "score-pending",
                 "profile_id": "primary",
-                "run_count": 175,
-                "avg_final_score": 72.27,
+                "run_count": 223,
+                "avg_final_score": 72.28,
                 "heuristic_rejected_runs": 3,
-                "heuristic_reject_rate_percent": 1.71
-              },
-              {
-                "source": "rescore",
-                "profile_id": "primary-alt",
-                "run_count": 8,
-                "avg_final_score": 71.75,
-                "heuristic_rejected_runs": 0,
-                "heuristic_reject_rate_percent": 0
+                "heuristic_reject_rate_percent": 1.35
               },
               {
                 "source": "score-pending",
                 "profile_id": "primary-alt",
-                "run_count": 156,
-                "avg_final_score": 71.22,
+                "run_count": 195,
+                "avg_final_score": 71.69,
                 "heuristic_rejected_runs": 1,
-                "heuristic_reject_rate_percent": 0.64
+                "heuristic_reject_rate_percent": 0.51
+              },
+              {
+                "source": "rescore",
+                "profile_id": "primary-alt",
+                "run_count": 10,
+                "avg_final_score": 64.8,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 10
               },
               {
                 "source": "auto-pilot",
@@ -717,6 +718,14 @@
                 "avg_final_score": 36.5,
                 "heuristic_rejected_runs": 1,
                 "heuristic_reject_rate_percent": 50
+              },
+              {
+                "source": "auto-pilot",
+                "profile_id": "primary",
+                "run_count": 1,
+                "avg_final_score": 0,
+                "heuristic_rejected_runs": 1,
+                "heuristic_reject_rate_percent": 100
               }
             ],
             "touchpoint_conversion": {
@@ -758,11 +767,11 @@
               "source_filter": null,
               "window_days": 14,
               "events": {
-                "queued": 18,
+                "queued": 21,
                 "extract_ingested": 3,
                 "extract_empty": 1,
-                "extract_failed": 14,
-                "missing_url": 2
+                "extract_failed": 17,
+                "missing_url": 5
               },
               "jobs": {
                 "media_jobs_total": 2,
@@ -773,7 +782,7 @@
                 "applied_jobs": 0
               },
               "conversion": {
-                "queued_to_extract_ingested_percent": 16.67,
+                "queued_to_extract_ingested_percent": 14.29,
                 "extract_ingested_to_scored_percent": 66.67,
                 "media_jobs_scored_percent": 100,
                 "media_jobs_ready_to_apply_percent": 0,
@@ -824,7 +833,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 396,
+      "duration_ms": 193,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -833,7 +842,7 @@
         "data": {
           "id": "primary",
           "name": "Smoke Profile",
-          "updated_at": 1772142503260
+          "updated_at": 1772153750532
         }
       },
       "response_text": null
@@ -877,7 +886,7 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 371,
+      "duration_ms": 193,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -886,7 +895,7 @@
         "data": {
           "id": "primary-alt",
           "name": "Smoke Profile Alt",
-          "updated_at": 1772142503683
+          "updated_at": 1772153750725
         }
       },
       "response_text": null
@@ -894,7 +903,7 @@
     {
       "name": "wizard.profile.preference.set",
       "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/profile-preference",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/profile-preference",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt"
@@ -903,16 +912,16 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 1449,
+      "duration_ms": 1392,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "profile_id": "primary-alt",
-          "updated_at": 1772142504524,
+          "updated_at": 1772153751427,
           "cleared": false,
           "enabled": true,
           "effective_profile_id": "primary-alt",
@@ -924,23 +933,23 @@
     {
       "name": "wizard.profile.preference.get",
       "method": "GET",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/profile-preference",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/profile-preference",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1102,
+      "duration_ms": 1040,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "profile_id": "primary-alt",
-          "updated_at": 1772142504524,
+          "updated_at": 1772153751427,
           "enabled": true,
           "effective_profile_id": "primary-alt",
           "effective_source": "job_preference"
@@ -951,10 +960,10 @@
     {
       "name": "wizard.generate",
       "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/generate-application-pack",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/generate-application-pack",
       "auth": "ui",
       "request_body": {
-        "force": false,
+        "force": true,
         "renderer": "reactive_resume",
         "evidence_first": true,
         "evidence_limit": 8
@@ -963,19 +972,19 @@
         200
       ],
       "http_status": 200,
-      "duration_ms": 4485,
+      "duration_ms": 5578,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-          "draft_id": "848fa81e-e084-4c0c-9895-3f6a52305c5f",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+          "draft_id": "e81f63cb-5d95-447e-b41a-986570e270d8",
           "profile_id": "primary-alt",
           "profile_source": "job_preference",
           "status": "CONTENT_REVIEW_REQUIRED",
-          "ats_score": 88,
+          "ats_score": 70,
           "template_id": "",
           "enabled_blocks_count": 0,
           "selected_keywords_count": 0,
@@ -983,7 +992,8 @@
           "one_pager_strict": false,
           "content_review_required": true,
           "evidence_first": true,
-          "evidence_match_count": 0,
+          "evidence_source_policy": "resume_only",
+          "evidence_match_count": 5,
           "rr_export_contract": {
             "id": "jobops.rr_export.v1",
             "schema_version": 1
@@ -997,22 +1007,22 @@
     {
       "name": "wizard.pack.fetch.before",
       "method": "GET",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/application-pack",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/application-pack",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1368,
+      "duration_ms": 1389,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "id": "848fa81e-e084-4c0c-9895-3f6a52305c5f",
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "id": "e81f63cb-5d95-447e-b41a-986570e270d8",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "profile_id": "primary-alt",
           "profile_lookup_source": "job_preference",
           "requested_profile_id": null,
@@ -1021,10 +1031,10 @@
           "error_text": "",
           "pack_json": {
             "job": {
-              "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-              "job_url": "https://careers.microsoft.com/v2/global/en/home.html",
-              "source_domain": "careers.microsoft.com",
-              "status": "SCORED"
+              "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+              "job_url": "https://www.linkedin.com/jobs/view/4376723427/",
+              "source_domain": "linkedin",
+              "status": "READY_TO_APPLY"
             },
             "target": {
               "id": "TGT-NEW-01",
@@ -1044,24 +1054,84 @@
               "reject": []
             },
             "extracted": {
-              "role_title": "",
-              "company": "Microsoft",
-              "location": "",
-              "seniority": "",
-              "final_score": 74,
+              "role_title": "Business Program Manager - Platform Operations",
+              "company": "Smoke Systems",
+              "location": "Remote",
+              "seniority": "Mid",
+              "final_score": 73,
               "reason_top_matches": ""
             },
             "tailoring": {
-              "summary": "core requirement: Delivering measurable impact using core requirements and data-driven decision making for Role at Microsoft. I deliver measurable impact with clear ownership, cros",
+              "summary": "Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas",
               "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Role expectations at Microsoft. using core capability.",
-                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                "Mapped Program management into weekly execution rhythm and progress reporting by program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform.",
+                "Mapped KPI tracking into weekly execution rhythm and progress reporting by platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration).",
+                "Mapped Stakeholder management into weekly execution rhythm and progress reporting by s at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills).",
+                "Drove Program management planning from scope definition to milestone tracking across product, engineering, and operations teams. (KPI tracking).",
+                "Ran a [T]-week KPI cadence for Cross-functional collaboration and delivered leadership-ready updates across [N stakeholders]. (Stakeholder management).",
+                "Built SQL-backed reporting for SQL skills to surface risk earlier and improve plan reliability by [X%]. (Program management) with [X%] improvement and [N] stakeholder touchpoints."
               ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Role role at Microsoft. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for core requirement. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
-              "must_keywords": [],
-              "nice_keywords": [],
-              "evidence_matches": []
+              "cover_letter": "Dear Hiring Team, I am applying for the Business Program Manager - Platform Operations role at Smoke Systems in Remote. My experience with program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform aligns directly with your need for Program management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "skills": [
+                "Business Program Management",
+                "Roadmap",
+                "Delivery",
+                "KPI",
+                "Stakeholder Management",
+                "Program management",
+                "Cross-functional collaboration",
+                "SQL skills",
+                "KPI tracking",
+                "Process optimization",
+                "Workflow automation",
+                "Business strategy",
+                "Operational planning"
+              ],
+              "must_keywords": [
+                "Program management",
+                "Cross-functional collaboration",
+                "SQL skills",
+                "KPI tracking",
+                "Stakeholder management"
+              ],
+              "nice_keywords": [
+                "Process optimization",
+                "Workflow automation",
+                "Business strategy",
+                "Operational planning"
+              ],
+              "evidence_matches": [
+                {
+                  "requirement_text": "Program management",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "KPI tracking",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Stakeholder management",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Cross-functional collaboration",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_bullets",
+                  "confidence_score": 88
+                },
+                {
+                  "requirement_text": "SQL skills",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_bullets",
+                  "confidence_score": 88
+                }
+              ]
             },
             "controls": {
               "template_id": "balanced",
@@ -1081,18 +1151,18 @@
             "renderer": "reactive_resume"
           },
           "ats_json": {
-            "score": 88,
+            "score": 70,
             "missing_keywords": [],
             "coverage": {
-              "must_total": 0,
-              "must_hit": 0,
-              "nice_total": 0,
+              "must_total": 5,
+              "must_hit": 5,
+              "nice_total": 4,
               "nice_hit": 0
             },
             "notes": "Good keyword coverage",
             "target_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 53,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1125,10 +1195,13 @@
                 {
                   "id": "analytics",
                   "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
-                  "evidence": [],
+                  "evidence": [
+                    "kpi",
+                    "sql"
+                  ],
                   "missing_evidence": [
                     "a/b",
                     "experiment",
@@ -1139,35 +1212,37 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
-                    "requirements",
+                    "cross-functional",
+                    "delivery",
                     "execution"
                   ],
                   "missing_evidence": [
                     "prd",
+                    "requirements",
                     "backlog",
-                    "agile",
-                    "scrum"
+                    "agile"
                   ]
                 },
                 {
                   "id": "leadership",
                   "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "stakeholder",
-                    "alignment"
+                    "collaboration",
+                    "leadership"
                   ],
                   "missing_evidence": [
                     "influence",
+                    "alignment",
                     "communication",
-                    "collaboration",
-                    "leadership"
+                    "mentoring"
                   ]
                 }
               ],
@@ -1192,7 +1267,7 @@
             },
             "pm_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 53,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1225,10 +1300,13 @@
                 {
                   "id": "analytics",
                   "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
-                  "evidence": [],
+                  "evidence": [
+                    "kpi",
+                    "sql"
+                  ],
                   "missing_evidence": [
                     "a/b",
                     "experiment",
@@ -1239,35 +1317,37 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
-                    "requirements",
+                    "cross-functional",
+                    "delivery",
                     "execution"
                   ],
                   "missing_evidence": [
                     "prd",
+                    "requirements",
                     "backlog",
-                    "agile",
-                    "scrum"
+                    "agile"
                   ]
                 },
                 {
                   "id": "leadership",
                   "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "stakeholder",
-                    "alignment"
+                    "collaboration",
+                    "leadership"
                   ],
                   "missing_evidence": [
                     "influence",
+                    "alignment",
                     "communication",
-                    "collaboration",
-                    "leadership"
+                    "mentoring"
                   ]
                 }
               ],
@@ -1297,7 +1377,7 @@
               "contract_id": "jobops.rr_export.v1",
               "schema_version": 1,
               "version": 1,
-              "exported_at": 1772142509462,
+              "exported_at": 1772153757518,
               "template_id": "balanced",
               "renderer": "reactive_resume",
               "contract_valid": true,
@@ -1308,7 +1388,7 @@
               "email": "smoke.user.alt@example.com",
               "phone": "",
               "location": "Remote",
-              "summary": "core requirement: Delivering measurable impact using core requirements and data-driven decision making for Role at Microsoft. I deliver measurable impact with clear ownership, cros"
+              "summary": "Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas"
             },
             "sections": {
               "experience": [
@@ -1331,21 +1411,30 @@
               ],
               "highlights": [
                 {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Role expectations at Microsoft. using core capability."
+                  "text": "Mapped Program management into weekly execution rhythm and progress reporting by program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform."
                 },
                 {
-                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
+                  "text": "Mapped KPI tracking into weekly execution rhythm and progress reporting by platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration)."
                 },
                 {
-                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                  "text": "Mapped Stakeholder management into weekly execution rhythm and progress reporting by s at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills)."
+                },
+                {
+                  "text": "Drove Program management planning from scope definition to milestone tracking across product, engineering, and operations teams. (KPI tracking)."
+                },
+                {
+                  "text": "Ran a [T]-week KPI cadence for Cross-functional collaboration and delivered leadership-ready updates across [N stakeholders]. (Stakeholder management)."
+                },
+                {
+                  "text": "Built SQL-backed reporting for SQL skills to surface risk earlier and improve plan reliability by [X%]. (Program management) with [X%] improvement and [N] stakeholder touchpoints."
                 }
               ]
             },
             "job_context": {
-              "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-              "role_title": "",
-              "company": "Microsoft",
-              "job_url": "https://careers.microsoft.com/v2/global/en/home.html"
+              "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+              "role_title": "Business Program Manager - Platform Operations",
+              "company": "Smoke Systems",
+              "job_url": "https://www.linkedin.com/jobs/view/4376723427/"
             }
           },
           "rr_export_contract": {
@@ -1370,22 +1459,22 @@
               {
                 "id": "role_title",
                 "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
+                "ok": true,
+                "detail": "role: Business Program Manager - Platform Operations",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Smoke Systems",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=4320, jd_confidence=medium",
+                "detail": "jd_len=807, jd_confidence=-",
                 "enforced": false
               },
               {
@@ -1399,21 +1488,21 @@
                 "id": "bullets_count",
                 "label": "Tailored bullets count",
                 "ok": true,
-                "detail": "bullets=3/3",
+                "detail": "bullets=6/3",
                 "enforced": false
               },
               {
                 "id": "ats_score",
                 "label": "ATS score threshold",
                 "ok": true,
-                "detail": "ats_score=88 / 60",
+                "detail": "ats_score=70 / 60",
                 "enforced": false
               },
               {
                 "id": "must_coverage",
                 "label": "Must-keyword coverage",
                 "ok": true,
-                "detail": "must_coverage=100% (0/0)",
+                "detail": "must_coverage=100% (5/5)",
                 "enforced": false
               },
               {
@@ -1425,15 +1514,7 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
-                "enforced": false
-              }
-            ],
+            "warning_checks": [],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -1443,24 +1524,39 @@
             "one_page_mode": "soft",
             "one_page_estimate": {
               "summary_chars": 180,
-              "bullets_count": 3,
+              "bullets_count": 6,
               "experience_items": 1,
               "skills_items": 5,
-              "estimated_density": "low"
+              "estimated_density": "high"
             },
             "hard_gate_applied": false
           },
           "one_page_mode": "soft",
           "content_review_required": true,
+          "quality_flags": [
+            "PROFILE_SMOKE_LIKE"
+          ],
+          "quality_score": 85,
+          "quality_blocking_flags": [],
+          "quality_blocked": false,
+          "quality_gap_map": [
+            {
+              "code": "PROFILE_SMOKE_LIKE",
+              "severity": "major",
+              "field": "profile.basics",
+              "before": "profile contains smoke/test placeholder tokens; profile email uses @example.com placeholder",
+              "after": "Replace smoke/demo placeholder profile data with real candidate identity and achievements."
+            }
+          ],
           "latest_version": {
-            "id": "6acb7deb-cd54-44c1-8750-4c26edb4a0c0",
-            "version_no": 1,
-            "source_action": "generate",
-            "created_at": 1772142510162
+            "id": "04bb4ed1-9bc1-4483-8149-c196ab7c77a6",
+            "version_no": 18,
+            "source_action": "regenerate",
+            "created_at": 1772153758218
           },
           "version_history_enabled": true,
           "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772142509462
+          "updated_at": 1772153757518
         }
       },
       "response_text": null
@@ -1468,34 +1564,37 @@
     {
       "name": "wizard.review",
       "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/application-pack/review",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/application-pack/review",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt",
-        "summary": "core requirement: Delivering measurable impact using core requirements and data-driven decision making for Role at Microsoft. I deliver measurable impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "summary": "Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
         "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Role expectations at Microsoft. using core capability.",
-          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+          "Mapped Program management into weekly execution rhythm and progress reporting by program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform.",
+          "Mapped KPI tracking into weekly execution rhythm and progress reporting by platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration).",
+          "Mapped Stakeholder management into weekly execution rhythm and progress reporting by s at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills).",
+          "Drove Program management planning from scope definition to milestone tracking across product, engineering, and operations teams. (KPI tracking).",
+          "Ran a [T]-week KPI cadence for Cross-functional collaboration and delivered leadership-ready updates across [N stakeholders]. (Stakeholder management).",
+          "Built SQL-backed reporting for SQL skills to surface risk earlier and improve plan reliability by [X%]. (Program management) with [X%] improvement and [N] stakeholder touchpoints."
         ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Role role at Microsoft. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for core requirement. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+        "cover_letter": "Dear Hiring Team, I am applying for the Business Program Manager - Platform Operations role at Smoke Systems in Remote. My experience with program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform aligns directly with your need for Program management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
       },
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1368,
+      "duration_ms": 1262,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "profile_id": "primary-alt",
-          "draft_id": "848fa81e-e084-4c0c-9895-3f6a52305c5f",
+          "draft_id": "e81f63cb-5d95-447e-b41a-986570e270d8",
           "status": "READY_FOR_EXPORT",
-          "ats_score": 88,
+          "ats_score": 70,
           "pdf_readiness": {
             "gate_version": "pdf_readiness_v2",
             "ready": true,
@@ -1504,22 +1603,22 @@
               {
                 "id": "role_title",
                 "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
+                "ok": true,
+                "detail": "role: Business Program Manager - Platform Operations",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Smoke Systems",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=4320, jd_confidence=medium",
+                "detail": "jd_len=807, jd_confidence=-",
                 "enforced": false
               },
               {
@@ -1533,21 +1632,21 @@
                 "id": "bullets_count",
                 "label": "Tailored bullets count",
                 "ok": true,
-                "detail": "bullets=3/3",
+                "detail": "bullets=4/3",
                 "enforced": false
               },
               {
                 "id": "ats_score",
                 "label": "ATS score threshold",
                 "ok": true,
-                "detail": "ats_score=88 / 60",
+                "detail": "ats_score=70 / 60",
                 "enforced": false
               },
               {
                 "id": "must_coverage",
                 "label": "Must-keyword coverage",
                 "ok": true,
-                "detail": "must_coverage=100% (0/0)",
+                "detail": "must_coverage=100% (5/5)",
                 "enforced": false
               },
               {
@@ -1559,15 +1658,7 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
-                "enforced": false
-              }
-            ],
+            "warning_checks": [],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -1577,15 +1668,15 @@
             "one_page_mode": "soft",
             "one_page_estimate": {
               "summary_chars": 283,
-              "bullets_count": 3,
+              "bullets_count": 4,
               "experience_items": 1,
               "skills_items": 5,
               "estimated_density": "high"
             },
             "hard_gate_applied": false
           },
-          "version_id": "0348288c-282a-4253-835d-c81776124b1b",
-          "version_no": 2
+          "version_id": "d545df71-e960-4160-b900-9168bd2e8ba0",
+          "version_no": 19
         }
       },
       "response_text": null
@@ -1593,34 +1684,37 @@
     {
       "name": "wizard.approve",
       "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/approve-pack",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/approve-pack",
       "auth": "ui",
       "request_body": {
         "profile_id": "primary-alt",
-        "summary": "core requirement: Delivering measurable impact using core requirements and data-driven decision making for Role at Microsoft. I deliver measurable impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+        "summary": "Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
         "bullets": [
-          "Delivered measurable impact using core requirements while aligning outcomes to Role expectations at Microsoft. using core capability.",
-          "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-          "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+          "Mapped Program management into weekly execution rhythm and progress reporting by program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform.",
+          "Mapped KPI tracking into weekly execution rhythm and progress reporting by platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration).",
+          "Mapped Stakeholder management into weekly execution rhythm and progress reporting by s at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills).",
+          "Drove Program management planning from scope definition to milestone tracking across product, engineering, and operations teams. (KPI tracking).",
+          "Ran a [T]-week KPI cadence for Cross-functional collaboration and delivered leadership-ready updates across [N stakeholders]. (Stakeholder management).",
+          "Built SQL-backed reporting for SQL skills to surface risk earlier and improve plan reliability by [X%]. (Program management) with [X%] improvement and [N] stakeholder touchpoints."
         ],
-        "cover_letter": "Dear Hiring Team, I am applying for the Role role at Microsoft. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for core requirement. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
+        "cover_letter": "Dear Hiring Team, I am applying for the Business Program Manager - Platform Operations role at Smoke Systems in Remote. My experience with program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform aligns directly with your need for Program management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]"
       },
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1720,
+      "duration_ms": 1609,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "profile_id": "primary-alt",
-          "draft_id": "848fa81e-e084-4c0c-9895-3f6a52305c5f",
+          "draft_id": "e81f63cb-5d95-447e-b41a-986570e270d8",
           "status": "READY_TO_APPLY",
-          "ats_score": 88,
+          "ats_score": 70,
           "pdf_readiness": {
             "gate_version": "pdf_readiness_v2",
             "ready": true,
@@ -1629,22 +1723,22 @@
               {
                 "id": "role_title",
                 "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
+                "ok": true,
+                "detail": "role: Business Program Manager - Platform Operations",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Smoke Systems",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=4320, jd_confidence=medium",
+                "detail": "jd_len=807, jd_confidence=-",
                 "enforced": false
               },
               {
@@ -1658,21 +1752,21 @@
                 "id": "bullets_count",
                 "label": "Tailored bullets count",
                 "ok": true,
-                "detail": "bullets=3/3",
+                "detail": "bullets=4/3",
                 "enforced": false
               },
               {
                 "id": "ats_score",
                 "label": "ATS score threshold",
                 "ok": true,
-                "detail": "ats_score=88 / 60",
+                "detail": "ats_score=70 / 60",
                 "enforced": false
               },
               {
                 "id": "must_coverage",
                 "label": "Must-keyword coverage",
                 "ok": true,
-                "detail": "must_coverage=100% (0/0)",
+                "detail": "must_coverage=100% (5/5)",
                 "enforced": false
               },
               {
@@ -1684,15 +1778,7 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
-                "enforced": false
-              }
-            ],
+            "warning_checks": [],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -1702,15 +1788,15 @@
             "one_page_mode": "soft",
             "one_page_estimate": {
               "summary_chars": 283,
-              "bullets_count": 3,
+              "bullets_count": 4,
               "experience_items": 1,
               "skills_items": 5,
               "estimated_density": "high"
             },
             "hard_gate_applied": false
           },
-          "version_id": "28b1cf1d-8d51-4f33-aa57-c3123856d5cd",
-          "version_no": 3
+          "version_id": "5758846e-13af-448f-bfda-cbec513ef946",
+          "version_no": 20
         }
       },
       "response_text": null
@@ -1718,22 +1804,22 @@
     {
       "name": "wizard.pack.fetch.after",
       "method": "GET",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/application-pack",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/application-pack",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 1327,
+      "duration_ms": 1382,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "id": "848fa81e-e084-4c0c-9895-3f6a52305c5f",
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "id": "e81f63cb-5d95-447e-b41a-986570e270d8",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "profile_id": "primary-alt",
           "profile_lookup_source": "job_preference",
           "requested_profile_id": null,
@@ -1742,10 +1828,10 @@
           "error_text": "",
           "pack_json": {
             "job": {
-              "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-              "job_url": "https://careers.microsoft.com/v2/global/en/home.html",
-              "source_domain": "careers.microsoft.com",
-              "status": "SCORED"
+              "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+              "job_url": "https://www.linkedin.com/jobs/view/4376723427/",
+              "source_domain": "linkedin",
+              "status": "READY_TO_APPLY"
             },
             "target": {
               "id": "TGT-NEW-01",
@@ -1765,24 +1851,82 @@
               "reject": []
             },
             "extracted": {
-              "role_title": "",
-              "company": "Microsoft",
-              "location": "",
-              "seniority": "",
-              "final_score": 74,
+              "role_title": "Business Program Manager - Platform Operations",
+              "company": "Smoke Systems",
+              "location": "Remote",
+              "seniority": "Mid",
+              "final_score": 73,
               "reason_top_matches": ""
             },
             "tailoring": {
-              "summary": "core requirement: Delivering measurable impact using core requirements and data-driven decision making for Role at Microsoft. I deliver measurable impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+              "summary": "Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
               "bullets": [
-                "Delivered measurable impact using core requirements while aligning outcomes to Role expectations at Microsoft. using core capability.",
-                "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability.",
-                "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                "Mapped Program management into weekly execution rhythm and progress reporting by program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform.",
+                "Mapped KPI tracking into weekly execution rhythm and progress reporting by platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration).",
+                "Mapped Stakeholder management into weekly execution rhythm and progress reporting by s at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills).",
+                "Drove Program management planning from scope definition to milestone tracking across product, engineering, and operations teams. (KPI tracking)."
               ],
-              "cover_letter": "Dear Hiring Team, I am applying for the Role role at Microsoft. My experience with delivering measurable outcomes across cross-functional initiatives aligns directly with your need for core requirement. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
-              "must_keywords": [],
-              "nice_keywords": [],
-              "evidence_matches": []
+              "cover_letter": "Dear Hiring Team, I am applying for the Business Program Manager - Platform Operations role at Smoke Systems in Remote. My experience with program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform aligns directly with your need for Program management. I bring structured execution, clear stakeholder communication, and a consistent focus on measurable impact. Regards, [Your Name]",
+              "skills": [
+                "Business Program Management",
+                "Roadmap",
+                "Delivery",
+                "KPI",
+                "Stakeholder Management",
+                "Program management",
+                "Cross-functional collaboration",
+                "SQL skills",
+                "KPI tracking",
+                "Process optimization",
+                "Workflow automation",
+                "Business strategy",
+                "Operational planning"
+              ],
+              "must_keywords": [
+                "Program management",
+                "Cross-functional collaboration",
+                "SQL skills",
+                "KPI tracking",
+                "Stakeholder management"
+              ],
+              "nice_keywords": [
+                "Process optimization",
+                "Workflow automation",
+                "Business strategy",
+                "Operational planning"
+              ],
+              "evidence_matches": [
+                {
+                  "requirement_text": "Program management",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "KPI tracking",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Stakeholder management",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_summary",
+                  "confidence_score": 95
+                },
+                {
+                  "requirement_text": "Cross-functional collaboration",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_bullets",
+                  "confidence_score": 88
+                },
+                {
+                  "requirement_text": "SQL skills",
+                  "requirement_type": "must",
+                  "evidence_source": "resume_bullets",
+                  "confidence_score": 88
+                }
+              ]
             },
             "controls": {
               "template_id": "balanced",
@@ -1798,23 +1942,23 @@
               "one_page_mode": "soft",
               "one_pager_strict": false,
               "content_review_required": false,
-              "approved_at": 1772142513937
+              "approved_at": 1772153761752
             },
             "renderer": "reactive_resume"
           },
           "ats_json": {
-            "score": 88,
+            "score": 70,
             "missing_keywords": [],
             "coverage": {
-              "must_total": 0,
-              "must_hit": 0,
-              "nice_total": 0,
+              "must_total": 5,
+              "must_hit": 5,
+              "nice_total": 4,
               "nice_hit": 0
             },
             "notes": "Good keyword coverage",
             "target_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 53,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1847,10 +1991,13 @@
                 {
                   "id": "analytics",
                   "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
-                  "evidence": [],
+                  "evidence": [
+                    "kpi",
+                    "sql"
+                  ],
                   "missing_evidence": [
                     "a/b",
                     "experiment",
@@ -1861,35 +2008,37 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
-                    "requirements",
+                    "cross-functional",
+                    "delivery",
                     "execution"
                   ],
                   "missing_evidence": [
                     "prd",
+                    "requirements",
                     "backlog",
-                    "agile",
-                    "scrum"
+                    "agile"
                   ]
                 },
                 {
                   "id": "leadership",
                   "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "stakeholder",
-                    "alignment"
+                    "collaboration",
+                    "leadership"
                   ],
                   "missing_evidence": [
                     "influence",
+                    "alignment",
                     "communication",
-                    "collaboration",
-                    "leadership"
+                    "mentoring"
                   ]
                 }
               ],
@@ -1914,7 +2063,7 @@
             },
             "pm_rubric": {
               "applicable": true,
-              "score": 27,
+              "score": 53,
               "dimensions": [
                 {
                   "id": "strategy",
@@ -1947,10 +2096,13 @@
                 {
                   "id": "analytics",
                   "label": "Analytics & Experimentation",
-                  "score": 0,
-                  "hit_count": 0,
+                  "score": 67,
+                  "hit_count": 2,
                   "target_hits": 3,
-                  "evidence": [],
+                  "evidence": [
+                    "kpi",
+                    "sql"
+                  ],
                   "missing_evidence": [
                     "a/b",
                     "experiment",
@@ -1961,35 +2113,37 @@
                 {
                   "id": "execution",
                   "label": "Delivery & Execution",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
-                    "requirements",
+                    "cross-functional",
+                    "delivery",
                     "execution"
                   ],
                   "missing_evidence": [
                     "prd",
+                    "requirements",
                     "backlog",
-                    "agile",
-                    "scrum"
+                    "agile"
                   ]
                 },
                 {
                   "id": "leadership",
                   "label": "Leadership & Influence",
-                  "score": 67,
-                  "hit_count": 2,
+                  "score": 100,
+                  "hit_count": 3,
                   "target_hits": 3,
                   "evidence": [
                     "stakeholder",
-                    "alignment"
+                    "collaboration",
+                    "leadership"
                   ],
                   "missing_evidence": [
                     "influence",
+                    "alignment",
                     "communication",
-                    "collaboration",
-                    "leadership"
+                    "mentoring"
                   ]
                 }
               ],
@@ -2019,7 +2173,7 @@
               "contract_id": "jobops.rr_export.v1",
               "schema_version": 1,
               "version": 1,
-              "exported_at": 1772142509462,
+              "exported_at": 1772153757518,
               "template_id": "balanced",
               "renderer": "reactive_resume",
               "contract_valid": true,
@@ -2030,7 +2184,7 @@
               "email": "smoke.user.alt@example.com",
               "phone": "",
               "location": "Remote",
-              "summary": "core requirement: Delivering measurable impact using core requirements and data-driven decision making for Role at Microsoft. I deliver measurable impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
+              "summary": "Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management."
             },
             "sections": {
               "experience": [
@@ -2053,21 +2207,24 @@
               ],
               "highlights": [
                 {
-                  "text": "Delivered measurable impact using core requirements while aligning outcomes to Role expectations at Microsoft. using core capability."
+                  "text": "Mapped Program management into weekly execution rhythm and progress reporting by program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform."
                 },
                 {
-                  "text": "Delivered measurable impact using data-driven decision making and quantified business outcomes. using core capability."
+                  "text": "Mapped KPI tracking into weekly execution rhythm and progress reporting by platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration)."
                 },
                 {
-                  "text": "Delivered measurable impact using core capability through structured execution and stakeholder alignment."
+                  "text": "Mapped Stakeholder management into weekly execution rhythm and progress reporting by s at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills)."
+                },
+                {
+                  "text": "Drove Program management planning from scope definition to milestone tracking across product, engineering, and operations teams. (KPI tracking)."
                 }
               ]
             },
             "job_context": {
-              "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-              "role_title": "",
-              "company": "Microsoft",
-              "job_url": "https://careers.microsoft.com/v2/global/en/home.html"
+              "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
+              "role_title": "Business Program Manager - Platform Operations",
+              "company": "Smoke Systems",
+              "job_url": "https://www.linkedin.com/jobs/view/4376723427/"
             }
           },
           "rr_export_contract": {
@@ -2092,22 +2249,22 @@
               {
                 "id": "role_title",
                 "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
+                "ok": true,
+                "detail": "role: Business Program Manager - Platform Operations",
                 "enforced": false
               },
               {
                 "id": "company",
                 "label": "Company present",
                 "ok": true,
-                "detail": "company: Microsoft",
+                "detail": "company: Smoke Systems",
                 "enforced": false
               },
               {
                 "id": "jd_quality",
                 "label": "JD quality usable",
                 "ok": true,
-                "detail": "jd_len=4320, jd_confidence=medium",
+                "detail": "jd_len=807, jd_confidence=-",
                 "enforced": false
               },
               {
@@ -2121,21 +2278,21 @@
                 "id": "bullets_count",
                 "label": "Tailored bullets count",
                 "ok": true,
-                "detail": "bullets=3/3",
+                "detail": "bullets=4/3",
                 "enforced": false
               },
               {
                 "id": "ats_score",
                 "label": "ATS score threshold",
                 "ok": true,
-                "detail": "ats_score=88 / 60",
+                "detail": "ats_score=70 / 60",
                 "enforced": false
               },
               {
                 "id": "must_coverage",
                 "label": "Must-keyword coverage",
                 "ok": true,
-                "detail": "must_coverage=100% (0/0)",
+                "detail": "must_coverage=100% (5/5)",
                 "enforced": false
               },
               {
@@ -2147,15 +2304,7 @@
               }
             ],
             "failed_checks": [],
-            "warning_checks": [
-              {
-                "id": "role_title",
-                "label": "Role title present",
-                "ok": false,
-                "detail": "Missing role title",
-                "enforced": false
-              }
-            ],
+            "warning_checks": [],
             "thresholds": {
               "min_summary_chars": 80,
               "min_bullets": 3,
@@ -2165,7 +2314,7 @@
             "one_page_mode": "soft",
             "one_page_estimate": {
               "summary_chars": 283,
-              "bullets_count": 3,
+              "bullets_count": 4,
               "experience_items": 1,
               "skills_items": 5,
               "estimated_density": "high"
@@ -2174,15 +2323,30 @@
           },
           "one_page_mode": "soft",
           "content_review_required": false,
+          "quality_flags": [
+            "PROFILE_SMOKE_LIKE"
+          ],
+          "quality_score": 85,
+          "quality_blocking_flags": [],
+          "quality_blocked": false,
+          "quality_gap_map": [
+            {
+              "code": "PROFILE_SMOKE_LIKE",
+              "severity": "major",
+              "field": "profile.basics",
+              "before": "profile contains smoke/test placeholder tokens; profile email uses @example.com placeholder",
+              "after": "Replace smoke/demo placeholder profile data with real candidate identity and achievements."
+            }
+          ],
           "latest_version": {
-            "id": "28b1cf1d-8d51-4f33-aa57-c3123856d5cd",
-            "version_no": 3,
+            "id": "5758846e-13af-448f-bfda-cbec513ef946",
+            "version_no": 20,
             "source_action": "approve",
-            "created_at": 1772142514109
+            "created_at": 1772153761925
           },
           "version_history_enabled": true,
           "rr_base_url": "https://rxresu.me",
-          "updated_at": 1772142514109
+          "updated_at": 1772153761925
         }
       },
       "response_text": null
@@ -2190,117 +2354,22 @@
     {
       "name": "wizard.evidence.rebuild",
       "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/evidence/rebuild",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/evidence/rebuild",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200,
         400
       ],
-      "http_status": 400,
-      "duration_ms": 447,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": false,
-        "error": "No extracted requirements available. Rescore first."
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.rescore.for.evidence",
-      "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/rescore",
-      "auth": "ui",
-      "request_body": {},
-      "expected_status": [
-        200
-      ],
       "http_status": 200,
-      "duration_ms": 3590,
+      "duration_ms": 890,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
       "response_json": {
         "ok": true,
         "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-          "final_score": 74,
-          "status": "SCORED",
-          "primary_target_id": "TGT-NEW-01",
-          "potential_contacts": []
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.evidence.rebuild.after_rescore",
-      "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/evidence/rebuild",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200,
-        400
-      ],
-      "http_status": 400,
-      "duration_ms": 468,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": false,
-        "error": "No extracted requirements available. Rescore first."
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.manual_jd.seed",
-      "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/manual-jd",
-      "auth": "ui",
-      "request_body": {
-        "jd_text_clean": "\nBusiness Program Manager - Platform Operations\nCompany: Smoke Systems\nLocation: Remote\n\nWe are hiring a Business Program Manager to lead cross-functional delivery, KPI tracking, and stakeholder communication across product, operations, and engineering teams.\n\nMust have:\n- Program management experience owning delivery plans and roadmap milestones.\n- Cross-functional collaboration with product, engineering, design, and operations.\n- Strong SQL skills for reporting and analytics.\n- KPI tracking and executive-ready status communication.\n- Stakeholder management across multiple workstreams.\n\nNice to have:\n- Process optimization and workflow automation.\n- Experience with business strategy and operational planning.\n\nThe role requires clear written communication, execution ownership, and measurable outcomes.\n"
-      },
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 6248,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
-          "status": "SCORED",
-          "final_score": 73,
-          "primary_target_id": "TGT-NEW-01",
-          "potential_contacts": []
-        }
-      },
-      "response_text": null
-    },
-    {
-      "name": "wizard.evidence.rebuild.after_manual_jd",
-      "method": "POST",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/evidence/rebuild",
-      "auth": "ui",
-      "request_body": null,
-      "expected_status": [
-        200
-      ],
-      "http_status": 200,
-      "duration_ms": 1032,
-      "ok": true,
-      "error": null,
-      "response_content_type": "application/json",
-      "response_json": {
-        "ok": true,
-        "data": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "rows_written": 9,
           "matched_count": 9,
           "unmatched_count": 0,
@@ -2312,14 +2381,14 @@
     {
       "name": "wizard.evidence.fetch",
       "method": "GET",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/evidence?limit=60",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/evidence?limit=60",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 460,
+      "duration_ms": 361,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -2327,73 +2396,73 @@
         "ok": true,
         "data": [
           {
-            "id": "c5c7fa36-0a0f-41a5-962b-4f300bc5c4e9",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "1452d929-7426-43e5-8d34-6f6a9c9a56ca",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "Program management",
             "requirement_type": "must",
-            "evidence_text": "...on making for Role at Microsoft. I deliver measurable impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas Focus areas: program management, cross-",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "5453b10a-ac97-4fb8-9131-615fd34d424f",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "e914ba0e-ac8b-49ea-8b21-7b5165bc5ccd",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "KPI tracking",
             "requirement_type": "must",
-            "evidence_text": "...able impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...ystems based in Remote. I deliver meas Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "8bb586d0-78a2-431a-bbcd-bbfb209da202",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "24ac5b2f-d460-4e91-bd58-f073957ead3b",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "Stakeholder management",
             "requirement_type": "must",
-            "evidence_text": "...ear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
+            "evidence_text": "...ote. I deliver meas Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.",
             "evidence_source": "resume_summary",
             "confidence_score": 95,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "4b151e5e-02ab-4546-b5b7-a8df9a46079a",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "b78c7ad6-6fa3-427a-8000-1a08873f430d",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "Cross-functional collaboration",
             "requirement_type": "must",
-            "evidence_text": "...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an",
-            "evidence_source": "jd_text",
-            "confidence_score": 70,
+            "evidence_text": "...as: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration).",
+            "evidence_source": "resume_bullets",
+            "confidence_score": 88,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "75a15202-f13b-4770-b87a-f58f36730996",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "3e294c72-de4f-49c4-b4a8-49116fabe0ff",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "SQL skills",
             "requirement_type": "must",
-            "evidence_text": "...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m",
-            "evidence_source": "jd_text",
-            "confidence_score": 70,
+            "evidence_text": "...Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills).",
+            "evidence_source": "resume_bullets",
+            "confidence_score": 88,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "8c3a460b-db44-49a5-a614-10d44bda7e8d",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "8c552e39-5c6e-4b69-b774-4e62e413cf05",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "Process optimization",
             "requirement_type": "nice",
             "evidence_text": "...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role ",
@@ -2401,12 +2470,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "911c30cc-2666-4276-8c37-41de780ce36d",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "07b76f3b-3112-4a90-8260-242526081203",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "Workflow automation",
             "requirement_type": "nice",
             "evidence_text": "...ion. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written co",
@@ -2414,12 +2483,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "f8ac2666-0c21-4944-aa95-244aa9aa7e0b",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "6985b1ad-8ed2-4169-b4a1-69e2968eb8dd",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "Business strategy",
             "requirement_type": "nice",
             "evidence_text": "...ultiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and ",
@@ -2427,12 +2496,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           },
           {
-            "id": "fc8dd699-55a6-4a4a-b538-912471266a60",
-            "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+            "id": "4ab0b7dc-ff68-4d4d-8c2b-924e9986063b",
+            "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
             "requirement_text": "Operational planning",
             "requirement_type": "nice",
             "evidence_text": "...ce to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role requires clear written communication, execution ownership, and measurable outcomes.",
@@ -2440,12 +2509,12 @@
             "confidence_score": 70,
             "matched": true,
             "notes": "",
-            "created_at": 1772142521494,
-            "updated_at": 1772142528005
+            "created_at": 1772144556582,
+            "updated_at": 1772153764908
           }
         ],
         "meta": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "count": 9,
           "matched_count": 9,
           "unmatched_count": 0
@@ -2456,31 +2525,31 @@
     {
       "name": "wizard.resume.html",
       "method": "GET",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/resume/html?profile_id=primary-alt&evidence_limit=12",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/resume/html?profile_id=primary-alt&evidence_limit=12",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 772,
+      "duration_ms": 876,
       "ok": true,
       "error": null,
       "response_content_type": "text/html; charset=utf-8",
       "response_json": null,
-      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Alternate profile for per-job preference verification.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Smoke Systems (Business Program Manager - Platform Operations)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div class=\"impact-head\"><strong>Program management</strong><span class=\"impact-score\">95%</span></div><div>...on making for Role at Microsoft. I deliver measurable impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>KPI tracking</strong><span class=\"impact-score\">95%</span></div><div>...able impact with clear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Stakeholder management</strong><span class=\"impact-score\">95%</span></div><div>...ear ownership, cros Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Cross-functional collaboration</strong><span class=\"impact-score\">70%</span></div><div>...ms. Must have: - Program management experience owning delivery plans and roadmap milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and an</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>SQL skills</strong><span class=\"impact-score\">70%</span></div><div>...milestones. - Cross-functional collaboration with product, engineering, design, and operations. - Strong SQL skills for reporting and analytics. - KPI tracking and executive-ready status communication. - Stakeholder m</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Process optimization</strong><span class=\"impact-score\">70%</span></div><div>...e-ready status communication. - Stakeholder management across multiple workstreams. Nice to have: - Process optimization and workflow automation. - Experience with business strategy and operational planning. The role</div></li><li class=\"impact-item\"><div class=\"impact-head\"><strong>Workflow automation</strong><span class=\"impact-score\">70%</span></div><div>...ion. - Stakeholder management across multiple wo..."
+      "response_text": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />\n  <title>Smoke User Alt - Resume</title>\n  <style>\n    @page { size: auto; margin: 0.5in; }\n    * { box-sizing: border-box; }\n    body {\n      font-family: \"Helvetica Neue\", Helvetica, Arial, sans-serif;\n      line-height: 1.4;\n      color: #1f2937;\n      margin: 0;\n      padding: 0;\n      background: #ffffff;\n      print-color-adjust: exact;\n      -webkit-print-color-adjust: exact;\n    }\n    .page {\n      max-width: 8.5in;\n      margin: 0 auto;\n      padding: 0.35in 0.45in;\n    }\n    .header {\n      text-align: center;\n      border-bottom: 2px solid #111827;\n      padding-bottom: 10px;\n      margin-bottom: 14px;\n    }\n    .name {\n      font-size: 24pt;\n      letter-spacing: 0.03em;\n      font-weight: 700;\n      margin: 0;\n      text-transform: uppercase;\n      color: #111827;\n    }\n    .contact {\n      margin-top: 6px;\n      font-size: 9pt;\n      color: #4b5563;\n      word-break: break-word;\n    }\n    .section-title {\n      margin-top: 14px;\n      margin-bottom: 8px;\n      font-size: 9pt;\n      letter-spacing: 0.08em;\n      text-transform: uppercase;\n      font-weight: 700;\n      color: #1d4ed8;\n      border-bottom: 1px solid #d1d5db;\n      padding-bottom: 3px;\n    }\n    .summary {\n      margin: 0;\n      font-size: 10.5pt;\n      color: #111827;\n    }\n    .impact-list {\n      margin: 0;\n      padding: 10px 12px;\n      list-style: none;\n      background: #f8fafc;\n      border: 1px solid #e5e7eb;\n      border-radius: 6px;\n      box-decoration-break: clone;\n      -webkit-box-decoration-break: clone;\n      display: grid;\n      grid-template-columns: 1fr;\n      gap: 8px;\n    }\n    .impact-item {\n      font-size: 10pt;\n      color: #111827;\n    }\n    .impact-head {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 8px;\n      margin-bottom: 2px;\n    }\n    .impact-score {\n      font-size: 8.5pt;\n      color: #2563eb;\n      font-weight: 700;\n      white-space: nowrap;\n    }\n    .exp-item {\n      margin-bottom: 10px;\n      page-break-inside: avoid;\n    }\n    .exp-header {\n      display: flex;\n      justify-content: space-between;\n      align-items: baseline;\n      gap: 10px;\n      font-size: 10.5pt;\n      font-weight: 700;\n      color: #111827;\n    }\n    .exp-role {\n      font-size: 9.75pt;\n      font-style: italic;\n      color: #374151;\n      margin-top: 1px;\n    }\n    .bullets {\n      margin: 6px 0 0 18px;\n      padding: 0;\n      font-size: 9.5pt;\n    }\n    .bullet {\n      margin: 4px 0;\n    }\n    .bullet-hit {\n      color: #0f3b9f;\n      font-weight: 600;\n    }\n    .skills {\n      display: flex;\n      flex-wrap: wrap;\n      gap: 6px;\n      margin-top: 6px;\n    }\n    .skill-chip {\n      border: 1px solid #d1d5db;\n      border-radius: 999px;\n      padding: 2px 8px;\n      font-size: 8.5pt;\n      color: #374151;\n      background: #f9fafb;\n    }\n    .meta-note {\n      margin-top: 8px;\n      font-size: 8pt;\n      color: #6b7280;\n    }\n    @media print {\n      body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .impact-list { print-color-adjust: exact; -webkit-print-color-adjust: exact; }\n      .page { padding: 0; max-width: none; }\n    }\n  </style>\n</head>\n<body>\n  <main class=\"page\">\n    <header class=\"header\">\n      <h1 class=\"name\">Smoke User Alt</h1>\n      <div class=\"contact\">smoke.user.alt@example.com | Remote</div>\n    </header>\n\n    <section>\n      <div class=\"section-title\">Summary</div>\n      <p class=\"summary\">Program management: Alternate profile for per-job preference verification. Targeting Business Program Manager - Platform Operations at Smoke Systems based in Remote. I deliver meas Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management.</p>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Targeted Impact for Smoke Systems (Business Program Manager - Platform Operations)</div>\n      <ul class=\"impact-list\">\n        <li class=\"impact-item\"><div>Mapped Program management into weekly execution rhythm and progress reporting by program management professional delivering measurable impact and aligning outcomes to expectations at IBM, wi. Targeting Business Program Manager - Platform.</div></li><li class=\"impact-item\"><div>Mapped KPI tracking into weekly execution rhythm and progress reporting by platform Operations at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (Cross-functional collaboration).</div></li><li class=\"impact-item\"><div>Mapped Stakeholder management into weekly execution rhythm and progress reporting by s at Smoke Systems. Focus areas: program management, cross-functional delivery, SQL, KPI tracking, stakeholder management. (SQL skills).</div></li><li class=\"impact-item\"><div>Drove Program management planning from scope definition to milestone tracking across product, engineering, and operations teams. (KPI tracking).</div></li>\n      </ul>\n    </section>\n\n    <section>\n      <div class=\"section-title\">Experience</div>\n      \n      <div class=\"exp-item\">\n        <div class=\"exp-header\">\n          <span>Alt Smoke Co</span>\n          <span>2021 - Present</span>\n        </div>\n        <div class=\"exp-role\">Business Program Manager</div>\n        <ul class=\"bullets\"><li class=\"bullet bullet-hit\">Owned roadmap execution for program increments spanning product, ops, and engineering teams.</li><li class=\"bullet bullet-hit\">Established SLA and weekly KPI review cadence to improve delivery consistency.</li></ul>\n      </div>\n    \n    </section>\n\n    <section>\n      <div class=\"section-title\">Skills</div>\n      <div class=\"skills\">\n        <span class=\"skill-chip\">Business Program Management</span><span class=\"skill-chip\">Roadmap</span><span class=\"skill-chip\">Delivery</span><span class=\"skill-chip\">KPI</span><span class=\"skill-chip\">Stakeholder M..."
     },
     {
       "name": "outreach.contacts.list",
       "method": "GET",
-      "path": "/jobs/566e3e31f0a51d3fa115769bb7d6b16e348d34cf/contacts",
+      "path": "/jobs/f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b/contacts",
       "auth": "ui",
       "request_body": null,
       "expected_status": [
         200
       ],
       "http_status": 200,
-      "duration_ms": 673,
+      "duration_ms": 518,
       "ok": true,
       "error": null,
       "response_content_type": "application/json",
@@ -2488,7 +2557,7 @@
         "ok": true,
         "data": [],
         "meta": {
-          "job_key": "566e3e31f0a51d3fa115769bb7d6b16e348d34cf",
+          "job_key": "f7c4d6deff5b00537f8f9633fcc6b2fdce90c57b",
           "count": 0,
           "contacts_storage_enabled": true,
           "contacts_storage_error": null
@@ -2567,11 +2636,11 @@
   ],
   "result": "PASS",
   "summary": {
-    "total_steps": 29,
-    "passed_steps": 29,
+    "total_steps": 25,
+    "passed_steps": 25,
     "failed_steps": 0,
     "success": true
   },
   "error": null,
-  "ended_at": "2026-02-26T21:48:49.848Z"
+  "ended_at": "2026-02-27T00:56:06.494Z"
 }
