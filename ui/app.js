@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-27-simple-mode-checklist-v1";
+const UI_BUILD_ID = "2026-02-27-applicant-flow-pass2-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -1485,6 +1485,10 @@ function setWizardStep_(stepName, opts = {}) {
   if (persist && jobKey) {
     saveWizardStepPref_(jobKey, step);
   }
+  const nextCard = $("wsNextActionCard");
+  if (nextCard) {
+    nextCard.classList.toggle("hidden", Boolean(state.simpleMode) && step !== "matches");
+  }
   syncWizardQualityGate_();
   syncWizardStickyCta_();
 }
@@ -1644,6 +1648,10 @@ function syncWizardStickyCta_() {
 
   const step = normalizeWizardStep_(section.dataset.wizardStep || "matches");
   const quality = getPackQualityState_();
+  if (state.simpleMode && step !== "pitch") {
+    bar.classList.add("hidden");
+    return;
+  }
   bar.classList.remove("hidden");
   primary.classList.remove("btn-success");
   primary.disabled = false;
@@ -1850,7 +1858,7 @@ function renderDetail(j) {
     </div>
 
     <div id="appPackSection" class="workspace-shell">
-      <div class="next-action-card">
+      <div id="wsNextActionCard" class="next-action-card">
         <div>
           <div id="wsNextActionTitle" class="h3">Create tailored draft</div>
           <div id="wsNextActionNote" class="muted tiny">Build role-matched content in one step.</div>
@@ -1866,11 +1874,11 @@ function renderDetail(j) {
       <div class="workspace-pane" data-wizard-pane="matches">
         <div class="workspace-pane-head">
           <div class="h3">Matches</div>
-          <div class="muted tiny">One-path flow: Create Draft -> Approve Draft -> Copy Cover Letter.</div>
+          <div class="muted tiny">Single path: create draft, approve, then apply.</div>
         </div>
         <div id="appMatchSummary" class="muted tiny">Loading match summary...</div>
-        <div id="appMatchChips" class="meta"></div>
-        <div class="kv wizard-kv-compact">
+        <div id="appMatchChips" class="meta simple-advanced"></div>
+        <div class="kv wizard-kv-compact simple-advanced">
           <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
@@ -1894,7 +1902,7 @@ function renderDetail(j) {
         <div class="h3">Finish</div>
         <div class="muted tiny" style="margin-top:4px;">Copy and apply. Advanced export tools are in the drawer below.</div>
         <div id="wizardQualityReview" class="chip hidden" style="margin-top:8px;"></div>
-        <div class="next-action-card" style="margin-top:10px;">
+        <div class="next-action-card simple-advanced" style="margin-top:10px;">
           <div>
             <div class="h3">Apply Kit</div>
             <div class="muted tiny">Open tailored resume, save as PDF, then copy your cover letter.</div>
@@ -1924,7 +1932,7 @@ function renderDetail(j) {
           <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="10" readonly placeholder="Final letter appears here"></textarea></div>
           <div class="k">Pack status</div><div class="v" id="wizardFinishStatus">-</div>
         </div>
-        <div id="wizardNetworkingCard" class="hidden" style="margin-top:10px;">
+        <div id="wizardNetworkingCard" class="hidden simple-advanced" style="margin-top:10px;">
           <div class="h3">Networking</div>
           <div id="wizardOutreachHint" class="muted tiny" style="margin-top:4px;">Draft a short outreach message for the selected contact.</div>
           <div class="row" style="justify-content:flex-start; margin-top:8px; gap:8px; flex-wrap:wrap;">
