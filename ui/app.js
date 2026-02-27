@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE = "https://get-job.shivanand-shah94.workers.dev";
-const UI_BUILD_ID = "2026-02-27-cta-zen-v1";
+const UI_BUILD_ID = "2026-02-27-resume-lane-v1";
 const RESUME_TEMPLATES_KEY = "jobops_resume_templates_v1";
 const DEFAULT_TEMPLATE_ID = "balanced";
 const TRACKING_RECOVERY_LAST_KEY = "jobops_tracking_recovery_last";
@@ -1567,6 +1567,8 @@ function syncWizardQualityGate_() {
   const blockFinal = quality.blocked;
   if ($("btnViewTailoredResume")) $("btnViewTailoredResume").disabled = blockFinal;
   if ($("btnPrintPdfReady")) $("btnPrintPdfReady").disabled = blockFinal;
+  if ($("btnOpenTailoredResumeFinish")) $("btnOpenTailoredResumeFinish").disabled = blockFinal;
+  if ($("btnCopyCoverLetterFinish")) $("btnCopyCoverLetterFinish").disabled = blockFinal;
 }
 
 function syncWizardStickyCta_() {
@@ -1617,8 +1619,8 @@ function syncWizardStickyCta_() {
     return;
   }
 
-  primary.textContent = "Copy Cover Letter";
-  primary.onclick = () => copyWizardCoverLetter(primary);
+  primary.textContent = "Open Tailored Resume";
+  primary.onclick = () => openTailoredResumeHtml(jobKey);
 }
 
 function renderDetail(j) {
@@ -1728,10 +1730,6 @@ function renderDetail(j) {
           <div class="k">Pack status</div><div class="v"><span id="appPackStatus"><span class="badge">-</span></span></div>
           <div class="k">ATS score</div><div class="v"><b id="appAtsScore">-</b></div>
           <div class="k">Missing keywords</div><div class="v" id="appMissingKw">-</div>
-          <div class="k">Target rubric score</div><div class="v" id="appTargetRubricScore">-</div>
-          <div class="k">RR import</div><div class="v" id="appRrImportStatus">-</div>
-          <div class="k">PDF readiness</div><div class="v" id="appPdfReadyStatus">-</div>
-          <div class="k">Pack state</div><div class="v" id="appPackEmpty">No Application Pack yet</div>
         </div>
       </div>
 
@@ -1752,6 +1750,16 @@ function renderDetail(j) {
         <div class="h3">Finish</div>
         <div class="muted tiny" style="margin-top:4px;">Copy and apply. Advanced export tools are in the drawer below.</div>
         <div id="wizardQualityReview" class="chip hidden" style="margin-top:8px;"></div>
+        <div class="next-action-card" style="margin-top:10px;">
+          <div>
+            <div class="h3">Apply Kit</div>
+            <div class="muted tiny">Open tailored resume, save as PDF, then copy your cover letter.</div>
+          </div>
+          <div class="row" style="justify-content:flex-start; margin-top:0;">
+            <button class="btn btn-secondary" id="btnOpenTailoredResumeFinish" onclick="openTailoredResumeHtml('${escapeHtml(j.job_key)}')">Open Tailored Resume</button>
+            <button class="btn btn-ghost" id="btnCopyCoverLetterFinish" onclick="copyWizardCoverLetter(this)">Copy Cover Letter</button>
+          </div>
+        </div>
         <div class="kv" style="margin-top:10px;">
           <div class="k">Cover letter</div><div class="v"><textarea id="wizardFinalLetter" rows="10" readonly placeholder="Final letter appears here"></textarea></div>
           <div class="k">Pack status</div><div class="v" id="wizardFinishStatus">-</div>
@@ -3362,9 +3370,11 @@ async function hydrateApplicationPack(jobOrKey) {
     if ($("appRrPdfExported")) $("appRrPdfExported").textContent = rrPdfExportedAt ? fmtTsWithAbs(rrPdfExportedAt) : "-";
     if ($("appPdfReadyStatus")) $("appPdfReadyStatus").textContent = pdfReadiness ? (pdfReady ? "READY" : "BLOCKED") : "-";
     if ($("appPdfReadyIssues")) $("appPdfReadyIssues").textContent = pdfIssues.length ? pdfIssues.join(" | ") : "-";
-    $("appPackEmpty").textContent = rrImportReady
-      ? "Application Pack loaded"
-      : "Application Pack loaded with RR import warnings";
+    if ($("appPackEmpty")) {
+      $("appPackEmpty").textContent = rrImportReady
+        ? "Application Pack loaded"
+        : "Application Pack loaded with RR import warnings";
+    }
     const packSummary = String(d?.pack_json?.tailoring?.summary || "");
     const packBullets = Array.isArray(d?.pack_json?.tailoring?.bullets) ? d.pack_json.tailoring.bullets.join("\n") : "";
     const packCoverLetter = String(d?.pack_json?.tailoring?.cover_letter || "");
@@ -3418,8 +3428,7 @@ async function hydrateApplicationPack(jobOrKey) {
     if ($("wizardFinalLetter")) $("wizardFinalLetter").value = packCoverLetter;
     if ($("wizardFinishStatus")) $("wizardFinishStatus").textContent = statusLabel_(status || "-");
     syncWizardQualityGate_();
-    const outreachVisible = status === "READY_TO_APPLY" || status === "APPLIED";
-    await hydrateWizardOutreachContacts_(jobKey, { showCard: outreachVisible });
+    await hydrateWizardOutreachContacts_(jobKey, { showCard: false });
     const mustKeywords = Array.isArray(d?.pack_json?.tailoring?.must_keywords) ? d.pack_json.tailoring.must_keywords : [];
     const missingSet = new Set(missing.map((x) => String(x || "").trim().toLowerCase()).filter(Boolean));
     const matchedTop = mustKeywords
@@ -3462,7 +3471,9 @@ async function hydrateApplicationPack(jobOrKey) {
     if ($("appRrPdfExported")) $("appRrPdfExported").textContent = "-";
     if ($("appPdfReadyStatus")) $("appPdfReadyStatus").textContent = "-";
     if ($("appPdfReadyIssues")) $("appPdfReadyIssues").textContent = "-";
-    $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
+    if ($("appPackEmpty")) {
+      $("appPackEmpty").textContent = e.httpStatus === 404 ? "No Application Pack yet" : ("Application Pack unavailable: " + e.message);
+    }
     section.dataset.packSummary = "";
     section.dataset.packBullets = "";
     section.dataset.packCoverLetter = "";
