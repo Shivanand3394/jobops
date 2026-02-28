@@ -70,10 +70,15 @@ export async function generateApplicationPack_({
   if (!ai) {
     status = "NEEDS_AI";
   } else {
-    const polished = await polishWithAi_(ai, summaryBase, bulletsBase, coverLetterBase, strongestKeyword).catch(() => null);
+    const bulletTextsForAi = bulletsBase.map((b) => b.text);
+    const polished = await polishWithAi_(ai, summaryBase, bulletTextsForAi, coverLetterBase, strongestKeyword).catch(() => null);
     if (polished) {
       tailoredSummary = str_(polished.summary) || summaryBase;
-      tailoredBullets = Array.isArray(polished.bullets) && polished.bullets.length ? polished.bullets.map(str_).filter(Boolean) : bulletsBase;
+      const polishedTexts = Array.isArray(polished.bullets) && polished.bullets.length ? polished.bullets.map(str_).filter(Boolean) : bulletTextsForAi;
+      tailoredBullets = bulletsBase.map((originalBullet, i) => ({
+        ...originalBullet,
+        text: polishedTexts[i] || originalBullet.text,
+      }));
       tailoredCoverLetter = str_(polished.cover_letter || polished.coverLetter) || coverLetterBase;
     }
   }
@@ -540,7 +545,8 @@ function buildTailoredBullets_({ role, company, must, nice, profileJson, evidenc
   const expBullets = profileExp
     .slice(0, 2)
     .map((e) => str_(e?.summary || e?.highlights?.[0] || e?.position))
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((text) => ({ text }));
   const keyMust = must.slice(0, 4);
   const keyNice = nice.slice(0, 3);
   const evidenceBullets = (Array.isArray(evidenceRows) ? evidenceRows : [])
@@ -549,11 +555,15 @@ function buildTailoredBullets_({ role, company, must, nice, profileJson, evidenc
     .map((row) => {
       const req = str_(row?.requirement_text);
       const snippet = str_(row?.evidence_text);
-      if (!req) return "";
+      const source = str_(row?.evidence_source);
+      if (!req) return null;
+      let text = "";
       if (snippet) {
-        return `Mapped ${req} into weekly execution rhythm and progress reporting by ${toSentenceFragment_(snippet)}.`;
+        text = `Mapped ${req} into weekly execution rhythm and progress reporting by ${toSentenceFragment_(snippet)}.`;
+      } else {
+        text = `Owned ${req} delivery with [N]-workstream coordination and measurable milestone tracking.`;
       }
-      return `Owned ${req} delivery with [N]-workstream coordination and measurable milestone tracking.`;
+      return { text, source };
     })
     .filter(Boolean);
 
@@ -564,7 +574,7 @@ function buildTailoredBullets_({ role, company, must, nice, profileJson, evidenc
     keyMust[3] ? `Coordinated ${keyMust[3]} execution across [N] active workstreams with clear owners, dependencies, and escalation paths.` : "",
     keyNice[0] ? `Improved operational throughput through ${keyNice[0]} changes, reducing rework and delivery friction.` : "",
     `Executed against ${role} priorities at ${company} using measurable milestones, stakeholder alignment, and delivery discipline.`,
-  ].filter(Boolean);
+  ].filter(Boolean).map((text) => ({ text }));
   return unique_([...evidenceBullets, ...expBullets, ...generated]).slice(0, 8);
 }
 
@@ -589,28 +599,77 @@ function buildTailoredCoverLetter_({ role, company, location, strongestKeyword =
 function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
   const basics = profileJson?.basics || {};
   const experience = Array.isArray(profileJson?.experience) ? profileJson.experience : [];
+  const education = Array.isArray(profileJson?.education) ? profileJson.education : [];
+  const projects = Array.isArray(profileJson?.projects) ? profileJson.projects : [];
+  const certifications = Array.isArray(profileJson?.certifications) ? profileJson.certifications : [];
+  const awards = Array.isArray(profileJson?.awards) ? profileJson.awards : [];
   const skills = Array.isArray(profileJson?.skills) ? profileJson.skills : [];
-  const bullets = Array.isArray(packJson?.tailoring?.bullets) ? packJson.tailoring.bullets : [];
+  const tailoredBullets = Array.isArray(packJson?.tailoring?.bullets) ? packJson.tailoring.bullets : [];
   const enabledBlocks = normalizeEnabledBlocks_(opts.enabledBlocks);
+
+  // --- MERGE LOGIC ---
+  const originalExperience = JSON.parse(JSON.stringify(experience)); // Deep clone
+  const bulletReplacements = new Map();
+  const unsourcedBullets = [];
+
+  for (const bullet of tailoredBullets) {
+    if (bullet.source && str_(bullet.source).startsWith("experience.")) {
+      bulletReplacements.set(bullet.source, bullet.text);
+    } else {
+      unsourcedBullets.push(bullet.text);
+    }
+  }
+
+  for (let i = 0; i < originalExperience.length; i++) {
+    const expItem = originalExperience[i];
+    if (Array.isArray(expItem.bullets)) {
+      for (let j = 0; j < expItem.bullets.length; j++) {
+        const sourceKey = `experience.${i}.bullets.${j}`;
+        if (bulletReplacements.has(sourceKey)) {
+          expItem.bullets[j] = bulletReplacements.get(sourceKey);
+        }
+      }
+    }
+  }
+
+  if (unsourcedBullets.length > 0 && originalExperience.length > 0) {
+    if (!Array.isArray(originalExperience[0].bullets)) originalExperience[0].bullets = [];
+    originalExperience[0].bullets = [
+      ...unsourcedBullets,
+      ...originalExperience[0].bullets
+    ];
+  }
+  // --- END MERGE LOGIC ---
+
   const includeSummary = enabledBlocks.has("summary");
   const includeExperience = enabledBlocks.has("experience");
+  const includeEducation = enabledBlocks.has("education");
+  const includeProjects = enabledBlocks.has("projects");
   const includeSkills = enabledBlocks.has("skills");
-  const includeHighlights = enabledBlocks.has("highlights");
+  const includeCertifications = enabledBlocks.has("certifications");
+  const includeAwards = enabledBlocks.has("awards");
+
   const templateId = str_(opts.templateId || packJson?.controls?.template_id || "balanced") || "balanced";
   const onePageModeRaw = str_(opts.onePageMode || packJson?.controls?.one_page_mode).toLowerCase();
   const onePageMode = (onePageModeRaw === "hard" || onePageModeRaw === "soft")
     ? onePageModeRaw
     : (toBoolLike_(opts.onePagerStrict ?? packJson?.controls?.one_pager_strict, true) ? "hard" : "soft");
   const onePagerStrict = onePageMode === "hard";
+
   const expLimit = onePagerStrict ? 3 : 6;
+  const eduLimit = onePagerStrict ? 2 : 4;
+  const projLimit = onePagerStrict ? 2 : 4;
+  const certLimit = onePagerStrict ? 3 : 6;
+  const awardsLimit = onePagerStrict ? 3 : 6;
   const skillsLimit = onePagerStrict ? 12 : 20;
-  const highlightsLimit = onePagerStrict ? 4 : Math.max(8, bullets.length);
   const summaryLimit = onePagerStrict ? 320 : 1200;
-  const experienceOut = includeExperience ? experience.slice(0, expLimit) : [];
+
+  const experienceOut = includeExperience ? originalExperience.slice(0, expLimit) : [];
+  const educationOut = includeEducation ? education.slice(0, eduLimit) : [];
+  const projectsOut = includeProjects ? projects.slice(0, projLimit) : [];
+  const certificationsOut = includeCertifications ? certifications.slice(0, certLimit) : [];
+  const awardsOut = includeAwards ? awards.slice(0, awardsLimit) : [];
   const skillsOut = includeSkills ? skills.slice(0, skillsLimit) : [];
-  const highlightsOut = includeHighlights
-    ? bullets.map((x) => ({ text: str_(x) })).filter((x) => x.text).slice(0, highlightsLimit)
-    : [];
   const summaryOut = includeSummary ? trimTextToMaxChars_(str_(packJson?.tailoring?.summary), summaryLimit) : "";
 
   return {
@@ -631,11 +690,16 @@ function toReactiveResumeExport_(profileJson, packJson, opts = {}) {
       phone: str_(basics.phone),
       location: str_(basics.location),
       summary: summaryOut,
+      profiles: Array.isArray(basics.profiles) ? basics.profiles : [],
     },
     sections: {
-      experience: experienceOut,
-      skills: skillsOut,
-      highlights: highlightsOut,
+      experience: { name: "Experience", visible: includeExperience && experienceOut.length > 0, items: experienceOut },
+      education: { name: "Education", visible: includeEducation && educationOut.length > 0, items: educationOut },
+      projects: { name: "Projects", visible: includeProjects && projectsOut.length > 0, items: projectsOut },
+      certifications: { name: "Certifications", visible: includeCertifications && certificationsOut.length > 0, items: certificationsOut },
+      awards: { name: "Awards", visible: includeAwards && awardsOut.length > 0, items: awardsOut },
+      skills: { name: "Skills", visible: includeSkills && skillsOut.length > 0, items: skillsOut },
+      highlights: { name: "", visible: false, items: [] },
     },
     job_context: {
       job_key: str_(packJson?.job?.job_key),
@@ -651,7 +715,7 @@ function applyOnePagePolicy_(summary, bullets, mode = "soft") {
   const summaryMax = resolvedMode === "hard" ? 320 : 420;
   const bulletsMax = resolvedMode === "hard" ? 4 : 6;
   const summaryOut = trimTextToMaxChars_(summary, summaryMax);
-  const bulletsOut = Array.isArray(bullets) ? bullets.slice(0, bulletsMax).map(str_).filter(Boolean) : [];
+  const bulletsOut = Array.isArray(bullets) ? bullets.slice(0, bulletsMax) : [];
   return {
     summary: summaryOut,
     bullets: bulletsOut,
@@ -755,7 +819,7 @@ function arr_(v) {
 }
 
 function normalizeEnabledBlocks_(v) {
-  const allowed = ["summary", "experience", "skills", "highlights", "bullets"];
+  const allowed = ["summary", "experience", "education", "projects", "skills", "certifications", "awards", "highlights", "bullets"];
   const set = new Set(
     (Array.isArray(v) ? v : [])
       .map((x) => str_(x).toLowerCase())
@@ -874,13 +938,14 @@ function enforceImpactKeywordBullets_(bulletsIn, keywordsIn = [], evidenceRows =
   ).slice(0, 10);
   const role = str_(context?.role || "the role");
   const company = str_(context?.company || "the company");
-  const bullets = Array.isArray(bulletsIn) ? bulletsIn.map((x) => str_(x)).filter(Boolean) : [];
+  const bullets = Array.isArray(bulletsIn) ? [...bulletsIn] : [];
   const out = [];
   const seen = new Set();
   const hasMetric = (text) => /\b(\d+%|\d+\+?|\b[km]\b|\$\d+|\bweekly\b|\bmonthly\b|\bquarterly\b|\bSLA\b|\bKPI\b)\b/i.test(String(text || ""));
 
   for (let i = 0; i < bullets.length && out.length < 8; i += 1) {
-    const raw = bullets[i];
+    const originalBullet = bullets[i];
+    const raw = str_(originalBullet?.text);
     const keyword = keywords[i % Math.max(1, keywords.length)] || "core capability";
     let next = raw.replace(/\s+/g, " ").trim();
     if (!next) continue;
@@ -895,7 +960,7 @@ function enforceImpactKeywordBullets_(bulletsIn, keywordsIn = [], evidenceRows =
     const dedupeKey = normalizeBulletForDedupe_(next);
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
-    out.push(next);
+    out.push({ ...originalBullet, text: next });
   }
 
   while (out.length < 5 && out.length < 8) {
@@ -907,13 +972,13 @@ function enforceImpactKeywordBullets_(bulletsIn, keywordsIn = [], evidenceRows =
       `Used SQL-driven insights to prioritize ${keyword} improvements and reduce operational bottlenecks.`,
       `Strengthened stakeholder alignment around ${keyword} by defining owners, timelines, and measurable success criteria.`,
     ];
-    const candidate = templates[out.length % templates.length];
-    const dedupeKey = normalizeBulletForDedupe_(candidate);
+    const candidateText = templates[out.length % templates.length];
+    const dedupeKey = normalizeBulletForDedupe_(candidateText);
     if (seen.has(dedupeKey)) break;
     seen.add(dedupeKey);
-    out.push(candidate);
+    out.push({ text: candidateText });
   }
-  return unique_(out).slice(0, 8);
+  return out.slice(0, 8);
 }
 
 function enforceCoverLetterTone_(input, fallback, strongestKeyword = "", role = "", company = "") {

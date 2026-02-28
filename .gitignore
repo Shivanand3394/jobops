@@ -1,15 +1,8 @@
-# Wrangler
-.wrangler/
 worker/.wrangler/
-
-# Dependencies
-node_module/
-
-# Logs
-*.log
-
-# OS
+node_modules/
+pdf-service/node_modules/
+.wrangler/
+dist/
 .DS_Store
-
-# Local agent configs
 .github/agents/
+*.log
