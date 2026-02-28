@@ -1,2 +1,15 @@
+# Wrangler
 .wrangler/
 worker/.wrangler/
+
+# Dependencies
+node_module/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Local agent configs
+.github/agents/
