@@ -96,6 +96,97 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, "") || "/";
 
+    // ================== API: LIST JOBS ==================
+    if (path === '/api/jobs' && request.method === 'GET') {
+      const limit = Math.min(50, Number(url.searchParams.get('limit') || 20));
+      const offset = Math.max(0, Number(url.searchParams.get('offset') || 0));
+      const source = (url.searchParams.get('source') || '').trim();
+      const q = (url.searchParams.get('q') || '').trim();
+
+      let sql = `SELECT job_key, company, role_title, jd_source, final_score, status, updated_at
+                FROM jobs`;
+      const params = [];
+      const where = [];
+
+      if (source) { where.push(`jd_source = ?`); params.push(source); }
+      if (q) { where.push(`(company LIKE ? OR role_title LIKE ?)`); params.push(`%${q}%`, `%${q}%`); }
+
+      if (where.length) sql += ` WHERE ` + where.join(' AND ');
+      sql += ` ORDER BY updated_at DESC LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+
+      const { results } = await env.DB.prepare(sql).bind(...params).all();
+
+      return new Response(JSON.stringify({ ok: true, jobs: results, limit, offset }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
+      });
+    }
+
+    // ================== API: JOB DETAILS ==================
+    const apiJobKeyMatch = path.match(/^\/api\/jobs\/([a-f0-9]{40})$/i);
+    if (apiJobKeyMatch && request.method === 'GET') {
+      const jobKey = apiJobKeyMatch[1];
+
+      const row = await env.DB.prepare(`
+        SELECT *
+        FROM jobs
+        WHERE job_key = ?;
+      `.trim()).bind(jobKey).first();
+
+      if (!row) {
+        return new Response(JSON.stringify({ ok: false, error: "Job not found" }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true, job: row }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
+      });
+    }
+
+    // ================== API: UPDATE JOB STATUS ==================
+    const apiJobStatusMatch = path.match(/^\/api\/jobs\/([a-f0-9]{40})\/status$/i);
+    if (apiJobStatusMatch && request.method === 'POST') {
+      const jobKey = apiJobStatusMatch[1];
+      const body = await request.json().catch(() => ({}));
+
+      const status = (body.status ?? "").toString().trim();
+      const appliedNote = (body.applied_note ?? "").toString();
+      const followUpAt = body.follow_up_at === null || body.follow_up_at === undefined
+        ? null
+        : Number(body.follow_up_at);
+
+      if (!status) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing status" }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
+        });
+      }
+
+      const now = Date.now();
+
+      const res = await env.DB.prepare(`
+        UPDATE jobs
+        SET status = ?,
+            applied_note = ?,
+            follow_up_at = ?,
+            updated_at = ?
+        WHERE job_key = ?;
+      `.trim()).bind(status, appliedNote, followUpAt, now, jobKey).run();
+
+      if (!res.success || res.meta.changes === 0) {
+        return new Response(JSON.stringify({ ok: false, error: "Job not found" }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
+      });
+    }
+
     try {
       // ----------------------------
       // Public route
@@ -325,6 +416,7 @@ export default {
       // ============================
       if (path === "/jobs" && request.method === "GET") {
         const status = (url.searchParams.get("status") || "").trim().toUpperCase();
+        const source = (url.searchParams.get("source") || "").trim().toLowerCase();
         const q = (url.searchParams.get("q") || "").trim();
         const limit = clampInt_(url.searchParams.get("limit") || 50, 1, 200);
         const offset = clampInt_(url.searchParams.get("offset") || 0, 0, 100000);
@@ -335,6 +427,11 @@ export default {
         if (status) {
           where.push("status = ?");
           args.push(status);
+        }
+
+        if (source) {
+          where.push("LOWER(jd_source) = ?");
+          args.push(source);
         }
 
         if (q) {
@@ -577,6 +674,101 @@ export default {
             ...corsHeaders_(env),
           },
         });
+      }
+
+      // ============================
+      // UI: Generate resume PDF
+      // ============================
+      if (path.startsWith("/jobs/") && path.endsWith("/resume/pdf") && request.method === "POST") {
+        const parts = path.split("/");
+        const jobKey = decodeURIComponent(parts[2] || "").trim();
+        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+
+        const job = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
+        if (!job) return json_({ ok: false, error: "Not found" }, env, 404);
+
+        const profileResolved = await resolvePreferredProfileForJob_(env, {
+          jobKey,
+          profileIdIn: String(url.searchParams.get("profile_id") || "").trim(),
+        });
+        const profile = profileResolved.profile || await ensurePrimaryProfile_(env);
+        const evidenceSourcePolicy = normalizeEvidenceSourcePolicy_(
+          String(url.searchParams.get("evidence_source_policy") || "").trim() || "resume_only"
+        );
+        const evidenceLimit = clampInt_(url.searchParams.get("evidence_limit") || 12, 1, 30);
+        const matchedEvidence = await loadMatchedEvidenceForPack_(env, jobKey, evidenceLimit, {
+          policy: evidenceSourcePolicy,
+        });
+        const draftByProfile = await env.DB.prepare(`
+          SELECT pack_json
+          FROM resume_drafts
+          WHERE job_key = ? AND profile_id = ?
+          ORDER BY updated_at DESC
+          LIMIT 1;
+        `.trim()).bind(jobKey, String(profileResolved.profile_id || profile?.id || "primary").trim() || "primary").first();
+        const draftFallback = draftByProfile || await env.DB.prepare(`
+          SELECT pack_json
+          FROM resume_drafts
+          WHERE job_key = ?
+          ORDER BY updated_at DESC
+          LIMIT 1;
+        `.trim()).bind(jobKey).first();
+        const draftPack = safeJsonParse_(draftFallback?.pack_json) || {};
+        const draftTailoring = (draftPack?.tailoring && typeof draftPack.tailoring === "object") ? draftPack.tailoring : {};
+        const tailoredSummary = String(draftTailoring.summary || "").trim();
+        const tailoredBullets = Array.isArray(draftTailoring.bullets)
+          ? draftTailoring.bullets.map((x) => String(x || "").trim()).filter(Boolean)
+          : [];
+        const html = generateProfessionalHtml(profile, job, matchedEvidence, {
+          tailored_summary: tailoredSummary,
+          tailored_bullets: tailoredBullets,
+          evidence_source_policy: evidenceSourcePolicy,
+        });
+
+        // Call Cloud Run PDF service
+        const pdfServiceUrl = String(env.PDF_SERVICE_URL || "").trim();
+        const pdfAuthKey = String(env.PDF_AUTH_KEY || "").trim();
+        
+        if (!pdfServiceUrl) {
+          return json_({ ok: false, error: "PDF_SERVICE_URL not configured" }, env, 500);
+        }
+
+        try {
+          const response = await fetch(pdfServiceUrl + "/pdf", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(pdfAuthKey ? { "Authorization": `Bearer ${pdfAuthKey}` } : {}),
+            },
+            body: JSON.stringify({
+              html,
+              options: {
+                format: "A4",
+                printBackground: true,
+                margin: { top: "0.4in", right: "0.4in", bottom: "0.4in", left: "0.4in" },
+              },
+            }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            return json_({ ok: false, error: `PDF service error: ${response.status} ${errorText}` }, env, 500);
+          }
+
+          const pdfBuffer = await response.arrayBuffer();
+          
+          return new Response(pdfBuffer, {
+            status: 200,
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `attachment; filename="resume-${jobKey}.pdf"`,
+              "Cache-Control": "no-store",
+              ...corsHeaders_(env),
+            },
+          });
+        } catch (error) {
+          return json_({ ok: false, error: `PDF generation failed: ${error.message}` }, env, 500);
+        }
       }
 
       if (
@@ -831,6 +1023,8 @@ export default {
 
         const body = await request.json().catch(() => ({}));
         const status = String(body.status || "").trim().toUpperCase();
+        const appliedNote = String(body.applied_note || "").trim();
+        const followUpAt = body.follow_up_at ? Math.round(Number(body.follow_up_at)) : null;
         const allowed = new Set(["NEW","LINK_ONLY","SCORED","SHORTLISTED","READY_TO_APPLY","APPLIED","REJECTED","ARCHIVED"]);
         if (!allowed.has(status)) {
           return json_({ ok: false, error: "Invalid status", allowed: Array.from(allowed) }, env, 400);
@@ -845,17 +1039,19 @@ export default {
           UPDATE jobs
           SET
             status = ?,
+            applied_note = ?,
+            follow_up_at = ?,
             updated_at = ?,
             applied_at = COALESCE(?, applied_at),
             rejected_at = COALESCE(?, rejected_at),
             archived_at = COALESCE(?, archived_at)
           WHERE job_key = ?;
-        `.trim()).bind(status, now, appliedAt, rejectedAt, archivedAt, jobKey).run();
+        `.trim()).bind(status, appliedNote, followUpAt, now, appliedAt, rejectedAt, archivedAt, jobKey).run();
 
         if (!r.success || r.changes === 0) return json_({ ok: false, error: "Not found" }, env, 404);
 
         await logEvent_(env, "STATUS_CHANGED", jobKey, { status, ts: now });
-        return json_({ ok: true, data: { job_key: jobKey, status, updated_at: now } }, env, 200);
+        return json_({ ok: true, data: { job_key: jobKey, status, applied_note: appliedNote, follow_up_at: followUpAt, updated_at: now } }, env, 200);
       }
 
       // ============================
