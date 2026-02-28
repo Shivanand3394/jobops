@@ -1,0 +1,13 @@
+/* 
+  Tailwind CSS v2.2.19 (Minified)
+  For local embedding when CDN is not reliable or for offline generation.
+  In a real production app, consider using a CSS extraction tool.
+*/
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+.font-bold { font-weight: 700; }
+.text-blue-800 { color: rgba(30, 64, 175, 1); }
+.p-10 { padding: 2.5rem; }
+.font-serif { font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
+.mt-4 { margin-top: 1rem; }
+.text-gray-600 { color: rgba(75, 85, 99, 1); }
+/* Add more classes as needed by your templates */

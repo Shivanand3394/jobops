@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+  <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden">
+    <div class="p-8 border-b border-gray-200">
+      <h1 class="text-3xl font-bold text-gray-800">AI Resume Builder</h1>
+      <p class="text-gray-600 mt-2">Paste your text, get structured data, and print a professional PDF.</p>
+    </div>
+
+    <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- INPUT COLUMN -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">1. Paste Raw Resume Text</label>
+        <textarea id="rawResume" class="w-full h-64 p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your old resume text here..."></textarea>
+        
+        <button onclick="parseResume()" id="parseBtn" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition">
+          ✨ Parse with Gemini
+        </button>
+      </div>
+
+      <!-- JSON PREVIEW COLUMN -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">2. Review Data (JSON)</label>
+        <textarea id="jsonOutput" class="w-full h-64 p-3 font-mono text-xs border border-gray-300 rounded-md bg-gray-50" readonly></textarea>
+        
+        <div class="mt-4 flex gap-4">
+          <select id="templateId" class="block w-1/2 p-2 border border-gray-300 rounded-md">
+            <option value="modern">Modern Template</option>
+            <option value="classic">Classic Template</option>
+          </select>
+          <button onclick="generatePdf()" id="printBtn" class="w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            📄 Download PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
