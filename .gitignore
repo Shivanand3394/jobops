@@ -5,4 +5,5 @@ pdf-service/node_modules/
 .wrangler/
 dist/
 .DS_Store
+.github/agents/
 *.log
