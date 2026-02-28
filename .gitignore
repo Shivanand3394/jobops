@@ -1,2 +1,8 @@
 .wrangler/
 worker/.wrangler/
+node_modules/
+pdf-service/node_modules/
+.wrangler/
+dist/
+.DS_Store
+*.log
