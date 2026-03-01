@@ -52,6 +52,17 @@
           </select>
         </div>
 
+        <div class="field">
+          <label>Source</label>
+          <select id="sourceFilter">
+            <option value="">All</option>
+            <option value="email">Email</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="manual">Manual</option>
+            <option value="rss">RSS</option>
+          </select>
+        </div>
+
         <div class="field grow">
           <label>Search</label>
           <input id="search" type="search" placeholder="Role, company, location..." />
@@ -102,11 +113,77 @@
         </div>
       </div>
 
-      <div id="detailBody" class="detail-body empty">
-        <div class="empty-state">
-          <div class="empty-hero">Select</div>
-          <div class="h3">Pick a job from the left.</div>
-          <div class="muted">Then update status, rescore, or paste JD if needed.</div>
+      <div class="detail-tabs">
+        <div class="tabs-nav">
+          <button class="tab-btn active" data-tab="summary">Summary</button>
+          <button class="tab-btn" data-tab="jd">JD</button>
+          <button class="tab-btn" data-tab="resume">Resume</button>
+          <button class="tab-btn" data-tab="track">Track</button>
+        </div>
+
+        <div id="detailBody" class="detail-body empty">
+          <div class="empty-state">
+            <div class="empty-hero">Select</div>
+            <div class="h3">Pick a job from the left.</div>
+            <div class="muted">Then update status, rescore, or paste JD if needed.</div>
+          </div>
+        </div>
+
+        <div id="tabSummary" class="tab-content hidden">
+          <div class="tab-pane">
+            <div class="kv" id="summaryFields"></div>
+            <div class="kv" id="summaryUrls"></div>
+          </div>
+        </div>
+
+        <div id="tabJd" class="tab-content hidden">
+          <div class="tab-pane">
+            <div id="jdContent" class="jd-content"></div>
+          </div>
+        </div>
+
+        <div id="tabResume" class="tab-content hidden">
+          <div class="tab-pane">
+            <div class="resume-tab">
+              <button class="btn" id="btnGeneratePdf" type="button">Generate PDF</button>
+              <div id="pdfProgress" class="hidden">
+                <div class="progress-bar">
+                  <div class="progress-fill"></div>
+                </div>
+                <div class="progress-text">Generating PDF...</div>
+              </div>
+              <div id="pdfError" class="error-box hidden"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tabTrack" class="tab-content hidden">
+          <div class="tab-pane">
+            <div class="track-tab">
+              <div class="field">
+                <label>Status</label>
+                <select id="trackStatus">
+                  <option value="NEW">To Review</option>
+                  <option value="SCORED">Scored</option>
+                  <option value="SHORTLISTED">Shortlisted</option>
+                  <option value="READY_TO_APPLY">Ready to Apply</option>
+                  <option value="APPLIED">Applied</option>
+                  <option value="REJECTED">Not a Fit</option>
+                  <option value="ARCHIVED">Archived</option>
+                  <option value="LINK_ONLY">Needs Details</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Applied Note</label>
+                <textarea id="trackAppliedNote" rows="4" placeholder="Add notes about this application..."></textarea>
+              </div>
+              <div class="field">
+                <label>Follow-up Date</label>
+                <input id="trackFollowUpAt" type="datetime-local" />
+              </div>
+              <button class="btn" id="btnUpdateTrack" type="button">Update Tracking</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>

@@ -1413,7 +1413,10 @@ async function loadJobs(opts = {}) {
     spin(true);
     const ignoreStatus = Boolean(opts?.ignoreStatus);
     const status = ignoreStatus ? "" : $("statusFilter").value;
-    const qs = status ? `?status=${encodeURIComponent(status)}&limit=200&offset=0` : `?limit=200&offset=0`;
+    const source = $("sourceFilter")?.value || "";
+    let qs = `?limit=200&offset=0`;
+    if (status) qs += `&status=${encodeURIComponent(status)}`;
+    if (source) qs += `&source=${encodeURIComponent(source)}`;
     const res = await api("/jobs" + qs);
     state.jobs = Array.isArray(res.data) ? res.data : [];
     renderJobs();
@@ -1832,41 +1835,56 @@ function renderDetail(j) {
     .filter(Boolean)
     .join(" | ") || "Select applicant profile for this job.";
 
-  $("detailBody").innerHTML = `
-    <div class="kv">
-      <div class="k">Status</div><div class="v">${statusBadgeHtml_(status)}</div>
-      <div class="k">Final score</div><div class="v">${escapeHtml(String(j.final_score ?? "-"))}</div>
-      <div class="k">Target</div><div class="v">${escapeHtml(j.primary_target_id || "-")}</div>
-      <div class="k">Location</div><div class="v">${escapeHtml(j.location || "-")}</div>
-      <div class="k">Seniority</div><div class="v">${escapeHtml(j.seniority || "-")}</div>
-      <div class="k">Source</div><div class="v">${escapeHtml(j.source_domain || "-")}</div>
-      <div class="k">Ingest channel</div><div class="v">${escapeHtml(ingestChannelLabel)}</div>
-      <div class="k">Created</div><div class="v">${escapeHtml(fmtTsWithAbs(j.created_at))}</div>
-      <div class="k">Updated</div><div class="v">${escapeHtml(fmtTsWithAbs(j.updated_at))}</div>
-    </div>
-
-    <div class="kv role-context-kv">
-      <div class="k">Job Role (JD asks for)</div><div class="v"><b id="appRoleContextJobRole">${escapeHtml(jobRoleLabel)}</b></div>
-      <div class="k">Profile Role (Applicant)</div><div class="v"><b id="appRoleContextProfileRole">${escapeHtml(profileRoleLabel)}</b></div>
-      <div class="k">Active profile</div><div class="v"><span id="appRoleContextProfileMeta">${escapeHtml(profileContextLabel)}</span></div>
-    </div>
-
-    <div class="kv">
-      <div class="k">Must-have keywords</div><div class="v">${escapeHtml((j.must_have_keywords || []).join(", ") || "-")}</div>
-      <div class="k">Nice-to-have</div><div class="v">${escapeHtml((j.nice_to_have_keywords || []).join(", ") || "-")}</div>
-      <div class="k">Reject keywords</div><div class="v">${escapeHtml((j.reject_keywords || []).join(", ") || "-")}</div>
-      <div class="k">Reason</div><div class="v">${escapeHtml(j.reason_top_matches || "-")}</div>
-    </div>
-
-    <div class="kv">
-      <div class="k">JD source</div><div class="v">${escapeHtml(j.jd_source || "-")}</div>
-      <div class="k">Fetch status</div><div class="v">${escapeHtml(j.fetch_status || "-")}</div>
-      <div class="k">JD confidence</div><div class="v">${escapeHtml(jdConfidence || "-")}</div>
-      <div class="k">System status</div><div class="v">${escapeHtml(statusLabel_(j.system_status || j.next_status || "-"))}</div>
-      <div class="k">Job URL</div><div class="v"><a class="muted" href="${escapeHtml(j.job_url || "#")}" target="_blank" rel="noopener">${escapeHtml(j.job_url || "-")}</a></div>
-    </div>
-
-    <div id="appPackSection" class="workspace-shell">
+  // Populate Summary tab
+  const summaryFields = `
+    <div class="k">Status</div><div class="v">${statusBadgeHtml_(status)}</div>
+    <div class="k">Final score</div><div class="v">${escapeHtml(String(j.final_score ?? "-"))}</div>
+    <div class="k">Target</div><div class="v">${escapeHtml(j.primary_target_id || "-")}</div>
+    <div class="k">Location</div><div class="v">${escapeHtml(j.location || "-")}</div>
+    <div class="k">Seniority</div><div class="v">${escapeHtml(j.seniority || "-")}</div>
+    <div class="k">Source</div><div class="v">${escapeHtml(j.source_domain || "-")}</div>
+    <div class="k">Ingest channel</div><div class="v">${escapeHtml(ingestChannelLabel)}</div>
+    <div class="k">Created</div><div class="v">${escapeHtml(fmtTsWithAbs(j.created_at))}</div>
+    <div class="k">Updated</div><div class="v">${escapeHtml(fmtTsWithAbs(j.updated_at))}</div>
+    <div class="k">Job Role (JD asks for)</div><div class="v"><b>${escapeHtml(jobRoleLabel)}</b></div>
+    <div class="k">Profile Role (Applicant)</div><div class="v"><b>${escapeHtml(profileRoleLabel)}</b></div>
+    <div class="k">Active profile</div><div class="v"><span>${escapeHtml(profileContextLabel)}</span></div>
+    <div class="k">Must-have keywords</div><div class="v">${escapeHtml((j.must_have_keywords || []).join(", ") || "-")}</div>
+    <div class="k">Nice-to-have</div><div class="v">${escapeHtml((j.nice_to_have_keywords || []).join(", ") || "-")}</div>
+    <div class="k">Reject keywords</div><div class="v">${escapeHtml((j.reject_keywords || []).join(", ") || "-")}</div>
+    <div class="k">Reason</div><div class="v">${escapeHtml(j.reason_top_matches || "-")}</div>
+  `;
+  
+  const summaryUrls = `
+    <div class="k">JD source</div><div class="v">${escapeHtml(j.jd_source || "-")}</div>
+    <div class="k">Fetch status</div><div class="v">${escapeHtml(j.fetch_status || "-")}</div>
+    <div class="k">JD confidence</div><div class="v">${escapeHtml(jdConfidence || "-")}</div>
+    <div class="k">System status</div><div class="v">${escapeHtml(statusLabel_(j.system_status || j.next_status || "-"))}</div>
+    <div class="k">Job URL</div><div class="v"><a class="muted" href="${escapeHtml(j.job_url || "#")}" target="_blank" rel="noopener">${escapeHtml(j.job_url || "-")}</a></div>
+    <div class="k">Job URL raw</div><div class="v"><a class="muted" href="${escapeHtml(j.job_url_raw || "#")}" target="_blank" rel="noopener">${escapeHtml(j.job_url_raw || "-")}</a></div>
+  `;
+  
+  $("summaryFields").innerHTML = summaryFields;
+  $("summaryUrls").innerHTML = summaryUrls;
+  
+  // Populate JD tab
+  const jdContent = jdText ? escapeHtml(jdText) : "<div class='muted'>No JD text available. Use the Resume tab to generate a PDF or paste JD manually.</div>";
+  $("jdContent").innerHTML = jdContent;
+  
+  // Initialize Track tab form
+  $("trackStatus").value = status;
+  $("trackAppliedNote").value = String(j.applied_note || "").trim();
+  const followUpAt = j.follow_up_at ? new Date(j.follow_up_at).toISOString().slice(0, 16) : "";
+  $("trackFollowUpAt").value = followUpAt;
+  
+  // Show the detail panel and default to summary tab
+  showDetailTab("summary");
+  setupTabHandlers();
+  setupPdfGeneration();
+  setupTrackUpdate();
+  
+  // Keep the existing workspace section for advanced features
+  $("detailBody").classList.remove("empty");
       <div id="wsNextActionCard" class="next-action-card">
         <div>
           <div id="wsNextActionTitle" class="h3">Create tailored draft</div>
@@ -2083,6 +2101,13 @@ function renderDetail(j) {
         <button id="wizardStickyPrimary" class="btn" type="button">Create Tailored Draft</button>
       </div>
   `;
+  
+  // Initialize tabs and populate tab content
+  showDetailTab("summary");
+  setupTabHandlers();
+  setupPdfGeneration();
+  setupTrackUpdate();
+  
   if (window.location.hostname.includes("workers.dev")) {
     console.log("Rendering Application Pack", j.job_key);
   }
@@ -2094,6 +2119,124 @@ function renderDetail(j) {
   hydrateApplicationPack(j);
   updateRoleContextUi_(j);
   fetchAndRenderEvidence(j.job_key);
+}
+
+function showDetailTab(tabName) {
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === tabName);
+  });
+  document.querySelectorAll(".tab-content").forEach(content => {
+    content.classList.add("hidden");
+  });
+  const activeTab = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+  if (activeTab) activeTab.classList.remove("hidden");
+}
+
+function setupTabHandlers() {
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.onclick = () => {
+      const tabName = btn.dataset.tab;
+      showDetailTab(tabName);
+    };
+  });
+}
+
+async function setupPdfGeneration() {
+  const btn = $("btnGeneratePdf");
+  const progress = $("pdfProgress");
+  const progressFill = progress?.querySelector(".progress-fill");
+  const progressText = progress?.querySelector(".progress-text");
+  const errorBox = $("pdfError");
+  
+  btn.onclick = async () => {
+    const jobKey = String(state.activeJob?.job_key || "").trim();
+    if (!jobKey) return toast("No job selected", { kind: "error" });
+    
+    try {
+      btn.disabled = true;
+      progress.classList.remove("hidden");
+      errorBox.classList.add("hidden");
+      progressFill.style.width = "0%";
+      progressText.textContent = "Generating PDF...";
+      
+      // Simulate progress (actual progress not available)
+      let fakeProgress = 0;
+      const progressInterval = setInterval(() => {
+        fakeProgress = Math.min(fakeProgress + 10, 90);
+        progressFill.style.width = fakeProgress + "%";
+      }, 300);
+      
+      const response = await fetch(`${getCfg().apiBase}/jobs/${encodeURIComponent(jobKey)}/resume/pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-ui-key": getCfg().uiKey,
+        },
+      });
+      
+      clearInterval(progressInterval);
+      progressFill.style.width = "100%";
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `resume-${jobKey}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      progressText.textContent = "PDF ready!";
+      toast("PDF generated successfully");
+      
+      setTimeout(() => {
+        progress.classList.add("hidden");
+        progressFill.style.width = "0%";
+        btn.disabled = false;
+      }, 1500);
+      
+    } catch (e) {
+      errorBox.textContent = `PDF generation failed: ${e.message}`;
+      errorBox.classList.remove("hidden");
+      progress.classList.add("hidden");
+      btn.disabled = false;
+      toast("PDF failed: " + e.message, { kind: "error" });
+    }
+  };
+}
+
+async function setupTrackUpdate() {
+  const btn = $("btnUpdateTrack");
+  btn.onclick = async () => {
+    const jobKey = String(state.activeJob?.job_key || "").trim();
+    if (!jobKey) return toast("No job selected", { kind: "error" });
+    
+    const status = $("trackStatus").value;
+    const appliedNote = $("trackAppliedNote").value.trim();
+    const followUpAt = $("trackFollowUpAt").value ? Math.round(new Date($("trackFollowUpAt").value).getTime()) : null;
+    
+    try {
+      btn.disabled = true;
+      await api(`/jobs/${encodeURIComponent(jobKey)}/status`, {
+        method: "POST",
+        body: { status, applied_note: appliedNote, follow_up_at: followUpAt },
+      });
+      toast("Tracking updated successfully");
+      // Refresh job data
+      await loadJobs({ ignoreStatus: true });
+      await setActive(jobKey);
+    } catch (e) {
+      toast("Update failed: " + e.message, { kind: "error" });
+    } finally {
+      btn.disabled = false;
+    }
+  };
 }
 
 function getTargetDisplay(t) {

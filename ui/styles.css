@@ -1347,6 +1347,121 @@ textarea, input{
     backdrop-filter: blur(10px);
     box-shadow: var(--shadow);
   }
+  
+  /* Job Details Tabs */
+  .detail-tabs {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .tabs-nav {
+    display: flex;
+    gap: 4px;
+    padding: 12px 14px 0;
+    border-bottom: 1px solid var(--line);
+    background: rgba(15, 23, 42, 0.75);
+  }
+  
+  .tab-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  
+  .tab-btn:hover {
+    color: var(--text);
+    background: rgba(148, 163, 184, 0.1);
+  }
+  
+  .tab-btn.active {
+    color: var(--text);
+    background: rgba(37, 99, 235, 0.15);
+    border-bottom: 2px solid var(--blue);
+  }
+  
+  .tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  
+  .tab-pane {
+    height: 100%;
+  }
+  
+  .jd-content {
+    height: 100%;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  
+  .resume-tab,
+  .track-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+  }
+  
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--green));
+    width: 0%;
+    transition: width 0.3s ease;
+    animation: progress-indeterminate 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes progress-indeterminate {
+    0% { width: 0%; margin-left: 0%; }
+    50% { width: 50%; margin-left: 25%; }
+    100% { width: 0%; margin-left: 100%; }
+  }
+  
+  .progress-text {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  
+  .error-box {
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--red);
+  }
+  
+  .track-tab .field {
+    max-width: 400px;
+  }
+  
+  #trackAppliedNote {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  #trackFollowUpAt {
+    width: 100%;
+    max-width: 250px;
+  }
   .mobile-quick-actions .btn{
     flex:1;
     padding:9px 8px;
