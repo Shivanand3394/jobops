@@ -1685,8 +1685,8 @@ function syncWizardStickyCta_() {
     return;
   }
 
-  primary.textContent = "Open Tailored Resume";
-  primary.onclick = () => openTailoredResumeHtml(jobKey);
+  primary.textContent = "Download Tailored PDF";
+  primary.onclick = () => runFinishChecklistAction('resume');
 }
 
 function normalizeFinishChecklist_(input = {}) {
@@ -1752,10 +1752,19 @@ async function runFinishChecklistAction(action, sourceBtn = null) {
   if (!act) return;
 
   if (act === "resume") {
-    const opened = await openTailoredResumeHtml(key);
-    if (opened) {
+    try {
+      spin(true);
+      const d = await ensureRrPdfForJob_(key, { forceExport: false });
+      const pdfUrl = String(d?.rr_pdf_url || "").trim();
+      if (!pdfUrl) throw new Error("PDF URL not available. Try regenerating the pack first.");
+      window.open(pdfUrl, "_blank", "noopener");
+      toast("PDF ready to save/print.");
       setFinishChecklist_(key, { resume_opened: true });
       renderFinishChecklist_(key);
+    } catch (e) {
+      toast("PDF generation failed: " + e.message, { kind: "error" });
+    } finally {
+      spin(false);
     }
     return;
   }
@@ -1908,7 +1917,7 @@ function renderDetail(j) {
             <div class="muted tiny">Open tailored resume, save as PDF, then copy your cover letter.</div>
           </div>
           <div class="row" style="justify-content:flex-start; margin-top:0;">
-            <button class="btn btn-secondary" id="btnOpenTailoredResumeFinish" onclick="runFinishChecklistAction('resume', this)">Open Tailored Resume</button>
+            <button class="btn btn-secondary" id="btnOpenTailoredResumeFinish" onclick="runFinishChecklistAction('resume', this)">Download Tailored PDF</button>
             <button class="btn btn-ghost" id="btnCopyCoverLetterFinish" onclick="runFinishChecklistAction('copy', this)">Copy Cover Letter</button>
           </div>
         </div>
@@ -1916,7 +1925,7 @@ function renderDetail(j) {
           <div class="h3">Apply Checklist</div>
           <div class="muted tiny" style="margin-top:4px;">Complete these in order for a clean handoff.</div>
           <div class="finish-check-row">
-            <button class="btn btn-ghost" id="btnFinishChecklistResume" onclick="runFinishChecklistAction('resume', this)">1. Open Tailored Resume</button>
+            <button class="btn btn-ghost" id="btnFinishChecklistResume" onclick="runFinishChecklistAction('resume', this)">1. Download Tailored PDF</button>
             <span id="finishChecklistResumeState" class="finish-check-state pending">Pending</span>
           </div>
           <div class="finish-check-row">
@@ -4905,6 +4914,7 @@ async function saveSettings() {
   $("btnCloseSettings").onclick = () => closeModal("modalSettings");
   $("btnCancelSettings").onclick = () => closeModal("modalSettings");
   $("btnSaveSettings").onclick = saveSettings;
+  $("setSimpleMode").onchange = () => setSimpleMode_(Boolean($("setSimpleMode").checked), { persist: true });
 
   $("btnRefresh").onclick = loadJobs;
   $("btnTrackingRefresh").onclick = () => loadJobs({ ignoreStatus: true });

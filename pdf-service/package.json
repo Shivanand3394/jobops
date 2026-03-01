@@ -1,0 +1,16 @@
+{
+  "name": "pdf-service",
+  "version": "1.0.0",
+  "description": "Puppeteer-based PDF generation service for JobOps",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^21.5.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
