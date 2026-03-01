@@ -146,45 +146,101 @@ export default {
     }
 
     // ================== API: UPDATE JOB STATUS ==================
-    const apiJobStatusMatch = path.match(/^\/api\/jobs\/([a-f0-9]{40})\/status$/i);
-    if (apiJobStatusMatch && request.method === 'POST') {
-      const jobKey = apiJobStatusMatch[1];
-      const body = await request.json().catch(() => ({}));
+    const apiJobPdfMatch = path.match(/^\/api\/jobs\/([a-f0-9]{40})\/resume\/pdf$/i);
 
-      const status = (body.status ?? "").toString().trim();
-      const appliedNote = (body.applied_note ?? "").toString();
-      const followUpAt = body.follow_up_at === null || body.follow_up_at === undefined
-        ? null
-        : Number(body.follow_up_at);
+    if (apiJobPdfMatch && request.method === "POST") {
+      try {
+        const jobKey = apiJobPdfMatch[1];
 
-      if (!status) {
-        return new Response(JSON.stringify({ ok: false, error: "Missing status" }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
-        });
+        const body = await request.json().catch(() => ({}));
+        const templateId = String(body.templateId || "modern");
+
+        // Fetch job from DB
+        const job = await env.DB.prepare(
+          "SELECT * FROM jobs WHERE job_key = ?"
+        ).bind(jobKey).first();
+
+        if (!job) {
+          return new Response(JSON.stringify({ ok: false, error: "Job not found" }), { status: 404 });
+        }
+
+        // IMPORTANT: reuse your existing resume HTML builder here
+        // Replace this with whatever function currently builds resume HTML
+        // Load profile
+        const profileRow = await env.DB.prepare(`
+        SELECT profile_json
+        FROM resume_profiles
+        WHERE id = ?
+      `).bind("primary").first();
+
+      if (!profileRow) {
+        return json_({ ok: false, error: "No resume profile found." }, env, 400);
       }
 
-      const now = Date.now();
+      const profile = JSON.parse(profileRow.profile_json || "{}");
 
-      const res = await env.DB.prepare(`
-        UPDATE jobs
-        SET status = ?,
-            applied_note = ?,
-            follow_up_at = ?,
-            updated_at = ?
-        WHERE job_key = ?;
-      `.trim()).bind(status, appliedNote, followUpAt, now, jobKey).run();
+      // Load latest matched evidence
+      const resumeTailoring = await loadLatestResumeTailoringForEvidence_(env, jobKey);
 
-      if (!res.success || res.meta.changes === 0) {
-        return new Response(JSON.stringify({ ok: false, error: "Job not found" }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
+      // Generate HTML using your real renderer
+      const html = generateProfessionalHtml(
+        profile,
+        job,
+        resumeTailoring,
+        {
+          templateId,
+          evidence_source_policy: "resume_only"
+        }
+      );
+        const baseUrl = String(env.PDF_SERVICE_URL || "").replace(/\/+$/, "");
+        if (!baseUrl) {
+          return new Response(JSON.stringify({ ok: false, error: "Missing PDF_SERVICE_URL" }), { status: 500 });
+        }
+
+        const headers = {
+          "Content-Type": "application/json"
+        };
+
+        if (env.PDF_AUTH_KEY) {
+          headers["Authorization"] = `Bearer ${env.PDF_AUTH_KEY}`;
+        }
+
+        const pdfResp = await fetch(`${baseUrl}/pdf`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            html,
+            options: {
+              format: "A4",
+              printBackground: true
+            }
+          })
         });
-      }
 
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': env.ALLOW_ORIGIN || '*' }
-      });
+        if (!pdfResp.ok) {
+          const t = await pdfResp.text();
+          return new Response(JSON.stringify({
+            ok: false,
+            error: `PDF Factory failed (${pdfResp.status}): ${t}`
+          }), { status: 500 });
+        }
+
+        const pdfBuffer = await pdfResp.arrayBuffer();
+
+        return new Response(pdfBuffer, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="resume_${jobKey}.pdf"`
+          }
+        });
+
+      } catch (err) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "PDF generation failed: " + err.message
+        }), { status: 500 });
+      }
     }
 
     try {
@@ -502,8 +558,12 @@ export default {
       // UI: JOB detail
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/contacts") && request.method === "GET") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
-        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
 
         const job = await env.DB.prepare(`
           SELECT job_key, company
@@ -531,8 +591,12 @@ export default {
       }
 
       if (path.startsWith("/jobs/") && path.endsWith("/profile-preference") && request.method === "GET") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
-        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
 
         const job = await env.DB.prepare(`
           SELECT job_key
@@ -559,8 +623,12 @@ export default {
       }
 
       if (path.startsWith("/jobs/") && path.endsWith("/profile-preference") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
-        if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
 
         const job = await env.DB.prepare(`
           SELECT job_key
@@ -784,7 +852,12 @@ export default {
         !path.endsWith("/application-pack") &&
         !path.includes("/application-pack/")
       ) {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
         const row = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
@@ -800,7 +873,12 @@ export default {
       // UI: Job evidence
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/evidence") && request.method === "GET") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const limit = clampInt_(url.searchParams.get("limit") || 300, 1, 1000);
 
@@ -863,7 +941,12 @@ export default {
       // UI: Rebuild job evidence
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/evidence/rebuild") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
         const hasEvidenceTable = await hasJobEvidenceTable_(env);
@@ -1016,13 +1099,25 @@ export default {
       // ============================
       // UI: Update job status
       // ============================
-      if (path.startsWith("/jobs/") && path.endsWith("/status") && request.method === "POST") {
+      if ((path.startsWith("/jobs/") || path.startsWith("/api/jobs/")) && path.endsWith("/status") && request.method === "POST") {
         const parts = path.split("/");
-        const jobKey = decodeURIComponent(parts[2] || "").trim();
+        const jobsIndex = parts.indexOf("jobs");
+        if (jobsIndex === -1 || jobsIndex + 1 >= parts.length) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
+        const jobKey = decodeURIComponent(parts[jobsIndex + 1] || "").trim();
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
-        const body = await request.json().catch(() => ({}));
+        let body;
+        try {
+          body = await request.json();
+        } catch (e) {
+          return json_({ ok: false, error: "Invalid JSON" }, env, 400);
+        }
         const status = String(body.status || "").trim().toUpperCase();
+        if (!status) {
+          return json_({ ok: false, error: "Missing status" }, env, 400);
+        }
         const appliedNote = String(body.applied_note || "").trim();
         const followUpAt = body.follow_up_at ? Math.round(Number(body.follow_up_at)) : null;
         const allowed = new Set(["NEW","LINK_ONLY","SCORED","SHORTLISTED","READY_TO_APPLY","APPLIED","REJECTED","ARCHIVED"]);
@@ -1900,7 +1995,12 @@ export default {
       // UI: Checklist GET/POST
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/checklist") && request.method === "GET") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const jobsSchema = await getJobsSchema_(env);
         if (!jobsSchema.hasChecklistFields) {
@@ -1917,7 +2017,12 @@ export default {
       }
 
       if (path.startsWith("/jobs/") && path.endsWith("/checklist") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const jobsSchema = await getJobsSchema_(env);
         if (!jobsSchema.hasChecklistFields) {
@@ -1948,7 +2053,12 @@ export default {
       // UI: Resume payload (bridge-ready)
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/resume-payload") && request.method === "GET") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
         const job = await env.DB.prepare(`SELECT * FROM jobs WHERE job_key = ? LIMIT 1;`).bind(jobKey).first();
@@ -2000,7 +2110,12 @@ export default {
       }
 
       if (path.startsWith("/jobs/") && path.endsWith("/draft-outreach") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
         const body = await request.json().catch(() => ({}));
@@ -2168,7 +2283,12 @@ export default {
         (path.endsWith("/generate-application-pack") || path.endsWith("/generate-pack")) &&
         request.method === "POST"
       ) {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
         const body = await request.json().catch(() => ({}));
@@ -2361,7 +2481,12 @@ export default {
       // UI: Get application pack
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/application-pack") && request.method === "GET") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const requestedProfileId = String(url.searchParams.get("profile_id") || "").trim();
         const draftSchema = await getResumeDraftSchema_(env);
@@ -2526,7 +2651,12 @@ export default {
       // UI: Application pack versions
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/application-pack/versions") && request.method === "GET") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const profileId = String(url.searchParams.get("profile_id") || "").trim();
         const limit = clampInt_(url.searchParams.get("limit") || 20, 1, 100);
@@ -2544,7 +2674,12 @@ export default {
       }
 
       if (path.startsWith("/jobs/") && path.endsWith("/application-pack/review") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
         const body = await request.json().catch(() => ({}));
@@ -2719,7 +2854,12 @@ export default {
       }
 
       if (path.startsWith("/jobs/") && path.endsWith("/approve-pack") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
 
         const body = await request.json().catch(() => ({}));
@@ -2896,7 +3036,12 @@ export default {
       }
 
       if (path.startsWith("/jobs/") && path.endsWith("/application-pack/revert") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const body = await request.json().catch(() => ({}));
         const profileId = String(body.profile_id || body.profileId || "").trim();
@@ -2930,7 +3075,12 @@ export default {
       // UI: Push application pack to Reactive Resume
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/push-reactive-resume") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const draftSchema = await getResumeDraftSchema_(env);
 
@@ -3054,7 +3204,12 @@ export default {
       // UI: Export Reactive Resume PDF
       // ============================
       if (path.startsWith("/jobs/") && path.endsWith("/export-reactive-resume-pdf") && request.method === "POST") {
-        const jobKey = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const jobsIdx = parts.indexOf("jobs");
+        const jobKey = jobsIdx >= 0 ? decodeURIComponent(parts[jobsIdx + 1] || "").trim() : "";
+        if (!jobKey) {
+          return json_({ ok: false, error: "Missing job_key" }, env, 400);
+        }
         if (!jobKey) return json_({ ok: false, error: "Missing job_key" }, env, 400);
         const draftSchema = await getResumeDraftSchema_(env);
 
@@ -3306,7 +3461,12 @@ export default {
       // UI: Target detail
       // ============================
       if (path.startsWith("/targets/") && request.method === "GET") {
-        const targetId = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const targetsIdx = parts.indexOf("targets");
+        const targetId = targetsIdx >= 0 ? decodeURIComponent(parts[targetsIdx + 1] || "").trim() : "";
+        if (!targetId) {
+          return json_({ ok: false, error: "Missing target_id" }, env, 400);
+        }
         if (!targetId) return json_({ ok: false, error: "Missing target id" }, env, 400);
         const targetSchema = await getTargetsSchema_(env);
         const rejectSelect = targetSchema.hasRejectKeywords ? "reject_keywords_json" : "'[]' AS reject_keywords_json";
@@ -3340,7 +3500,12 @@ export default {
       // UI: Update target
       // ============================
       if (path.startsWith("/targets/") && request.method === "POST") {
-        const targetId = decodeURIComponent(path.split("/")[2] || "").trim();
+        const parts = path.split("/").filter(Boolean);
+        const targetsIdx = parts.indexOf("targets");
+        const targetId = targetsIdx >= 0 ? decodeURIComponent(parts[targetsIdx + 1] || "").trim() : "";
+        if (!targetId) {
+          return json_({ ok: false, error: "Missing target_id" }, env, 400);
+        }
         if (!targetId) return json_({ ok: false, error: "Missing target id" }, env, 400);
 
         const body = await request.json().catch(() => ({}));
